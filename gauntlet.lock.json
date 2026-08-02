@@ -1,0 +1,33 @@
+{
+  "entries": {
+    "config:.claude/settings.json": {
+      "approved_at": "2026-08-02T16:24:21+00:00",
+      "digest": "sha256:bce5a043a7ff06608318ecbafc3c3c2b63dccd5e3cf8a21710fef713b9513122"
+    },
+    "config:gauntlet.toml": {
+      "approved_at": "2026-08-02T16:24:21+00:00",
+      "digest": "sha256:f779b72eedcb23670d2c6e91c409c09ef568ac571e18297b697b8ccce908e868"
+    },
+    "config:pyproject.toml": {
+      "approved_at": "2026-08-02T16:24:21+00:00",
+      "digest": "sha256:9940150d3044970a0ebb57c868b51d233a774b67150c7c97b36d4f09c5930470"
+    },
+    "spec:features/duplicates.feature": {
+      "approved_at": "2026-08-02T20:52:39+00:00",
+      "digest": "sha256:94a45743d3ac06527224f77684d368fcb45fdbe766eaab449070cbfef84e5bfa"
+    },
+    "spec:features/siu_flags.feature": {
+      "approved_at": "2026-08-02T20:52:39+00:00",
+      "digest": "sha256:e727d808ad879c86b6747922279cf5245579b696af1bf17a4f68a3fd8cf6ffe3"
+    },
+    "spec:features/triage.feature": {
+      "approved_at": "2026-08-02T20:52:39+00:00",
+      "digest": "sha256:fd83e7b511dbd3168fe6c113767fbeb2cae5623272d8ad094a23abb33282b22c"
+    },
+    "spec:features/validation.feature": {
+      "approved_at": "2026-08-02T20:52:39+00:00",
+      "digest": "sha256:c2b0923471110df5428e9c440da712c2731514ca22e6771b9b77aa237ce7830a"
+    }
+  },
+  "version": 1
+}

@@ -1,0 +1,8 @@
+.venv/,
+.gauntlet/,
+mutants/,
+.mutmut-cache,
+__pycache__/,
+.pytest_cache/,
+.coverage,
+*.db
