@@ -1,0 +1,61 @@
+{
+    "exit_code_by_key": {
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_1": 1,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_2": 1,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_3": 1,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_4": 1,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_5": 1,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_6": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_1": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_2": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_3": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_4": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_5": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_6": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_7": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_8": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_9": 1,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_10": 1
+    },
+    "hash_by_function_name": {
+        "x_find_duplicates": "906eeb8e1f33",
+        "x__is_probable_duplicate": "719645e18a82"
+    },
+    "type_check_error_by_key": {},
+    "durations_by_key": {
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_1": 0.086931,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_2": 0.078741,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_3": 0.079917,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_4": 0.094295,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_6": 0.06487,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_5": 0.095202,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_1": 0.081869,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_2": 0.078171,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_4": 0.078732,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_3": 0.089556,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_5": 0.073419,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_7": 0.068231,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_6": 0.081376,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_9": 0.075385,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_10": 0.07635,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_8": 0.100095
+    },
+    "estimated_durations_by_key": {
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_1": 0.005109650082886219,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_2": 0.005109650082886219,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_3": 0.005109650082886219,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_4": 0.005109650082886219,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_5": 0.005109650082886219,
+        "claimgate.domain.duplicates.x_find_duplicates__mutmut_6": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_1": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_2": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_3": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_4": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_5": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_6": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_7": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_8": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_9": 0.005109650082886219,
+        "claimgate.domain.duplicates.x__is_probable_duplicate__mutmut_10": 0.005109650082886219
+    }
+}

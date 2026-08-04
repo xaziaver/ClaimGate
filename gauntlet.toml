@@ -1,6 +1,3 @@
-# Gauntlet quality gates. This file is the human's artifact: edit it, then run
-# `gauntlet lock` to approve it. Agents are blocked from changing it.
-
 [project]
 language = "python"
 src = "src/"
@@ -10,13 +7,13 @@ tests = "tests/"
 max_diagnostics_per_gate = 10
 
 [gates.protect]
-# require_lock = true   # enable once you have run `gauntlet lock`
+require_lock = true
 
 [gates.static]
 
 [gates.size]
 max_function_lines = 25
-max_module_lines = 300
+max_module_lines = 250
 
 [gates.complexity]
 max = 6
@@ -30,29 +27,19 @@ branch = 80
 [gates.crap]
 max = 15
 
-# Requires jscpd (npm install -g jscpd); enable when installed.
-# [gates.duplication]
-# max_duplicate_blocks = 0
+[gates.duplication]
+max_duplicate_blocks = 0
+min_lines = 6
 
-# Acceptance specs are the human's artifact: the agent drafts them, you approve
-# them with `gauntlet spec approve`, and an agent editing an approved spec fails
-# this gate. Requires pytest-bdd.
-# [gates.acceptance]
-# features = "features/"
-# require_approved = true
-# mutate_examples = true
-# api_boundary = "tests/api"
+[gates.mutation]
+min_score = 90
+scope = "changed"
 
-# Mutation testing of the unit tests. Requires mutmut in the project
-# environment, plus a [tool.mutmut] section in pyproject.toml:
-#     [tool.mutmut]
-#     source_paths = ["src/"]
-#     pytest_add_cli_args_test_selection = ["tests/"]
-# mutmut copies the project into ./mutants, so also add:
-#     [tool.pytest.ini_options]
-#     addopts = "--ignore=mutants"
-# and put `mutants/` and `.mutmut-cache` in .gitignore.
-# [gates.mutation]
-# min_score = 90
-# scope = "changed"      # changed | full
-# require_review = false
+[gates.acceptance]
+features = "features/"
+steps = "tests/acceptance"
+require_approved = true
+mutate_examples = true
+[gates.boundary]
+steps = "tests/acceptance"
+api = "tests/api"

@@ -1,16 +1,190 @@
 {
   "entries": {
     "config:.claude/settings.json": {
-      "approved_at": "2026-08-02T16:24:21+00:00",
+      "approved_at": "2026-08-04T18:42:54+00:00",
       "digest": "sha256:bce5a043a7ff06608318ecbafc3c3c2b63dccd5e3cf8a21710fef713b9513122"
     },
     "config:gauntlet.toml": {
-      "approved_at": "2026-08-02T16:24:21+00:00",
-      "digest": "sha256:f779b72eedcb23670d2c6e91c409c09ef568ac571e18297b697b8ccce908e868"
+      "approved_at": "2026-08-04T18:42:54+00:00",
+      "digest": "sha256:70517884e3883dc684b91bb2f9b68893cf40787507db503db480a21313b97078"
     },
     "config:pyproject.toml": {
-      "approved_at": "2026-08-02T16:24:21+00:00",
+      "approved_at": "2026-08-04T18:42:54+00:00",
       "digest": "sha256:9940150d3044970a0ebb57c868b51d233a774b67150c7c97b36d4f09c5930470"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|AU-7654321|2026-06-01|fire|[]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:ceb72fdfce5a0fd8da8ed7dafd8647a34439882233ad64bd01cb44f420b1de87",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-05-29|fire|[\"CLM-1001\"]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:e1db47fa8a2a41200067de34e0a70051f0267d1d79155c39418af84ff3fef1d4",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-06-01|water_damage|[]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:ceb72fdfce5a0fd8da8ed7dafd8647a34439882233ad64bd01cb44f420b1de87",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-06-04|fire|[\"CLM-1001\"]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:cc920c8ae5d713bb8b01f547de98a7f0285c52d8132b459cb74e55fce265520e",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|AU-7654321|2026-06-01|fire|[]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:12a07acce40932893f0bfca829143dbb591d2245ede72a55cc62a25fb5ac15fc",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|HO-1234567|2026-05-28|fire|[]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:12a07acce40932893f0bfca829143dbb591d2245ede72a55cc62a25fb5ac15fc",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|HO-1234567|2026-06-05|fire|[]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:12a07acce40932893f0bfca829143dbb591d2245ede72a55cc62a25fb5ac15fc",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-05-28|fire|[]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:b8cdc015640a16a0f8c1f8dfdee854e3c97dc97feecf10677fa8391a7a518c20",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-06-01|water_damage|[]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:b8cdc015640a16a0f8c1f8dfdee854e3c97dc97feecf10677fa8391a7a518c20",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-06-05|fire|[]": {
+      "approved_at": "2026-08-03T10:37:08+00:00",
+      "digest": "sha256:b8cdc015640a16a0f8c1f8dfdee854e3c97dc97feecf10677fa8391a7a518c20",
+      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#From raw record to queue|example|inception_date|theft|400.00|2026-06-15|2024-01-01|low|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:e5968e311a1e3b36644eb53bb92f58ffe45a78917bfbbb05bbef636062a080a8",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#From raw record to queue|example|loss_amount|fire|50000|2026-08-01|2024-01-01|high|complex": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:f10decab43700874210ac780712c275e76dfa86df0818285586d552b5c2fc3be",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#From raw record to queue|example|loss_amount|fire|50000|2026-08-01|2026-07-20|high|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:f10decab43700874210ac780712c275e76dfa86df0818285586d552b5c2fc3be",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#From raw record to queue|example|loss_amount|theft|400.00|2026-06-15|2024-01-01|low|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:cebd8e1c3255b7bee53b043fa7cd3dc7b969ba55094c07462001ba1bc74fce33",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#From raw record to queue|example|loss_amount|theft|400.00|2026-08-01|2024-01-01|low|fast_track": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:cebd8e1c3255b7bee53b043fa7cd3dc7b969ba55094c07462001ba1bc74fce33",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#From raw record to queue|example|loss_amount|water_damage|400.00|2026-08-01|2024-01-01|standard|standard": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:cebd8e1c3255b7bee53b043fa7cd3dc7b969ba55094c07462001ba1bc74fce33",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#From raw record to queue|example|loss_date|fire|50000|2026-08-01|2026-07-20|high|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:c099f4a525a812cc7148ae018b2be85ad49f434f5e64229c32103aad1457a6b8",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Queue routing|example|late_reporting|high|true|true|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:0966a007d18e94c7385a45dff714589f1c39567185b73df53eeb9fee54fc0364",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Queue routing|example|late_reporting|standard|false|true|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:4caa5615a285036f41a39f4666cd75da2d3224e9893a8da0b14672d14f620c2b",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Queue routing|example|recent_inception|high|true|true|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:0966a007d18e94c7385a45dff714589f1c39567185b73df53eeb9fee54fc0364",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Queue routing|example|recent_inception|low|true|false|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:4caa5615a285036f41a39f4666cd75da2d3224e9893a8da0b14672d14f620c2b",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Queue routing|example|severity|high|true|true|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:ca5b24a257fa7348eb2101f0f26c82b808e5c94f3138f1c4986ce8b4169189c3",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Queue routing|example|severity|low|true|false|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:53745d2186b108b61488ff22f304448dce79e907fc2aff7e7933290e38315949",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Queue routing|example|severity|standard|false|true|siu_review": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:0d3cb8af7f10988bf53a9b622c0745063e26c1836593c7f94cf7121c75fdcac4",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Theft severity by loss amount|example|loss_amount|500.00|standard": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:6d855a72be0351f3eb2443513fe60b29c7837ac60ee7cc5b321670c552bcfa7c",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/triage.feature#Theft severity by loss amount|example|loss_amount|500.01|standard": {
+      "approved_at": "2026-08-03T10:42:51+00:00",
+      "digest": "sha256:e2211ab5b8baa52bae7c231380bdc5c66c06078238e4e02b3a56edd412652848",
+      "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/validation.feature#Required fields for an injury loss|example|contact||555-0100|Twisted ankle, wet floor|invalid|injured_party_name": {
+      "approved_at": "2026-08-03T10:19:36+00:00",
+      "digest": "sha256:6f72a0c417efe9aff19cce73862fa0d8129d62536403a1a1151e2fcbeccef159",
+      "reason": "blanking a second field does not change which missing field is reported first",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/validation.feature#Required fields for an injury loss|example|description|Jane Doe||Twisted ankle, wet floor|invalid|injured_party_contact": {
+      "approved_at": "2026-08-03T10:19:36+00:00",
+      "digest": "sha256:79fee7c4d1e501a0ee025aac96facce40af65b44f28b842eb446b6ee19541102",
+      "reason": "blanking a second field does not change which missing field is reported first",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/validation.feature#Required fields for an injury loss|example|description||555-0100|Twisted ankle, wet floor|invalid|injured_party_name": {
+      "approved_at": "2026-08-03T10:19:36+00:00",
+      "digest": "sha256:79fee7c4d1e501a0ee025aac96facce40af65b44f28b842eb446b6ee19541102",
+      "reason": "blanking a second field does not change which missing field is reported first",
+      "reviewer": "xaziaver"
     },
     "spec:features/duplicates.feature": {
       "approved_at": "2026-08-02T20:52:39+00:00",
@@ -21,8 +195,8 @@
       "digest": "sha256:e727d808ad879c86b6747922279cf5245579b696af1bf17a4f68a3fd8cf6ffe3"
     },
     "spec:features/triage.feature": {
-      "approved_at": "2026-08-02T20:52:39+00:00",
-      "digest": "sha256:fd83e7b511dbd3168fe6c113767fbeb2cae5623272d8ad094a23abb33282b22c"
+      "approved_at": "2026-08-02T22:27:34+00:00",
+      "digest": "sha256:c20c5cb654c2482ca919b82087f4001ec15356e6f38e4f256daebbc2df998e83"
     },
     "spec:features/validation.feature": {
       "approved_at": "2026-08-02T20:52:39+00:00",
