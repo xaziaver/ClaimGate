@@ -40,3 +40,10 @@ list to check before proposing anything that would violate one.
   judgment, say so explicitly instead of proposing around it.
 - Spec approval, mutant approval, and mutant pruning are the human's calls, not something to run
   unprompted.
+- **Commit granularity is what makes the log worth reading, not a record of it having happened.**
+  One commit per reopening, or a small series within one — never a batch spanning several
+  reopenings. Spec lock and implementation are separate commits, in that order, so the sequence is
+  visible in the log itself rather than only asserted in a document. Commit messages carry the
+  reasoning, not just the change: one line of what, one line of why. Shape to match — "remove
+  365-day reporting gate: late notice is a coverage determination made downstream on prejudice and
+  tolling, not an intake rule" — not "update validation.py."
