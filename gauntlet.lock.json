@@ -201,8 +201,8 @@
       "digest": "sha256:e727d808ad879c86b6747922279cf5245579b696af1bf17a4f68a3fd8cf6ffe3"
     },
     "spec:features/triage.feature": {
-      "approved_at": "2026-08-02T22:27:34+00:00",
-      "digest": "sha256:c20c5cb654c2482ca919b82087f4001ec15356e6f38e4f256daebbc2df998e83"
+      "approved_at": "2026-08-08T14:15:45+00:00",
+      "digest": "sha256:4b1f171fa628572275f07c1db254d229f786954b8a13de9522fc6435fe9a5679"
     },
     "spec:features/validation.feature": {
       "approved_at": "2026-08-07T00:38:44+00:00",
