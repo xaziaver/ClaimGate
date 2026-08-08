@@ -28,8 +28,18 @@ Ordered by domain severity, not by effort. One line each on why that position.
 
 ## Status as of this handoff
 
-Item 1 has a Gherkin draft in `features/triage.feature` (not yet approved — `route_queue` no longer
-takes SIU flags, `SIU_QUEUE`/`"siu_review"` is removed, `TriageOutcome` needs a `siu_flags` field;
-none of that is implemented in `src/` yet). `features/validation.feature` is fully implemented and
-gated — it belongs to an earlier reopening (accumulation, `blockers`, `notice_type`,
+Item 1 has a Gherkin draft on branch `reopening/triage-siu-queue` (not yet approved — `route_queue`
+no longer takes SIU flags, `SIU_QUEUE`/`"siu_review"` is removed, `TriageOutcome` needs a
+`siu_flags` field; none of that is implemented in `src/` yet). It is not on `main` — see the
+"main is always green" constraint in `CLAUDE.md`; the draft moves back to `main` only once its spec
+is locked and its implementation is complete. `features/validation.feature` is fully implemented,
+gated, and on `main` — it belongs to an earlier reopening (accumulation, `blockers`, `notice_type`,
 `LOSS_DATE_IN_FUTURE`) that isn't part of this numbered queue.
+
+## Open instructions
+
+Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
+the numbered queue above tracks reopenings.
+
+Nothing currently open. `main` and `reopening/triage-siu-queue` are both pushed to
+`https://github.com/xaziaver/ClaimGate`.

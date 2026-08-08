@@ -18,17 +18,20 @@ jurisdiction, or a second policy admin system — see the swappability tests des
   `features/`, is reviewed and hash-locked by a human (`gauntlet spec approve`) before any
   implementation exists, and stays hash-locked afterward — a spec cannot silently drift from what
   was approved.
-- **Deterministic quality gates.** Gauntlet enforces static analysis,
-  complexity and size limits, 90%+ line and branch coverage, zero duplication, and a mutation-proof
-  acceptance suite on every change to the domain layer (`src/claimgate/domain/`).
-  `src/claimgate/domain/` contains no I/O, no framework code, no clock reads, and no carrier-
-  specific logic — carrier and jurisdiction differences live in configuration and adapters, never
-  in a conditional buried in a business rule.
+- **Deterministic quality gates.** Gauntlet enforces static analysis, complexity and size limits,
+  line coverage ≥90% and branch coverage ≥80% (both are at 100% today), zero duplication, and a
+  mutation-proof acceptance suite on every change to the domain layer (`src/claimgate/domain/`),
+  which itself contains no I/O, no framework code, no clock reads, and no carrier-specific logic —
+  carrier and jurisdiction differences live in configuration and adapters, never in a conditional
+  buried in a business rule.
 - **Mutation testing, not just coverage.** Coverage measures whether a line ran; mutation testing
   measures whether a test would fail if the code were wrong. Every domain change ships with a
   mutation score, and any mutant judged genuinely equivalent — one no assertion at that layer could
   ever catch — is recorded with a dated, reasoned approval in `gauntlet.lock.json`, not silently
   ignored.
+- **Implementation is written by an AI coding agent.** Specifications, thresholds, business rules,
+  and mutant approvals are human decisions the agent cannot make or override — the gate harness
+  exists to enforce that boundary, not merely to imply it.
 
 ## Status
 
@@ -47,6 +50,8 @@ decision behind it, with its reasoning, is in [`PHASE2_DESIGN.md`](PHASE2_DESIGN
 | [`STATUTORY_REGISTER.md`](STATUTORY_REGISTER.md) | Every regulatory value referenced by the design, with citation, verification date, and source — because Florida amends these statutes nearly every session. |
 | [`QUEUE.md`](QUEUE.md) | The ordered list of known domain defects and gaps still to be corrected, in severity order, with one line of reasoning each for why it sits where it does. |
 | [`docs/decisions.md`](docs/decisions.md) | Phase-1 business rule decisions as originally recorded — see `ASSUMPTIONS.md`'s audit of this file for which entries are well-founded and which aren't. |
+| [`docs/harness-findings.md`](docs/harness-findings.md) | What using the Gauntlet gate harness itself surfaced — failure modes, process boundaries, and general techniques, discovered rather than assumed. |
+| [`CLAUDE.md`](CLAUDE.md) | The instructions and standing constraints governing how this project's implementation work is done — one of the more interesting artifacts here for anyone evaluating how the work was governed. |
 
 ## Disclaimer
 
