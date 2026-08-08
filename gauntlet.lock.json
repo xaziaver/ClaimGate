@@ -168,22 +168,28 @@
       "reason": "an SIU flag overrides the severity-derived queue, so severity cannot change the routing on these rows; amounts are irrelevant on non-theft loss types",
       "reviewer": "xaziaver"
     },
-    "mutant:features/validation.feature#Required fields for an injury loss|example|contact||555-0100|Twisted ankle, wet floor|invalid|injured_party_name": {
-      "approved_at": "2026-08-03T10:19:36+00:00",
-      "digest": "sha256:6f72a0c417efe9aff19cce73862fa0d8129d62536403a1a1151e2fcbeccef159",
-      "reason": "blanking a second field does not change which missing field is reported first",
+    "mutant:features/validation.feature#Recognized notice types are accepted|example|notice_type|INITIAL": {
+      "approved_at": "2026-08-08T09:10:08+00:00",
+      "digest": "sha256:4a1bee26f506bf29001f52c22b1f11473efe8fe2946e7d9a440312b97ff74902",
+      "reason": "Approved because all four recognized notice types are behaviorally identical inside validate() by design, and substituting one recognized value for another in an enumeration where every row asserts the same outcome cannot change that outcome. No assertion available at this layer discriminates between them. REVISIT TRIGGER: this approval is void the moment required fields vary by notice type. LOSS_ASSESSMENT is the likely first case - a loss assessment claim under Fla. Stat. 627.70132(4) needs the association's assessment vote date and probably the assessment amount, which no other notice type requires. When that lands, re-run these mutants rather than carrying the approval forward.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/validation.feature#Required fields for an injury loss|example|description|Jane Doe||Twisted ankle, wet floor|invalid|injured_party_contact": {
-      "approved_at": "2026-08-03T10:19:36+00:00",
-      "digest": "sha256:79fee7c4d1e501a0ee025aac96facce40af65b44f28b842eb446b6ee19541102",
-      "reason": "blanking a second field does not change which missing field is reported first",
+    "mutant:features/validation.feature#Recognized notice types are accepted|example|notice_type|LOSS_ASSESSMENT": {
+      "approved_at": "2026-08-08T09:10:08+00:00",
+      "digest": "sha256:6fa105bbabf20f79e24a7448ed776d33806ac4d7fe4f9bfff3435a1839f67054",
+      "reason": "Approved because all four recognized notice types are behaviorally identical inside validate() by design, and substituting one recognized value for another in an enumeration where every row asserts the same outcome cannot change that outcome. No assertion available at this layer discriminates between them. REVISIT TRIGGER: this approval is void the moment required fields vary by notice type. LOSS_ASSESSMENT is the likely first case - a loss assessment claim under Fla. Stat. 627.70132(4) needs the association's assessment vote date and probably the assessment amount, which no other notice type requires. When that lands, re-run these mutants rather than carrying the approval forward.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/validation.feature#Required fields for an injury loss|example|description||555-0100|Twisted ankle, wet floor|invalid|injured_party_name": {
-      "approved_at": "2026-08-03T10:19:36+00:00",
-      "digest": "sha256:79fee7c4d1e501a0ee025aac96facce40af65b44f28b842eb446b6ee19541102",
-      "reason": "blanking a second field does not change which missing field is reported first",
+    "mutant:features/validation.feature#Recognized notice types are accepted|example|notice_type|REOPENED": {
+      "approved_at": "2026-08-08T09:10:08+00:00",
+      "digest": "sha256:6350fa2c99684813777d66de5e0210a2df97ca42710fd0c0e3e1bb95f2343867",
+      "reason": "Approved because all four recognized notice types are behaviorally identical inside validate() by design, and substituting one recognized value for another in an enumeration where every row asserts the same outcome cannot change that outcome. No assertion available at this layer discriminates between them. REVISIT TRIGGER: this approval is void the moment required fields vary by notice type. LOSS_ASSESSMENT is the likely first case - a loss assessment claim under Fla. Stat. 627.70132(4) needs the association's assessment vote date and probably the assessment amount, which no other notice type requires. When that lands, re-run these mutants rather than carrying the approval forward.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/validation.feature#Recognized notice types are accepted|example|notice_type|SUPPLEMENTAL": {
+      "approved_at": "2026-08-08T09:10:08+00:00",
+      "digest": "sha256:dcb4d586f9bda949f300d511a01ebb7fc09ce5382373ce269dfa1073e9f329b8",
+      "reason": "Approved because all four recognized notice types are behaviorally identical inside validate() by design, and substituting one recognized value for another in an enumeration where every row asserts the same outcome cannot change that outcome. No assertion available at this layer discriminates between them. REVISIT TRIGGER: this approval is void the moment required fields vary by notice type. LOSS_ASSESSMENT is the likely first case - a loss assessment claim under Fla. Stat. 627.70132(4) needs the association's assessment vote date and probably the assessment amount, which no other notice type requires. When that lands, re-run these mutants rather than carrying the approval forward.",
       "reviewer": "xaziaver"
     },
     "spec:features/duplicates.feature": {
@@ -199,8 +205,8 @@
       "digest": "sha256:c20c5cb654c2482ca919b82087f4001ec15356e6f38e4f256daebbc2df998e83"
     },
     "spec:features/validation.feature": {
-      "approved_at": "2026-08-02T20:52:39+00:00",
-      "digest": "sha256:c2b0923471110df5428e9c440da712c2731514ca22e6771b9b77aa237ce7830a"
+      "approved_at": "2026-08-07T00:38:44+00:00",
+      "digest": "sha256:97abbca87c571fb257de4ce465f059afed9574c6d9522835cd1026889399302f"
     }
   },
   "version": 1

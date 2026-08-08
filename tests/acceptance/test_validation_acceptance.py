@@ -5,18 +5,9 @@ from typing import Any
 
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from tests.api.validation import validate_record
+from tests.api.validation import reason_codes, validate_record
 
 scenarios("../../features/validation.feature")
-
-
-@given("the record is otherwise valid")
-def set_baseline_fields(context: dict[str, Any]) -> None:
-    context["fields"] = {
-        "policy_number": "HO-1234567",
-        "loss_date": date(2026, 7, 1),
-        "loss_type": "fire",
-    }
 
 
 @given(parsers.parse('the loss date is "{value}"'))
@@ -24,14 +15,19 @@ def set_loss_date(context: dict[str, Any], value: str) -> None:
     context["fields"]["loss_date"] = date.fromisoformat(value)
 
 
-@given(parsers.parse('the policy number is "{value}"'))
+@given(parsers.re(r'the policy number is "(?P<value>.*)"'))
 def set_policy_number(context: dict[str, Any], value: str) -> None:
     context["fields"]["policy_number"] = value
 
 
-@given(parsers.parse('the loss type is "{value}"'))
+@given(parsers.re(r'the loss type is "(?P<value>.*)"'))
 def set_loss_type(context: dict[str, Any], value: str) -> None:
     context["fields"]["loss_type"] = value
+
+
+@given(parsers.re(r'the notice type is "(?P<value>.*)"'))
+def set_notice_type(context: dict[str, Any], value: str) -> None:
+    context["fields"]["notice_type"] = value
 
 
 @given(parsers.re(r'the injured party name is "(?P<value>.*)"'))
@@ -64,14 +60,37 @@ def run_validation(context: dict[str, Any]) -> None:
     context["result"] = validate_record(now=today, **context["fields"])
 
 
-@then(parsers.parse('the validation result is "{expected}"'))
-def check_validation_result(context: dict[str, Any], expected: str) -> None:
-    result = context["result"]
-    assert result.valid is (expected == "valid")
+@then("there are no blockers")
+def check_no_blockers(context: dict[str, Any]) -> None:
+    assert context["result"].blockers == ()
 
 
-@then(parsers.parse('the missing field reported is "{expected}"'))
-def check_missing_field(context: dict[str, Any], expected: str) -> None:
-    result = context["result"]
-    expected_field = None if expected == "none" else expected
-    assert result.missing_field == expected_field
+@then(parsers.parse("the blockers are:"))
+def check_blockers_table(context: dict[str, Any], datatable: list[list[str]]) -> None:
+    header, *rows = datatable
+    expected = [dict(zip(header, row, strict=True)) for row in rows]
+    actual = [{"code": b.code, "field": b.field} for b in context["result"].blockers]
+    assert actual == expected
+
+
+@then(parsers.re(r"^the blockers are (?P<value>.*)$"))
+def check_blockers_compact(context: dict[str, Any], value: str) -> None:
+    expected = _parse_compact_blockers(value)
+    actual = [(b.code, b.field) for b in context["result"].blockers]
+    assert actual == expected
+
+
+@then(parsers.parse('the reason codes are "{value}"'))
+def check_reason_codes(context: dict[str, Any], value: str) -> None:
+    assert reason_codes(context["result"]) == value.split(";")
+
+
+def _parse_compact_blockers(value: str) -> list[tuple[str, str]]:
+    value = value.strip()
+    if not value:
+        return []
+    pairs: list[tuple[str, str]] = []
+    for pair in value.split(";"):
+        code, field = pair.split(":", 1)
+        pairs.append((code, field))
+    return pairs

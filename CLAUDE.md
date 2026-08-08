@@ -16,3 +16,27 @@ the human's.
 - Prefer extracting functions over suppressing a finding. `# noqa` and
   `# type: ignore` are last resorts, not shortcuts.
 <!-- gauntlet:end -->
+
+## Standing constraints (ClaimGate domain, decided in design conversation)
+
+These survive context loss even when the conversation that produced them doesn't. Full reasoning
+for each lives in `PHASE2_DESIGN.md`, `ASSUMPTIONS.md`, and `STATUTORY_REGISTER.md` — this is the
+list to check before proposing anything that would violate one.
+
+- Never default a threshold, state name, status code, or retention behaviour. Escalate instead. A
+  defaulted rule is a rule nobody approved.
+- There is no rejected, invalid, or discarded state anywhere in the record state model. A notice
+  cannot be refused.
+- SIU output records factual indicators only — never a conclusion, never the word "fraud" as a
+  system-generated value — and is never a state or a routing destination.
+- Claim lifecycle (open, reserved, in suit, closed, reopened) belongs to the policy administration
+  system, not ClaimGate. ClaimGate does not mint claim numbers.
+- No Gherkin scenario may name a function, class, table, or column.
+- Every threshold needs a scenario on each side of the boundary.
+- Regulatory values cite primary sources only — the Florida Legislature's statute text, enrolled
+  bill text, FLOIR, or DFS — with a verified-on date. Never a law firm summary, a consumer blog, or
+  a ratings site.
+- When a recommendation follows from what the code currently does rather than from an independent
+  judgment, say so explicitly instead of proposing around it.
+- Spec approval, mutant approval, and mutant pruning are the human's calls, not something to run
+  unprompted.

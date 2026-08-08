@@ -10,6 +10,7 @@ class Candidate:
     policy_number: str = ""
     loss_date: date = date.min
     loss_type: str = ""
+    notice_type: str = ""
     loss_amount: Decimal | None = None
     policy_inception_date: date | None = None
     injured_party_name: str | None = None
@@ -26,9 +27,18 @@ class ExistingClaim:
 
 
 @dataclass(frozen=True)
+class ValidationBlocker:
+    code: str
+    field: str
+
+
+@dataclass(frozen=True)
 class ValidationResult:
-    valid: bool
-    missing_field: str | None = None
+    blockers: tuple[ValidationBlocker, ...] = ()
+
+    @property
+    def valid(self) -> bool:
+        return not self.blockers
 
 
 @dataclass(frozen=True)
