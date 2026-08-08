@@ -130,3 +130,69 @@ neither was ever tested against what it was supposed to do.
 verification step, not just a visual read. For `.gitignore` specifically: `git check-ignore -v`
 against a real target for every pattern, run once and actually inspected, rather than trusted
 because the syntax looked plausible.
+
+## A branch pointing at an old commit is not a branch
+
+**What happened.** Work moved off `main` by creating `reopening/triage-siu-queue` at the commit
+immediately before `main` reverted `triage.feature` back to its pre-draft content. That commit was
+already part of `main`'s own history, so the new branch ref had zero unique commits — the draft
+survived only because an ordinary ancestor commit happened to still contain it, not because
+anything on the branch asserted it as a change.
+
+**Why it matters.** Nothing in git recorded that a draft was ever made. A branch in that state looks
+identical, from `git log <branch>`, to a bookmark on `main`'s own line — because it is one. Any
+merge or rebase that pulls `main` forward resolves per-file based on which side actually changed
+content since the merge base; a branch with no unique commit for a file has, by definition,
+"not changed" it, so a plain merge takes `main`'s side silently, with no conflict and no warning.
+That is precisely what an earlier dry-run merge in this session did to this exact file before the
+problem was diagnosed.
+
+**What would address it.** Moving work off `main` onto a reopening branch is only complete once the
+branch carries a commit that is uniquely its own for the file(s) being protected. A branch cut at a
+commit that also exists on `main`'s line, with no subsequent commit, is not yet "off main" in any
+sense git can enforce — it's a label on shared history that depends on `main` never being reverted
+past that point. Verify with the equivalent of `git log <branch> ^main` before treating a move as
+done: an empty result means the branch has nothing of its own yet.
+
+## State-changing operations need verification after, not only before
+
+**What happened.** Four occurrences now, across two sessions: two tool timeouts that killed a
+`gauntlet check` run mid-mutation and left corrupted source; a `git checkout <branch> -- .` that
+pulled branch files onto `main`'s working tree while still checked out on `main`; and, in the same
+session as the branch-pointing-at-an-old-commit finding above, a `git merge` that resolved one whole
+Gherkin rule to `main`'s reverted (buggy) content with **no conflict marker at all**, while a
+different rule in the same file conflicted normally two lines later. Each was caught only because
+someone — human or agent — thought to look afterward; none announced itself.
+
+**Why it matters.** The fourth occurrence is the sharpest version of this finding so far: it shows
+that even git's own conflict markers cannot be trusted as a complete account of what a merge changed
+silently. A merge that reports "CONFLICT" for part of a file can still have resolved a *different*
+part of the same file to the wrong side without saying so, because git's line-based diff treated
+that region as an unambiguous, non-conflicting change. Trusting "no conflict marker" as "no problem"
+in the surviving regions of a partially-conflicted file is exactly as unsafe as trusting a fully
+silent auto-merge.
+
+**What would address it.** Run `git status` after any branch, checkout, or gate operation, and treat
+an unexplained diff as the finding, not a false alarm — the existing entry in this document said
+this. Extending it: after resolving *any* merge conflict, diff the *entire* resolved file against
+the intended source (not just the conflict-marked hunks) before staging, since a partial conflict
+report is not a complete report.
+
+## An unapproved spec is a queue state, confirmed in practice
+
+**What happened.** The Stop hook's `gauntlet stop-check` fired twelve times across a session against
+an acceptance-gate failure caused by `features/triage.feature` sitting unapproved, awaiting human
+review, with no change in the underlying cause between firings. Citing the existing entry above
+(rather than re-running the check, or trying to work around the failure) was what stopped the loop
+— not a twelfth attempt succeeding.
+
+**Why it matters.** This is the same finding already recorded in this document under "Retry loop
+burns attempts on non-agent-actionable failures," observed again rather than newly discovered. Worth
+recording that the mitigation in practice wasn't a harness change — none has shipped — but an agent
+recognizing the documented pattern and refusing to keep spending retries against it. The finding
+holds up under a second, independent occurrence.
+
+**What would address it.** Unchanged from the original entry: gates should distinguish
+agent-actionable failures from failures awaiting a human, and stop the retry loop immediately on the
+latter. Until that exists, the workaround is procedural — recognize "unapproved spec" from the gate
+output and stop retrying, rather than treating every stop-hook firing as a fresh problem to solve.
