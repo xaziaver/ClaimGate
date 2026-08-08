@@ -41,5 +41,5 @@ gated, and on `main` — it belongs to an earlier reopening (accumulation, `bloc
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-- **Push to the remote** — holding until the human has read `README.md` and `DISCLAIMER.md` in full
-  and confirms `main` is green. Both confirmed as of this entry; push has not happened.
+Nothing currently open. `main` and `reopening/triage-siu-queue` are both pushed to
+`https://github.com/xaziaver/ClaimGate`.
