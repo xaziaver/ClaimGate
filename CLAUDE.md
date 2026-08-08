@@ -47,3 +47,8 @@ list to check before proposing anything that would violate one.
   reasoning, not just the change: one line of what, one line of why. Shape to match — "remove
   365-day reporting gate: late notice is a coverage determination made downstream on prejudice and
   tolling, not an intake rule" — not "update validation.py."
+- **Main is always green.** Spec lock and implementation being separate commits means there is a
+  legitimately red state between them — a spec drafted ahead of its approval or implementation.
+  That state lives on a branch named `reopening/<name>`, never on `main`. A reopening merges to
+  `main` only when its spec is locked, its implementation is complete, and `gauntlet check` is
+  green. This follows directly from the commit-granularity rule above, not a separate policy.
