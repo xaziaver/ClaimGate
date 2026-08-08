@@ -5,10 +5,8 @@ from decimal import Decimal
 
 import pytest
 
-from claimgate.domain.models import Candidate, SiuFlags
+from claimgate.domain.models import Candidate
 from claimgate.domain.triage import assign_severity, route_queue, triage_and_route
-
-TODAY = date(2026, 8, 2)
 
 
 @pytest.mark.parametrize(
@@ -45,24 +43,15 @@ def test_non_theft_loss_under_theft_threshold_is_not_low_severity() -> None:
 
 
 @pytest.mark.parametrize(
-    ("severity", "late_reporting", "recent_inception", "expected_queue"),
+    ("severity", "expected_queue"),
     [
-        ("low", False, False, "fast_track"),
-        ("standard", False, False, "standard"),
-        ("high", False, False, "complex"),
-        ("low", True, False, "siu_review"),
-        ("standard", False, True, "siu_review"),
-        ("high", True, True, "siu_review"),
+        ("low", "fast_track"),
+        ("standard", "standard"),
+        ("high", "complex"),
     ],
 )
-def test_queue_routing(
-    severity: str, late_reporting: bool, recent_inception: bool, expected_queue: str
-) -> None:
-    flags = SiuFlags(late_reporting=late_reporting, recent_policy_inception=recent_inception)
-
-    queue = route_queue(severity, flags)
-
-    assert queue == expected_queue
+def test_queue_routing(severity: str, expected_queue: str) -> None:
+    assert route_queue(severity) == expected_queue
 
 
 @pytest.mark.parametrize(
@@ -76,9 +65,12 @@ def test_queue_routing(
     ),
     [
         ("theft", Decimal("400.00"), date(2026, 8, 1), date(2024, 1, 1), "low", "fast_track"),
-        ("theft", Decimal("400.00"), date(2026, 6, 15), date(2024, 1, 1), "low", "siu_review"),
+        ("theft", Decimal("400.00"), date(2026, 6, 15), date(2024, 1, 1), "low", "fast_track"),
         ("fire", Decimal("50000"), date(2026, 8, 1), date(2024, 1, 1), "high", "complex"),
-        ("fire", Decimal("50000"), date(2026, 8, 1), date(2026, 7, 20), "high", "siu_review"),
+        ("fire", Decimal("50000"), date(2026, 8, 1), date(2026, 7, 20), "high", "complex"),
+        ("fire", Decimal("50000"), date(2026, 6, 1), date(2026, 5, 15), "high", "complex"),
+        ("water_damage", Decimal("400.00"), date(2026, 8, 1), date(2024, 1, 1), "standard", "standard"),
+        ("water_damage", Decimal("400.00"), date(2026, 6, 1), date(2026, 5, 15), "standard", "standard"),
     ],
 )
 def test_triage_and_route_end_to_end(
@@ -96,7 +88,7 @@ def test_triage_and_route_end_to_end(
         policy_inception_date=inception_date,
     )
 
-    outcome = triage_and_route(candidate, now=TODAY)
+    outcome = triage_and_route(candidate)
 
     assert outcome.severity == expected_severity
     assert outcome.queue == expected_queue
