@@ -196,3 +196,49 @@ holds up under a second, independent occurrence.
 agent-actionable failures from failures awaiting a human, and stop the retry loop immediately on the
 latter. Until that exists, the workaround is procedural — recognize "unapproved spec" from the gate
 output and stop retrying, rather than treating every stop-hook firing as a fresh problem to solve.
+
+## A gate requiring human review must show the human what to review
+
+**What happened.** The acceptance gate refused to pass until a human judged each of 11 surviving
+mutants on `features/triage.feature` equivalent or not. Its own terminal output truncated the list at
+six examples plus "+5 more"; `--json` truncated the same message string identically; `gauntlet mutant
+list` showed only mutants already reviewed, not the current unreviewed set. There was no CLI path to
+the full eleven. Recovering it required reading the gate's own source
+(`gauntlet.acceptance.mutation`) and re-deriving the mutant set by running the real algorithm against
+the real feature file and the real domain code — not something a review step should require of its
+reviewer.
+
+**Why it matters.** The gate demands a judgment it will not supply the evidence for. The path of
+least resistance in that position is to approve the whole block on the strength of a six-item sample
+— which is exactly the failure the human-approval step exists to prevent, and in this case would have
+approved a mutant (line 71) that was not equivalent and that pointed at real, previously-undocumented
+behavior (see the next entry). A gate that requires review should make complete review possible;
+truncating the review material converts a safeguard into a rubber stamp.
+
+**What would address it.** The acceptance gate should either print the complete surviving-mutant list
+(not a capped sample) or write it to a file in `.gauntlet/` the way `coverage.json` and `junit.xml`
+already do, so `--json` and disk output aren't both subject to the same truncation. Until that exists,
+treat a truncated mutant list as incomplete evidence, not as "the interesting ones" — the ones left
+out are exactly as capable of hiding a non-equivalent mutant as the ones shown.
+
+## Mutation testing can find unspecified implementation behavior
+
+**What happened.** A surviving mutant on `features/triage.feature` line 71 — set by changing
+`inception_date` to a date after `loss_date` — revealed that `_is_recent_inception` guards against a
+policy inception date after the loss date (`0 <= days_since_inception <= 30`, not just `<= 30`). No
+specification anywhere describes this guard, and no scenario anywhere exercises an inception date
+after a loss date; it had been correct by construction, and unasserted, since phase 1.
+
+**Why it matters.** The usual concern this document records is code missing something a specification
+requires. This is the inverse: a surviving mutant is not only evidence of a gap in what's asserted, it
+can be evidence that the code encodes a rule nobody wrote down — a decision made once, silently, by
+whoever first wrote the comparison, that every later reader (human or gate) has taken on faith without
+it ever being stated as a rule to agree or disagree with. Approving a surviving mutant as "equivalent"
+without checking *why* it survives would have signed off on that silently, not merely skipped a test.
+
+**What would address it.** Treat a surviving mutant's proposed equivalence as a hypothesis to verify
+against the code, not a label to accept from the gate's suggestion that one might exist. Where the
+mutation crosses a boundary that isn't in the visible example data at all (here: inception after loss,
+never inception before loss by a larger margin), that's the case most likely to be hiding an
+implementation decision the specification never made — worth tracing to the actual conditional before
+approving anything nearby in the same batch.

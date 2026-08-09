@@ -9,7 +9,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
 2. **`siu_flags.feature` thresholds and framing, together.** Legally sensitive: the 30-day
    late-reporting indicator flags a large share of a lawful Florida property book against a 1-year
    statutory notice window, and fixing the threshold alone while leaving the fraud-conclusion
-   framing in place would still leave the other half of the same exposure standing.
+   framing in place would still leave the other half of the same exposure standing. *Also carries an
+   undocumented rule found while fixing item 1: `compute_siu_flags` already guards against a policy
+   inception date after the loss date (`recent_policy_inception` resolves `False` rather than being
+   computed on a negative interval), but no scenario anywhere asserts it. Whoever resolves this item
+   should decide whether that guard is the right rule and, if so, give it a scenario — see
+   `ASSUMPTIONS.md`.*
 3. **`duplicates.feature` framing, `notice_type` interaction, sort proof, and the now-orphaned
    3-day window.** Real correctness and framing gaps, plus a threshold whose own rationale stopped
    holding the moment duplicates became non-blocking evidence instead of a gate — lower severity
