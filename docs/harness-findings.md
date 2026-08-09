@@ -200,29 +200,31 @@ branch discipline exists to protect.
 
 **Status.** Open.
 
-### Renaming a spec orphans its approval and leaves a dangling key
+### The coverage gate reports a stale artifact as a current result
 
-**What happened.** Approval keys are `spec:<path>`. Renaming `siu_flags.feature` to
-`siu_indicators.feature` orphaned the approval — the new path has no key, so the spec reads as
-never-approved — and left the old key pointing at a file that no longer exists. There is no
-rename-aware command; the rename was a plain `git mv`. Confirmed directly: the next `gauntlet check`
-reported both halves in the same run — `features/siu_flags.feature was approved but no longer
-exists` and `features/siu_indicators.feature is not approved`.
+**What happened.** The tests gate errored at collection — a spec rename had broken a binding file's
+path, so no tests ran at all — yet the same `gauntlet check` invocation reported coverage at
+100%/100% in 0.001s. `gates/coverage.py` reads `.gauntlet/coverage.json` off disk and runs no
+subprocess of its own; the artifact was three commits old, written during an earlier run that
+predated the rename, and nothing re-validated it against the run that had just failed to collect.
+Mutation is not affected by this, and shouldn't be lumped in with it: `pyproject.toml` scopes
+mutation's test selection to `tests/unit/` only, which never touches the broken binding file, so
+`gates/mutation.py` genuinely re-executes `mutmut run` as a fresh subprocess every invocation — its
+number held steady because the source hadn't changed, not because it was cached.
 
-**Why it matters.** A dangling approval key is silent lock-file rot. Nothing in the gate output
-distinguishes "this key is stale because the file moved" from any other kind of missing approval,
-and nothing would have flagged the old key at all if the rename hadn't also required touching the
-new path for an unrelated reason.
+**Why it matters.** A green coverage number sat beside an uncollectable test suite. It failed safe
+only because the tests gate was red in the same run — a human or agent scanning gate output top to
+bottom would still see the overall failure. But the coverage line itself asserted a measurement that
+did not happen: "nothing to measure" reported as "measured, found nothing."
 
-**What would address it.** A rename-aware approval command, or at minimum a check that flags any
-lock key whose path doesn't exist in the working tree, rather than only surfacing the consequence
-(an unapproved-seeming spec) without naming the cause.
+**What would address it.** A freshness check against the current run — coverage.json's mtime (or a
+run id embedded in it) checked against the tests gate's own run, with an explicit could-not-measure
+result when the artifact predates it, rather than silently reporting a stale number as current.
 
-**Proposed change.** A rename operation that moves approval keys, or at minimum a warning when a
-lock key references a path that is not present.
+**Proposed change.** A freshness check against the current run, and an explicit could-not-measure
+result when the artifact predates it.
 
-**What it cost us.** Nothing here, because we checked before renaming, but a dangling key is silent
-lock-file rot and nothing would have told us.
+**What it cost us.** Nothing directly; the cost is the false signal.
 
 **Status.** Open.
 
@@ -255,6 +257,38 @@ only be recorded with one combined reason covering both, scoped inside the prose
 a revisit trigger attached to one mutant isn't machine-associated with it.
 
 **Status.** Open.
+
+### Renaming a spec orphans its approval and leaves a dangling key
+
+**What happened.** Approval keys are `spec:<path>`. Renaming `siu_flags.feature` to
+`siu_indicators.feature` orphaned the approval — the new path has no key, so the spec reads as
+never-approved — and left the old key pointing at a file that no longer exists. There is no
+rename-aware command; the rename was a plain `git mv`. Confirmed directly: the next `gauntlet check`
+reported both halves in the same run — `features/siu_flags.feature was approved but no longer
+exists` and `features/siu_indicators.feature is not approved`.
+
+**Why it matters.** Detection is not the gap — the gate names the orphaned key precisely and
+supplies a remedy, and it distinguishes approved-but-missing from not-approved and
+changed-since-approved as three separate states with three different remedies. The gap is that
+recovery is manual: a rename costs a re-approval of the new path plus removal of the old key, with
+no single operation carrying the approval across. With a handful of specs that is an annoyance; the
+cost scales with spec count and rename frequency.
+
+**What would address it.** A rename-aware approval operation that moves the key with the file.
+
+**Proposed change.** A rename operation that moves approval keys, or at minimum a warning when a
+lock key references a path that is not present.
+
+**What it cost us.** Two manual operations per rename. Low, and in the safe direction — the gate
+refuses to treat the renamed spec as approved, which is correct.
+
+**Status.** Open.
+
+**Note on this entry.** Originally written from inference before the gate had been run, asserting
+that a dangling key was "silent lock-file rot" that "nothing would have told us." The gate output
+disproved both halves. Corrected after observation. Kept visible because it is the same failure
+shape this document catalogues — an assertion that sounded right, written down, never checked
+against what actually happens — committed inside the document that catalogues it.
 
 ## Designed boundaries
 
