@@ -130,3 +130,135 @@ neither was ever tested against what it was supposed to do.
 verification step, not just a visual read. For `.gitignore` specifically: `git check-ignore -v`
 against a real target for every pattern, run once and actually inspected, rather than trusted
 because the syntax looked plausible.
+
+## A branch pointing at an old commit is not a branch
+
+**What happened.** Work moved off `main` by creating `reopening/triage-siu-queue` at the commit
+immediately before `main` reverted `triage.feature` back to its pre-draft content. That commit was
+already part of `main`'s own history, so the new branch ref had zero unique commits — the draft
+survived only because an ordinary ancestor commit happened to still contain it, not because
+anything on the branch asserted it as a change.
+
+**Why it matters.** Nothing in git recorded that a draft was ever made. A branch in that state looks
+identical, from `git log <branch>`, to a bookmark on `main`'s own line — because it is one. Any
+merge or rebase that pulls `main` forward resolves per-file based on which side actually changed
+content since the merge base; a branch with no unique commit for a file has, by definition,
+"not changed" it, so a plain merge takes `main`'s side silently, with no conflict and no warning.
+That is precisely what an earlier dry-run merge in this session did to this exact file before the
+problem was diagnosed.
+
+**What would address it.** Moving work off `main` onto a reopening branch is only complete once the
+branch carries a commit that is uniquely its own for the file(s) being protected. A branch cut at a
+commit that also exists on `main`'s line, with no subsequent commit, is not yet "off main" in any
+sense git can enforce — it's a label on shared history that depends on `main` never being reverted
+past that point. Verify with the equivalent of `git log <branch> ^main` before treating a move as
+done: an empty result means the branch has nothing of its own yet.
+
+## State-changing operations need verification after, not only before
+
+**What happened.** Four occurrences now, across two sessions: two tool timeouts that killed a
+`gauntlet check` run mid-mutation and left corrupted source; a `git checkout <branch> -- .` that
+pulled branch files onto `main`'s working tree while still checked out on `main`; and, in the same
+session as the branch-pointing-at-an-old-commit finding above, a `git merge` that resolved one whole
+Gherkin rule to `main`'s reverted (buggy) content with **no conflict marker at all**, while a
+different rule in the same file conflicted normally two lines later. Each was caught only because
+someone — human or agent — thought to look afterward; none announced itself.
+
+**Why it matters.** The fourth occurrence is the sharpest version of this finding so far: it shows
+that even git's own conflict markers cannot be trusted as a complete account of what a merge changed
+silently. A merge that reports "CONFLICT" for part of a file can still have resolved a *different*
+part of the same file to the wrong side without saying so, because git's line-based diff treated
+that region as an unambiguous, non-conflicting change. Trusting "no conflict marker" as "no problem"
+in the surviving regions of a partially-conflicted file is exactly as unsafe as trusting a fully
+silent auto-merge.
+
+**What would address it.** Run `git status` after any branch, checkout, or gate operation, and treat
+an unexplained diff as the finding, not a false alarm — the existing entry in this document said
+this. Extending it: after resolving *any* merge conflict, diff the *entire* resolved file against
+the intended source (not just the conflict-marked hunks) before staging, since a partial conflict
+report is not a complete report.
+
+## An unapproved spec is a queue state, confirmed in practice
+
+**What happened.** The Stop hook's `gauntlet stop-check` fired twelve times across a session against
+an acceptance-gate failure caused by `features/triage.feature` sitting unapproved, awaiting human
+review, with no change in the underlying cause between firings. Citing the existing entry above
+(rather than re-running the check, or trying to work around the failure) was what stopped the loop
+— not a twelfth attempt succeeding.
+
+**Why it matters.** This is the same finding already recorded in this document under "Retry loop
+burns attempts on non-agent-actionable failures," observed again rather than newly discovered. Worth
+recording that the mitigation in practice wasn't a harness change — none has shipped — but an agent
+recognizing the documented pattern and refusing to keep spending retries against it. The finding
+holds up under a second, independent occurrence.
+
+**What would address it.** Unchanged from the original entry: gates should distinguish
+agent-actionable failures from failures awaiting a human, and stop the retry loop immediately on the
+latter. Until that exists, the workaround is procedural — recognize "unapproved spec" from the gate
+output and stop retrying, rather than treating every stop-hook firing as a fresh problem to solve.
+
+## A gate requiring human review must show the human what to review
+
+**What happened.** The acceptance gate refused to pass until a human judged each of 11 surviving
+mutants on `features/triage.feature` equivalent or not. Its own terminal output truncated the list at
+six examples plus "+5 more"; `--json` truncated the same message string identically; `gauntlet mutant
+list` showed only mutants already reviewed, not the current unreviewed set. There was no CLI path to
+the full eleven. Recovering it required reading the gate's own source
+(`gauntlet.acceptance.mutation`) and re-deriving the mutant set by running the real algorithm against
+the real feature file and the real domain code — not something a review step should require of its
+reviewer.
+
+**Why it matters.** The gate demands a judgment it will not supply the evidence for. The path of
+least resistance in that position is to approve the whole block on the strength of a six-item sample
+— which is exactly the failure the human-approval step exists to prevent, and in this case would have
+approved a mutant (line 71) that was not equivalent and that pointed at real, previously-undocumented
+behavior (see the next entry). A gate that requires review should make complete review possible;
+truncating the review material converts a safeguard into a rubber stamp.
+
+**What would address it.** The acceptance gate should either print the complete surviving-mutant list
+(not a capped sample) or write it to a file in `.gauntlet/` the way `coverage.json` and `junit.xml`
+already do, so `--json` and disk output aren't both subject to the same truncation. Until that exists,
+treat a truncated mutant list as incomplete evidence, not as "the interesting ones" — the ones left
+out are exactly as capable of hiding a non-equivalent mutant as the ones shown.
+
+## Mutation testing can find unspecified implementation behavior
+
+**What happened.** A surviving mutant on `features/triage.feature` line 71 — set by changing
+`inception_date` to a date after `loss_date` — revealed that `_is_recent_inception` guards against a
+policy inception date after the loss date (`0 <= days_since_inception <= 30`, not just `<= 30`). No
+specification anywhere describes this guard, and no scenario anywhere exercises an inception date
+after a loss date; it had been correct by construction, and unasserted, since phase 1.
+
+**Why it matters.** The usual concern this document records is code missing something a specification
+requires. This is the inverse: a surviving mutant is not only evidence of a gap in what's asserted, it
+can be evidence that the code encodes a rule nobody wrote down — a decision made once, silently, by
+whoever first wrote the comparison, that every later reader (human or gate) has taken on faith without
+it ever being stated as a rule to agree or disagree with. Approving a surviving mutant as "equivalent"
+without checking *why* it survives would have signed off on that silently, not merely skipped a test.
+
+**What would address it.** Treat a surviving mutant's proposed equivalence as a hypothesis to verify
+against the code, not a label to accept from the gate's suggestion that one might exist. Where the
+mutation crosses a boundary that isn't in the visible example data at all (here: inception after loss,
+never inception before loss by a larger margin), that's the case most likely to be hiding an
+implementation decision the specification never made — worth tracing to the actual conditional before
+approving anything nearby in the same batch.
+
+## Code mutation cannot find a guard no test exercises
+
+**What happened.** The `0 <=` lower bound in `_is_recent_inception` has never been exercised with a
+negative interval — every real row in every spec and unit test has an inception date on or before its
+loss date. Code mutation still scores 100%, because standard mutation operators alter a comparison
+(`<=` to `<`, `0` to `1`) rather than deleting a clause, and those variants are killed by the existing
+inception-on-loss-date scenario. Removing the lower bound entirely is not a mutation the tool
+generates, so nothing would catch it.
+
+**Why it matters.** A 100% code mutation score does not mean every branch of a condition is defended
+— only that the mutations the tool knows how to generate are caught. A guard against inputs no test
+produces is invisible to it. This one was found by a mutant surviving in the spec layer, not the code
+layer, which is a useful direction of travel to note: spec-level mutation surfaced a code-level gap
+that code-level mutation could not.
+
+**What would address it.** Nothing about this project's configuration — this is a property of what
+mutation testing structurally can and can't generate, not a misconfiguration. Worth remembering as a
+standing caveat on any 100% code-mutation score: it certifies the mutations tried, not the space of
+inputs the code was never asked to handle.

@@ -137,6 +137,26 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
 - **No plausibility floor on loss date.** A loss date of 1850-01-01 flows through as non-blocking
   late notice. The principled fix is "loss date cannot precede policy inception," which needs
   policy data that doesn't exist until phase 3. Not inventing an arbitrary floor in the meantime.
+- **`compute_siu_flags` already guards against a policy inception date after the loss date, and
+  nothing has ever said so.** `_is_recent_inception`'s range check is
+  `0 <= (loss_date - inception_date).days <= 30` — an explicit lower bound, not just the upper bound
+  the 30-day threshold implies. When `policy_inception_date` is after `loss_date`, the day count is
+  negative, the lower bound fails, and `recent_policy_inception` resolves to `False` rather than
+  being computed on a negative interval. The `0 <=` is written deliberately (a real two-sided bound,
+  not an accidental side effect of how the comparison happens to be written), but the *rule* it
+  encodes — a loss cannot predate the policy that covers it, for SIU purposes — is not documented
+  anywhere: not `siu_flags.feature`, not `docs/decisions.md`, not this file, until now. No scenario
+  in `siu_flags.feature`, `tests/unit/test_siu.py`, or (pre-mutation) `triage.feature` has ever set
+  an inception date after a loss date; the guard has been correct by construction since phase 1 and
+  invisible to every gate for exactly that long. Found by mutation testing on `triage.feature`'s
+  reopening — a mutant setting `inception_date` after `loss_date` survived, because the guard already
+  produced the same result the row's example expected — not by anything examining the code directly.
+  This is this file's usual failure shape in reverse: not a spec asserting something the code
+  doesn't do, but code doing something no spec asserts. A loss date preceding policy inception is a
+  coverage question (was the policy even in force), not an SIU question, and belongs with "No
+  plausibility floor on loss date" above — both need policy data that doesn't exist until phase 3.
+  Not fixing, and not adding a scenario, in this reopening: item 1 is queue routing, not SIU
+  thresholds. See `QUEUE.md` item 2.
 
 ## Data we do not have at intake
 

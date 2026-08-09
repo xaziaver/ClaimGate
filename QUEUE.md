@@ -9,7 +9,18 @@ Ordered by domain severity, not by effort. One line each on why that position.
 2. **`siu_flags.feature` thresholds and framing, together.** Legally sensitive: the 30-day
    late-reporting indicator flags a large share of a lawful Florida property book against a 1-year
    statutory notice window, and fixing the threshold alone while leaving the fraud-conclusion
-   framing in place would still leave the other half of the same exposure standing.
+   framing in place would still leave the other half of the same exposure standing. *Also carries an
+   undocumented rule found while fixing item 1: `compute_siu_flags` already guards against a policy
+   inception date after the loss date (`recent_policy_inception` resolves `False` rather than being
+   computed on a negative interval), but no scenario anywhere asserts it. Whoever resolves this item
+   should decide whether that guard is the right rule and, if so, give it a scenario — see
+   `ASSUMPTIONS.md`. The specific scenario needed: `siu_flags.feature` should assert that an
+   inception date later than the loss date does not fire `recent_policy_inception` — that specifies
+   the existing `0 <=` guard rather than changing behavior. Separately, a loss predating policy
+   inception is a coverage question, not an SIU one — the indicator returning `False` is correct for
+   the indicator and silent about the larger fact, which connects to the plausibility-floor gap
+   already recorded and needs phase-3 policy data. Do not build the coverage rule in item 2; specify
+   the guard only.*
 3. **`duplicates.feature` framing, `notice_type` interaction, sort proof, and the now-orphaned
    3-day window.** Real correctness and framing gaps, plus a threshold whose own rationale stopped
    holding the moment duplicates became non-blocking evidence instead of a gate — lower severity
@@ -18,7 +29,13 @@ Ordered by domain severity, not by effort. One line each on why that position.
    and scope-fit problem (a multi-line liability book's vocabulary in a system designed for
    Florida residential property only), not a correctness defect — sequenced after 1–3 and done as one pass because
    `loss_type` vocabulary is shared across every file; fixing it in one file first would leave the
-   others visibly incoherent with it.
+   others visibly incoherent with it. *Scope note: item 1's reopening added a second `water_damage`
+   example (standard severity, both SIU flags firing) to `triage.feature`'s end-to-end scenario,
+   while `auto_collision`/`auto_comprehensive` remain untouched in the severity rule in the
+   meantime. That's item 1 reusing in-scope vocabulary it already had on hand for a needed
+   standard-severity example — the file is temporarily inconsistent (residential vocabulary sitting
+   next to auto vocabulary this book doesn't write) until this item's pass reconciles it. Intentional,
+   not a defect.*
 5. **`triage.feature` thresholds** ($500 theft threshold with no provenance, loss amount affecting
    severity only for theft, `policy_inception_date` availability at intake). Real gaps, but none
    carries the legal exposure of 1–2, so they sit behind everything above.
@@ -28,13 +45,17 @@ Ordered by domain severity, not by effort. One line each on why that position.
 
 ## Status as of this handoff
 
-Item 1 has a Gherkin draft on branch `reopening/triage-siu-queue` (not yet approved — `route_queue`
-no longer takes SIU flags, `SIU_QUEUE`/`"siu_review"` is removed, `TriageOutcome` needs a
-`siu_flags` field; none of that is implemented in `src/` yet). It is not on `main` — see the
-"main is always green" constraint in `CLAUDE.md`; the draft moves back to `main` only once its spec
-is locked and its implementation is complete. `features/validation.feature` is fully implemented,
-gated, and on `main` — it belongs to an earlier reopening (accumulation, `blockers`, `notice_type`,
-`LOSS_DATE_IN_FUTURE`) that isn't part of this numbered queue.
+Item 1 has a Gherkin draft on branch `reopening/triage-siu-queue`, now committed to the branch in
+its own right rather than surviving only as an artifact of shared ancestry with `main` (see the
+harness finding below). Not yet approved — `route_queue` no longer takes SIU flags and
+`SIU_QUEUE`/`"siu_review"` is removed; none of that is implemented in `src/` yet. `TriageOutcome`
+does **not** grow a `siu_flags` field — SIU indicators and severity/queue are different access
+classifications (operational vs. restricted-read) and shouldn't share one struct even before phase
+2's separate table exists; step definitions call `compute_siu_flags()` independently instead. It is
+not on `main` — see the "main is always green" constraint in `CLAUDE.md`; the draft moves back to
+`main` only once its spec is locked and its implementation is complete. `features/validation.feature`
+is fully implemented, gated, and on `main` — it belongs to an earlier reopening (accumulation,
+`blockers`, `notice_type`, `LOSS_DATE_IN_FUTURE`) that isn't part of this numbered queue.
 
 ## Open instructions
 

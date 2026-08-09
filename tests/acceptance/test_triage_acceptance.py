@@ -6,6 +6,7 @@ from typing import Any
 
 from pytest_bdd import given, parsers, scenarios, then, when
 
+from tests.api.siu import siu_flags
 from tests.api.triage import assign_severity, route_queue, triage_and_route
 
 scenarios("../../features/triage.feature")
@@ -36,31 +37,14 @@ def set_assigned_severity(context: dict[str, Any], value: str) -> None:
     context["severity"] = value
 
 
-@given(parsers.parse("the late reporting SIU flag is {value}"))
-def set_late_reporting_flag(context: dict[str, Any], value: str) -> None:
-    context["late_reporting"] = value == "true"
-
-
-@given(parsers.parse("the recent policy inception SIU flag is {value}"))
-def set_recent_inception_flag(context: dict[str, Any], value: str) -> None:
-    context["recent_inception"] = value == "true"
-
-
 @when("the candidate FNOL record is routed to a queue")
 def run_route_queue(context: dict[str, Any]) -> None:
-    context["queue"] = route_queue(
-        context["severity"], context["late_reporting"], context["recent_inception"]
-    )
+    context["queue"] = route_queue(context["severity"])
 
 
 @then(parsers.parse('the routed queue is "{expected}"'))
 def check_queue(context: dict[str, Any], expected: str) -> None:
     assert context["queue"] == expected
-
-
-@then(parsers.parse('the severity recorded on the record is "{expected}"'))
-def check_recorded_severity(context: dict[str, Any], expected: str) -> None:
-    assert context["severity"] == expected
 
 
 @given(
@@ -86,7 +70,25 @@ def set_end_to_end_candidate(
 
 @when("the candidate FNOL record is triaged and routed")
 def run_triage_and_route(context: dict[str, Any]) -> None:
-    today: date = context["today"]
-    outcome = triage_and_route(now=today, **context["candidate_fields"])
+    fields = context["candidate_fields"]
+    outcome = triage_and_route(**fields)
     context["severity"] = outcome.severity
     context["queue"] = outcome.queue
+
+    flags = siu_flags(
+        now=context["today"],
+        loss_date=fields["loss_date"],
+        policy_inception_date=fields["policy_inception_date"],
+    )
+    context["late_reporting"] = flags.late_reporting
+    context["recent_inception"] = flags.recent_policy_inception
+
+
+@then(parsers.parse("the late reporting SIU flag is {expected}"))
+def check_late_reporting_flag(context: dict[str, Any], expected: str) -> None:
+    assert context["late_reporting"] is (expected == "true")
+
+
+@then(parsers.parse("the recent policy inception SIU flag is {expected}"))
+def check_recent_inception_flag(context: dict[str, Any], expected: str) -> None:
+    assert context["recent_inception"] is (expected == "true")
