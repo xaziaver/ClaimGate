@@ -5,23 +5,24 @@ project's phase-1 and phase-2 design work — not assumed, not designed in from 
 with a documented findings log is more credible than one presented as flawless. Each entry: what
 happened, why it matters, what would address it.
 
-## Retry loop burns attempts on non-agent-actionable failures
+Organized into three sections by what kind of finding it is, so the ones a separate v1 effort could
+act on don't have to be sorted out from the ones that would mislead them: **Proposed changes to
+Gauntlet** (act on these), **Designed boundaries** (do not act on these — they exist so nobody
+mistakes them for gaps), and **Process and technique** (lessons about working with the harness, not
+requests to change it).
 
-**What happened.** The Stop hook's retry-capped `gauntlet stop-check` fired repeatedly against an
-acceptance-gate failure caused by a spec sitting unapproved, awaiting human review — observed at
-12 attempts remaining, then 7, then 5, then 4, across separate stop events, with no change in the
-underlying cause between them.
+## Proposed changes to Gauntlet
 
-**Why it matters.** An unapproved spec is a queue state, not a gate failure the agent can act on.
-No number of retries clears it — only a human running `gauntlet spec approve` does. Spending the
-retry budget on a condition that can't change from the agent side wastes it against the failures
-that actually are agent-actionable.
+Findings that describe something the harness should do differently. Each carries what happened, why
+it matters, what would address it, a concrete proposed change, what the gap actually cost us, and a
+status. Sorted by cost, highest first.
 
-**What would address it.** Gates should distinguish failures an agent can fix from failures
-awaiting a human, and the retry loop should stop immediately on the latter rather than counting
-down toward it.
+**Gauntlet is deliberately NOT modified during this project.** The harness and the work it gates
+should not move at the same time, or the gate results stop meaning what they appear to mean. These
+findings are recorded for a separate effort. If one of them becomes genuinely blocking rather than
+merely annoying, escalate it rather than working around it quietly.
 
-## Interrupted mutation runs leave corrupted source
+### Interrupted mutation runs leave corrupted source
 
 **What happened.** The acceptance gate mutates spec files in place during mutation testing and
 restores them afterward. A `gauntlet check` run killed mid-mutation (a tool timeout, exit 143) left
@@ -37,21 +38,230 @@ diagnostic rather than ambiguous; a longer default timeout for the acceptance ga
 since it's the slowest gate by a wide margin; and ideally a restore-on-interrupt guarantee inside
 the harness itself, so a killed process can't leave mutated content behind.
 
-## Tool timeouts silently change state
+**Proposed change.** A restore-on-interrupt guarantee in the acceptance gate: if mutation testing is
+killed (timeout, signal, crash) before completing, the harness restores every mutated file to its
+pre-mutation content before exiting, rather than leaving partially-mutated content in the working
+tree for the next `git status` to discover by chance. Pair with a longer default timeout for the
+acceptance gate specifically, since it's the slowest gate by a wide margin and the most likely to be
+killed mid-run.
 
-**What happened.** Two occurrences across two sessions of this project: a tool-level timeout killed
-an in-progress `gauntlet check` run, and in at least one case that left the working tree in a
-different state than before the run started (see above).
+**What it cost us.** A real corruption, not a hypothetical one — a literal `"_gauntlet"` string
+landed inside a step definition in an already-approved spec file. It was caught only because a human
+happened to run `git diff` before the next commit; nothing in the harness itself flagged it.
 
-**Why it matters.** A timeout reads, superficially, like "nothing happened" — the command just
-didn't finish. It is not the same as "nothing happened." Treating it as a no-op invites exactly the
-kind of silent corruption found above.
+**Status.** Open.
 
-**What would address it.** Treat timeouts as a category with a known recovery procedure — diff the
-working tree, check for a partially-written state, re-run — rather than as one-off accidents to be
-individually rediscovered each time.
+### Retry loop burns attempts on non-agent-actionable failures
 
-## Gates cannot check a specification against the world
+**What happened.** The Stop hook's retry-capped `gauntlet stop-check` fired repeatedly against an
+acceptance-gate failure caused by a spec sitting unapproved, awaiting human review — observed at
+12 attempts remaining, then 7, then 5, then 4, across separate stop events, with no change in the
+underlying cause between them.
+
+**Why it matters.** An unapproved spec is a queue state, not a gate failure the agent can act on.
+No number of retries clears it — only a human running `gauntlet spec approve` does. Spending the
+retry budget on a condition that can't change from the agent side wastes it against the failures
+that actually are agent-actionable.
+
+**What would address it.** Gates should distinguish failures an agent can fix from failures
+awaiting a human, and the retry loop should stop immediately on the latter rather than counting
+down toward it.
+
+**Proposed change.** The stop-check should classify each gate failure as agent-actionable or
+human-blocked — "spec awaiting `gauntlet spec approve`" is always human-blocked — and stop retrying
+immediately on the latter, rather than counting down a shared retry budget that treats both
+categories the same.
+
+**What it cost us.** Confirmed twice, in two separate sessions, against the same underlying cause:
+12 retries burned in one session (12 → 7 → 5 → 4, no change in cause between firings), and a further
+twelve firings in a second session. Both times the loop stopped only because an agent recognized the
+documented pattern and refused to keep retrying — not because the retry budget ran out safely or the
+harness intervened.
+
+**Status.** Open.
+
+### Mutant approval keys are content-addressed on the whole row
+
+**What happened.** Mutant keys embed every literal cell value in the example row. Changing
+`true`/`false` to `TRUE`/`FALSE` across `triage.feature`'s end-to-end scenario's vocabulary — a
+change to columns those approvals' judgments were never about — staled all 11 approvals on that
+scenario.
+
+**Why it matters.** The same mechanism that makes an approval self-verifying (change the row, the
+judgment goes stale, correctly — see "An approved equivalent mutant is a regression test for its own
+justification") also can't distinguish a change to the cell a judgment was actually about from a
+change to any other cell in the same row. Over-invalidation is the safe failure direction, but it is
+not free: it re-opens judgments nobody needs to re-litigate.
+
+**What would address it.** Key on the mutated cell and the assertions it affects rather than the
+whole row, or report staled approvals grouped by whether the mutated cell itself changed, so a
+reviewer can tell "this judgment might actually be wrong now" from "this judgment's row got a
+cosmetic edit" before re-reviewing either.
+
+**Proposed change.** Key on the mutated cell and the assertions it affects rather than the whole
+row, or report staled approvals grouped by whether the mutated cell itself changed.
+
+**What it cost us.** 11 re-reviews arising from a cosmetic rename. Note this one as a trade-off
+rather than a straightforward defect — over-invalidation is the safe direction, and the fix must not
+weaken the self-verifying property.
+
+**Status.** Open.
+
+### Mutant approval defaults to the widest scope
+
+**What happened.** `gauntlet mutant approve` without `--scenario` applies to every surviving mutant in
+the file. Running it that way swept two mutants from an unrelated scenario into an approval batch and
+stamped them with reason text that did not describe them. Caught and corrected, but the default is
+the dangerous direction: the narrow, explicit scope should be the default and the file-wide sweep
+should require an explicit flag, because the failure mode is approving things nobody reviewed with a
+justification that does not apply to them — precisely what the human-approval step exists to prevent.
+
+**Why it matters.** A tool whose unscoped invocation is also its most dangerous one invites exactly
+this mistake: reaching for the plain command and getting more than intended. The cost of that mistake
+here was a wrong reason string, caught by a human reading the output; it could as easily have been a
+mutant nobody actually reviewed getting the same rubber-stamp reason as ones that were.
+
+**What would address it.** Invert the default: `gauntlet mutant approve` with no `--scenario` should
+require an explicit `--all-scenarios` (or equivalent) to touch more than one scenario's survivors, so
+the narrow, safe invocation is the one that requires no extra thought.
+
+**Proposed change.** Invert the default: `gauntlet mutant approve` with no `--scenario` should
+require an explicit `--all-scenarios` flag to touch more than one scenario's survivors, so the safe,
+narrow invocation is the one requiring no extra thought, not the dangerous, wide one.
+
+**What it cost us.** Running the unscoped command once swept two mutants from an unrelated scenario
+into an approval batch, stamping them with a reason that didn't describe them. Caught and corrected
+by a human reading the output, but the same mechanism could as easily have rubber-stamped a mutant
+nobody had actually reviewed.
+
+**Status.** Open.
+
+### A gate requiring human review must show the human what to review
+
+**What happened.** The acceptance gate refused to pass until a human judged each of 11 surviving
+mutants on `features/triage.feature` equivalent or not. Its own terminal output truncated the list at
+six examples plus "+5 more"; `--json` truncated the same message string identically; `gauntlet mutant
+list` showed only mutants already reviewed, not the current unreviewed set. There was no CLI path to
+the full eleven. Recovering it required reading the gate's own source
+(`gauntlet.acceptance.mutation`) and re-deriving the mutant set by running the real algorithm against
+the real feature file and the real domain code — not something a review step should require of its
+reviewer.
+
+**Why it matters.** The gate demands a judgment it will not supply the evidence for. The path of
+least resistance in that position is to approve the whole block on the strength of a six-item sample
+— which is exactly the failure the human-approval step exists to prevent, and in this case would have
+approved a mutant (line 71) that was not equivalent and that pointed at real, previously-undocumented
+behavior (see "Mutation testing can find unspecified implementation behavior" below). A gate that
+requires review should make complete review possible; truncating the review material converts a
+safeguard into a rubber stamp.
+
+**What would address it.** The acceptance gate should either print the complete surviving-mutant list
+(not a capped sample) or write it to a file in `.gauntlet/` the way `coverage.json` and `junit.xml`
+already do, so `--json` and disk output aren't both subject to the same truncation. Until that exists,
+treat a truncated mutant list as incomplete evidence, not as "the interesting ones" — the ones left
+out are exactly as capable of hiding a non-equivalent mutant as the ones shown.
+
+**Proposed change.** The acceptance gate should print the complete surviving-mutant list — not a
+capped sample — or write it to a file under `.gauntlet/` the same way `coverage.json` and
+`junit.xml` already are, so neither terminal output nor `--json` truncates the material a human is
+required to sign off on.
+
+**What it cost us.** The truncated six-of-eleven list nearly produced a wrong approval. The path of
+least resistance — approving the whole block on the visible sample — would have signed off on a
+mutant that was not actually equivalent and that concealed real, previously-undocumented behavior in
+`_is_recent_inception`. Recovering the true set required reading the gate's own source code and
+re-deriving the mutant algorithm by hand.
+
+**Status.** Open.
+
+### No cross-spec impact check
+
+**What happened.** Making SIU indicator results three-valued invalidates `triage.feature`, whose
+step definitions assert a boolean against the same shared function. This was caught by an agent
+tracing the shared function across a spec boundary it had not been asked to examine.
+
+**Why it matters.** Gauntlet would have caught it eventually — the tests gate goes red once the
+change lands — but it presents as a broken test inside one spec's step definitions, not as one
+spec's change invalidating another. The diagnosis points at the symptom, and it arrives after
+implementation rather than at design time, when the scope decision is still cheap. With four specs a
+human can hold the coupling in their head. Phase 2 adds surface, and this does not scale.
+
+**What would address it.** Given a changed spec file, report which other spec files share step
+definitions or test-API surface with it, before implementation rather than after. A warning, not a
+gate — the point is to make the scope decision visible while it is still a decision.
+
+**Proposed change.** Given a changed spec file, report which other spec files share step
+definitions or test-API surface with it, before implementation rather than after. A warning, not a
+gate — the point is to make the scope decision visible while it is still a decision.
+
+**What it cost us.** Nothing this time, because it was caught by hand. The cost is the near miss:
+shipping item 2 alone would have left `main` red between two reopenings, breaking the constraint the
+branch discipline exists to protect.
+
+**Status.** Open.
+
+### Renaming a spec orphans its approval and leaves a dangling key
+
+**What happened.** Approval keys are `spec:<path>`. Renaming `siu_flags.feature` to
+`siu_indicators.feature` orphaned the approval — the new path has no key, so the spec reads as
+never-approved — and left the old key pointing at a file that no longer exists. There is no
+rename-aware command; the rename was a plain `git mv`. Confirmed directly: the next `gauntlet check`
+reported both halves in the same run — `features/siu_flags.feature was approved but no longer
+exists` and `features/siu_indicators.feature is not approved`.
+
+**Why it matters.** A dangling approval key is silent lock-file rot. Nothing in the gate output
+distinguishes "this key is stale because the file moved" from any other kind of missing approval,
+and nothing would have flagged the old key at all if the rename hadn't also required touching the
+new path for an unrelated reason.
+
+**What would address it.** A rename-aware approval command, or at minimum a check that flags any
+lock key whose path doesn't exist in the working tree, rather than only surfacing the consequence
+(an unapproved-seeming spec) without naming the cause.
+
+**Proposed change.** A rename operation that moves approval keys, or at minimum a warning when a
+lock key references a path that is not present.
+
+**What it cost us.** Nothing here, because we checked before renaming, but a dangling key is silent
+lock-file rot and nothing would have told us.
+
+**Status.** Open.
+
+### The approval ledger has no per-mutant reason
+
+**What happened.** `gauntlet mutant approve` applies one `--reason` to every currently-surviving
+mutant matching its filter, and a second call overwrites rather than adds. Two mutants in one
+scenario surviving for genuinely different reasons cannot be recorded separately without hand-editing
+`gauntlet.lock.json`, which `CLAUDE.md` forbids. The workaround is one combined reason covering both,
+with each mutant's justification scoped inside the text — which works, but means a reader must parse
+prose to learn why any individual mutant was approved, and a revisit trigger attached to one mutant is
+not machine-associated with it.
+
+**Why it matters.** The ledger's data model is coarser than the judgments it's asked to hold. A
+reviewer relying on `gauntlet mutant list` output to answer "why is *this specific* mutant equivalent"
+gets a paragraph that may address several mutants at once, with no structural marker for which
+sentence belongs to which locator.
+
+**What would address it.** A `--reason` keyed per mutant locator, or at minimum a CLI warning when a
+call's survivor set spans mutants that received different reasons in the same invocation — something
+short of hand-editing the lock file, which stays off-limits.
+
+**Proposed change.** Support a `--reason` keyed per mutant locator, or at minimum have the CLI warn
+when a call's survivor set spans mutants that previously received different reasons — something
+short of requiring hand-editing `gauntlet.lock.json`, which stays off-limits per project policy.
+
+**What it cost us.** Two mutants surviving in the same scenario for genuinely different reasons could
+only be recorded with one combined reason covering both, scoped inside the prose. A reader relying on
+`gauntlet mutant list` to learn why any individual mutant was approved has to parse a paragraph, and
+a revisit trigger attached to one mutant isn't machine-associated with it.
+
+**Status.** Open.
+
+## Designed boundaries
+
+Things the harness deliberately does not do. These are not work items — recorded so nobody mistakes
+them for gaps and tries to close them.
+
+### Gates cannot check a specification against the world
 
 **What happened.** The 365-day reporting window, the 30-day SIU late-reporting threshold, and the
 $500 theft severity threshold passed every configured gate — including 100% mutation score — for
@@ -66,7 +276,60 @@ against — a 100% mutation score on a wrong rule is 100% confidence in the wron
 **What would address it.** Nothing about the harness — this is a designed boundary, not a defect.
 It's the argument for the human review step existing at all, not a gap to close.
 
-## No gate catches inherited framing
+### Spec approval cannot verify the human read the spec
+
+**What happened.** `gauntlet spec approve` hashes a feature file's content and records that hash as
+approved. It has no way to know whether the approver read the file, read a summary of it, or
+skimmed the diff.
+
+**Why it matters.** The hash-lock mechanism guarantees the *content* hasn't silently drifted from
+what was approved. It cannot and does not guarantee that approval reflected genuine review — that
+guarantee, to the extent one exists, comes entirely from the human's own diligence, not from the
+tool.
+
+**What would address it.** Nothing — this is a process boundary, not a fixable gap. Worth naming
+explicitly so it isn't mistaken for a guarantee the mechanism doesn't actually provide.
+
+### Code mutation cannot find a guard no test exercises
+
+**What happened.** The `0 <=` lower bound in `_is_recent_inception` has never been exercised with a
+negative interval — every real row in every spec and unit test has an inception date on or before its
+loss date. Code mutation still scores 100%, because standard mutation operators alter a comparison
+(`<=` to `<`, `0` to `1`) rather than deleting a clause, and those variants are killed by the existing
+inception-on-loss-date scenario. Removing the lower bound entirely is not a mutation the tool
+generates, so nothing would catch it.
+
+**Why it matters.** A 100% code mutation score does not mean every branch of a condition is defended
+— only that the mutations the tool knows how to generate are caught. A guard against inputs no test
+produces is invisible to it. This one was found by a mutant surviving in the spec layer, not the code
+layer, which is a useful direction of travel to note: spec-level mutation surfaced a code-level gap
+that code-level mutation could not.
+
+**What would address it.** Nothing about this project's configuration — this is a property of what
+mutation testing structurally can and can't generate, not a misconfiguration. Worth remembering as a
+standing caveat on any 100% code-mutation score: it certifies the mutations tried, not the space of
+inputs the code was never asked to handle.
+
+## Process and technique
+
+Lessons about working with the harness rather than about the harness itself.
+
+### Tool timeouts silently change state
+
+**What happened.** Two occurrences across two sessions of this project: a tool-level timeout killed
+an in-progress `gauntlet check` run, and in at least one case that left the working tree in a
+different state than before the run started (see "Interrupted mutation runs leave corrupted source"
+above).
+
+**Why it matters.** A timeout reads, superficially, like "nothing happened" — the command just
+didn't finish. It is not the same as "nothing happened." Treating it as a no-op invites exactly the
+kind of silent corruption found above.
+
+**What would address it.** Treat timeouts as a category with a known recovery procedure — diff the
+working tree, check for a partially-written state, re-run — rather than as one-off accidents to be
+individually rediscovered each time.
+
+### No gate catches inherited framing
 
 **What happened.** `validation.feature`'s original narrative asserted the system exists so that
 "only claims the carrier can legally accept enter the queue" — the opposite of the system's actual
@@ -84,7 +347,7 @@ precisely because nothing flags them as needing a second look.
 human re-reading of approved specs' prose, not just their assertions, independent of whether the
 assertions still pass.
 
-## Ordering assertions can pass without a sort existing
+### Ordering assertions can pass without a sort existing
 
 **What happened.** A specification asserting that output appears in a canonical order is satisfied
 by an implementation that performs no sort at all, if the code's natural check-evaluation order
@@ -100,21 +363,7 @@ thing producing the correct result and a mutant removing it dies. Worth a commen
 implementation, since a future maintainer aligning the two "for clarity" would silently remove the
 only thing killing that mutant.
 
-## Spec approval cannot verify the human read the spec
-
-**What happened.** `gauntlet spec approve` hashes a feature file's content and records that hash as
-approved. It has no way to know whether the approver read the file, read a summary of it, or
-skimmed the diff.
-
-**Why it matters.** The hash-lock mechanism guarantees the *content* hasn't silently drifted from
-what was approved. It cannot and does not guarantee that approval reflected genuine review — that
-guarantee, to the extent one exists, comes entirely from the human's own diligence, not from the
-tool.
-
-**What would address it.** Nothing — this is a process boundary, not a fixable gap. Worth naming
-explicitly so it isn't mistaken for a guarantee the mechanism doesn't actually provide.
-
-## Unverified rules silently do nothing
+### Unverified rules silently do nothing
 
 **What happened.** `.gitignore` had a trailing comma on every line (`.venv/,` instead of `.venv/`)
 from the start of the project. Each pattern's trailing comma became part of the literal pattern
@@ -131,7 +380,7 @@ verification step, not just a visual read. For `.gitignore` specifically: `git c
 against a real target for every pattern, run once and actually inspected, rather than trusted
 because the syntax looked plausible.
 
-## A branch pointing at an old commit is not a branch
+### A branch pointing at an old commit is not a branch
 
 **What happened.** Work moved off `main` by creating `reopening/triage-siu-queue` at the commit
 immediately before `main` reverted `triage.feature` back to its pre-draft content. That commit was
@@ -154,7 +403,7 @@ sense git can enforce — it's a label on shared history that depends on `main` 
 past that point. Verify with the equivalent of `git log <branch> ^main` before treating a move as
 done: an empty result means the branch has nothing of its own yet.
 
-## State-changing operations need verification after, not only before
+### State-changing operations need verification after, not only before
 
 **What happened.** Four occurrences now, across two sessions: two tool timeouts that killed a
 `gauntlet check` run mid-mutation and left corrupted source; a `git checkout <branch> -- .` that
@@ -178,7 +427,7 @@ this. Extending it: after resolving *any* merge conflict, diff the *entire* reso
 the intended source (not just the conflict-marked hunks) before staging, since a partial conflict
 report is not a complete report.
 
-## An unapproved spec is a queue state, confirmed in practice
+### An unapproved spec is a queue state, confirmed in practice
 
 **What happened.** The Stop hook's `gauntlet stop-check` fired twelve times across a session against
 an acceptance-gate failure caused by `features/triage.feature` sitting unapproved, awaiting human
@@ -197,31 +446,7 @@ agent-actionable failures from failures awaiting a human, and stop the retry loo
 latter. Until that exists, the workaround is procedural — recognize "unapproved spec" from the gate
 output and stop retrying, rather than treating every stop-hook firing as a fresh problem to solve.
 
-## A gate requiring human review must show the human what to review
-
-**What happened.** The acceptance gate refused to pass until a human judged each of 11 surviving
-mutants on `features/triage.feature` equivalent or not. Its own terminal output truncated the list at
-six examples plus "+5 more"; `--json` truncated the same message string identically; `gauntlet mutant
-list` showed only mutants already reviewed, not the current unreviewed set. There was no CLI path to
-the full eleven. Recovering it required reading the gate's own source
-(`gauntlet.acceptance.mutation`) and re-deriving the mutant set by running the real algorithm against
-the real feature file and the real domain code — not something a review step should require of its
-reviewer.
-
-**Why it matters.** The gate demands a judgment it will not supply the evidence for. The path of
-least resistance in that position is to approve the whole block on the strength of a six-item sample
-— which is exactly the failure the human-approval step exists to prevent, and in this case would have
-approved a mutant (line 71) that was not equivalent and that pointed at real, previously-undocumented
-behavior (see the next entry). A gate that requires review should make complete review possible;
-truncating the review material converts a safeguard into a rubber stamp.
-
-**What would address it.** The acceptance gate should either print the complete surviving-mutant list
-(not a capped sample) or write it to a file in `.gauntlet/` the way `coverage.json` and `junit.xml`
-already do, so `--json` and disk output aren't both subject to the same truncation. Until that exists,
-treat a truncated mutant list as incomplete evidence, not as "the interesting ones" — the ones left
-out are exactly as capable of hiding a non-equivalent mutant as the ones shown.
-
-## Mutation testing can find unspecified implementation behavior
+### Mutation testing can find unspecified implementation behavior
 
 **What happened.** A surviving mutant on `features/triage.feature` line 71 — set by changing
 `inception_date` to a date after `loss_date` — revealed that `_is_recent_inception` guards against a
@@ -243,27 +468,7 @@ never inception before loss by a larger margin), that's the case most likely to 
 implementation decision the specification never made — worth tracing to the actual conditional before
 approving anything nearby in the same batch.
 
-## Code mutation cannot find a guard no test exercises
-
-**What happened.** The `0 <=` lower bound in `_is_recent_inception` has never been exercised with a
-negative interval — every real row in every spec and unit test has an inception date on or before its
-loss date. Code mutation still scores 100%, because standard mutation operators alter a comparison
-(`<=` to `<`, `0` to `1`) rather than deleting a clause, and those variants are killed by the existing
-inception-on-loss-date scenario. Removing the lower bound entirely is not a mutation the tool
-generates, so nothing would catch it.
-
-**Why it matters.** A 100% code mutation score does not mean every branch of a condition is defended
-— only that the mutations the tool knows how to generate are caught. A guard against inputs no test
-produces is invisible to it. This one was found by a mutant surviving in the spec layer, not the code
-layer, which is a useful direction of travel to note: spec-level mutation surfaced a code-level gap
-that code-level mutation could not.
-
-**What would address it.** Nothing about this project's configuration — this is a property of what
-mutation testing structurally can and can't generate, not a misconfiguration. Worth remembering as a
-standing caveat on any 100% code-mutation score: it certifies the mutations tried, not the space of
-inputs the code was never asked to handle.
-
-## An approved equivalent mutant is a regression test for its own justification
+### An approved equivalent mutant is a regression test for its own justification
 
 **What happened.** The line-71 approval depends on the `0 <=` lower bound in `_is_recent_inception`,
 which no test exercises. That looked like a guard protected only by a reason string in a ledger. It
@@ -280,40 +485,3 @@ after a spec changed.
 **What would address it.** Nothing — this is the mechanism working as designed, worth naming so it
 isn't mistaken for a coincidence. A revisit trigger written into a reason (see line 71's approval) is
 belt-and-suspenders on top of a check the ledger already performs structurally.
-
-## The approval ledger has no per-mutant reason
-
-**What happened.** `gauntlet mutant approve` applies one `--reason` to every currently-surviving
-mutant matching its filter, and a second call overwrites rather than adds. Two mutants in one
-scenario surviving for genuinely different reasons cannot be recorded separately without hand-editing
-`gauntlet.lock.json`, which `CLAUDE.md` forbids. The workaround is one combined reason covering both,
-with each mutant's justification scoped inside the text — which works, but means a reader must parse
-prose to learn why any individual mutant was approved, and a revisit trigger attached to one mutant is
-not machine-associated with it.
-
-**Why it matters.** The ledger's data model is coarser than the judgments it's asked to hold. A
-reviewer relying on `gauntlet mutant list` output to answer "why is *this specific* mutant equivalent"
-gets a paragraph that may address several mutants at once, with no structural marker for which
-sentence belongs to which locator.
-
-**What would address it.** A `--reason` keyed per mutant locator, or at minimum a CLI warning when a
-call's survivor set spans mutants that received different reasons in the same invocation — something
-short of hand-editing the lock file, which stays off-limits.
-
-## Mutant approval defaults to the widest scope
-
-**What happened.** `gauntlet mutant approve` without `--scenario` applies to every surviving mutant in
-the file. Running it that way swept two mutants from an unrelated scenario into an approval batch and
-stamped them with reason text that did not describe them. Caught and corrected, but the default is
-the dangerous direction: the narrow, explicit scope should be the default and the file-wide sweep
-should require an explicit flag, because the failure mode is approving things nobody reviewed with a
-justification that does not apply to them — precisely what the human-approval step exists to prevent.
-
-**Why it matters.** A tool whose unscoped invocation is also its most dangerous one invites exactly
-this mistake: reaching for the plain command and getting more than intended. The cost of that mistake
-here was a wrong reason string, caught by a human reading the output; it could as easily have been a
-mutant nobody actually reviewed getting the same rubber-stamp reason as ones that were.
-
-**What would address it.** Invert the default: `gauntlet mutant approve` with no `--scenario` should
-require an explicit `--all-scenarios` (or equivalent) to touch more than one scenario's survivors, so
-the narrow, safe invocation is the one that requires no extra thought.
