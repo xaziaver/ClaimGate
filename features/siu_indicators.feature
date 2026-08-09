@@ -86,6 +86,24 @@ Feature: SIU indicators
       When SIU indicators are computed for the candidate FNOL record
       Then the recent policy inception indicator is NOT_EVALUATED with reason NO_POLICY_INCEPTION_DATE
 
+  Rule: Recent policy inception is not evaluated without a threshold
+
+    # Symmetry with the late-reporting rule above: an absent threshold is never
+    # read as "not recent." Surfaced during implementation - the "No late
+    # reporting threshold configured" scenario supplies no recent policy
+    # inception threshold either, so the type had to admit absence, and absence
+    # needed a defined result. Same reason code as late reporting: the
+    # condition is "no threshold," not a late-reporting-specific fact. The
+    # inception date below is 5 days before the loss and would fire the
+    # indicator if a threshold were configured, so this scenario cannot pass by
+    # coincidence with a FALSE result.
+    Scenario: No recent policy inception threshold configured
+      Given the loss date is "2026-06-15"
+      And no recent policy inception threshold is configured
+      And the policy inception date is "2026-06-10"
+      When SIU indicators are computed for the candidate FNOL record
+      Then the recent policy inception indicator is NOT_EVALUATED with reason NO_THRESHOLD_CONFIGURED
+
   Rule: An inception date after the loss date does not indicate recent inception
 
     # Specifies the existing 0 <= guard in _is_recent_inception, found by

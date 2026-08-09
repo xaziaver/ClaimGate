@@ -31,6 +31,11 @@ def clear_late_reporting_threshold(context: dict[str, Any]) -> None:
     context["late_reporting_threshold_days"] = None
 
 
+@given("no recent policy inception threshold is configured")
+def clear_recent_inception_threshold(context: dict[str, Any]) -> None:
+    context["recent_inception_threshold_days"] = None
+
+
 @when("SIU indicators are computed for the candidate FNOL record")
 def run_compute_siu_indicators(context: dict[str, Any]) -> None:
     context["siu_indicators"] = siu_indicators(
