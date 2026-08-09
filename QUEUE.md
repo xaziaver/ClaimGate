@@ -5,7 +5,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
 1. **`triage.feature` SIU queue override.** Highest severity found in the project: a claim parked
    in `siu_review` never reaches an adjuster, and the Fla. Stat. 627.70131(7)(a) 60-day pay-or-deny
    clock keeps running regardless of which queue it sits in — this is a statutory-time defect, not
-   a routing preference. *(Draft in progress — see below.)*
+   a routing preference. *(Done — see below.)*
 2. **`siu_flags.feature` thresholds and framing, together.** Legally sensitive: the 30-day
    late-reporting indicator flags a large share of a lawful Florida property book against a 1-year
    statutory notice window, and fixing the threshold alone while leaving the fraud-conclusion
@@ -45,22 +45,27 @@ Ordered by domain severity, not by effort. One line each on why that position.
 
 ## Status as of this handoff
 
-Item 1 has a Gherkin draft on branch `reopening/triage-siu-queue`, now committed to the branch in
-its own right rather than surviving only as an artifact of shared ancestry with `main` (see the
-harness finding below). Not yet approved — `route_queue` no longer takes SIU flags and
-`SIU_QUEUE`/`"siu_review"` is removed; none of that is implemented in `src/` yet. `TriageOutcome`
-does **not** grow a `siu_flags` field — SIU indicators and severity/queue are different access
-classifications (operational vs. restricted-read) and shouldn't share one struct even before phase
-2's separate table exists; step definitions call `compute_siu_flags()` independently instead. It is
-not on `main` — see the "main is always green" constraint in `CLAUDE.md`; the draft moves back to
-`main` only once its spec is locked and its implementation is complete. `features/validation.feature`
-is fully implemented, gated, and on `main` — it belongs to an earlier reopening (accumulation,
-`blockers`, `notice_type`, `LOSS_DATE_IN_FUTURE`) that isn't part of this numbered queue.
+**Item 1 is done and merged to `main`** (merge commit `7f985e7`, 2026-08-09). Queue routing derives
+from severity alone; `SIU_QUEUE`/`"siu_review"` is removed from `src/`. SIU indicators are not a
+field on `TriageOutcome` — severity/queue and SIU are different access classifications (operational
+vs. restricted-read) and don't share one struct, even before phase 2's separate table exists;
+`compute_siu_flags()` stays independently callable and step definitions call it separately for the
+end-to-end scenario's assertions. `gauntlet check` passes on `main` post-merge (`27
+reviewed-equivalent`, no unreviewed acceptance survivors, no stale approvals). The reopening branch
+itself needed its own fix first — it had zero unique commits (a bookmark on `main`'s pre-revert
+history, not a real branch); see `docs/harness-findings.md`. `features/validation.feature` remains
+the only other fully implemented, gated, `main` feature file; it belongs to an earlier reopening
+(accumulation, `blockers`, `notice_type`, `LOSS_DATE_IN_FUTURE`) that isn't part of this numbered
+queue.
+
+**Item 2 is next.** In addition to the threshold and framing work described above, it now also
+carries the `siu_flags.feature` scenario specifying the inception-after-loss guard found while
+fixing item 1 (see item 2's entry above and `ASSUMPTIONS.md`).
 
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-Nothing currently open. `main` and `reopening/triage-siu-queue` are both pushed to
-`https://github.com/xaziaver/ClaimGate`.
+Nothing currently open. `main` is pushed to `https://github.com/xaziaver/ClaimGate`;
+`reopening/triage-siu-queue` is merged and pushed, kept as history rather than deleted.
