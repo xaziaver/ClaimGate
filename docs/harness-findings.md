@@ -290,6 +290,21 @@ disproved both halves. Corrected after observation. Kept visible because it is t
 shape this document catalogues — an assertion that sounded right, written down, never checked
 against what actually happens — committed inside the document that catalogues it.
 
+**Removal has no CLI path at all, confirmed by reading the source (2026-08-09).** "Recovery is
+manual" above was written before checking what "manual" actually meant. It means: hand-editing
+`gauntlet.lock.json`. `gauntlet spec` has exactly two subcommands, `approve` and `list` — no
+`unapprove`, `revoke`, or `prune`. The registry's `revoke()` function exists and is exercised, but
+only by `mutant prune`/`prune-code`, scoped to the `mutant:` namespace; nothing wires it to `spec:`.
+`gauntlet review` walks pending approvals only — a spec approved-but-missing was already approved,
+so it never appears there. Confirmed empirically the same day: `features/siu_flags.feature`'s
+orphaned key, left by this same reopening's rename to `siu_indicators.feature`, failed the
+acceptance gate the entire time every other gate on the branch was green, and stayed that way until
+a human removed it directly. On this project that direct removal is a human action full stop, not
+an agent one — CLAUDE.md forbids editing `gauntlet.lock.json`, and there is no command to hand the
+agent instead. The proposed change above stands; until it ships, "the rename costs a re-approval
+plus removal of the old key" is more precisely "the rename costs a re-approval `gauntlet spec
+approve` can do, plus a lock-file edit only the human can do."
+
 ## Designed boundaries
 
 Things the harness deliberately does not do. These are not work items — recorded so nobody mistakes
