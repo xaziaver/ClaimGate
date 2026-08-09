@@ -14,7 +14,13 @@ Ordered by domain severity, not by effort. One line each on why that position.
    inception date after the loss date (`recent_policy_inception` resolves `False` rather than being
    computed on a negative interval), but no scenario anywhere asserts it. Whoever resolves this item
    should decide whether that guard is the right rule and, if so, give it a scenario — see
-   `ASSUMPTIONS.md`.*
+   `ASSUMPTIONS.md`. The specific scenario needed: `siu_flags.feature` should assert that an
+   inception date later than the loss date does not fire `recent_policy_inception` — that specifies
+   the existing `0 <=` guard rather than changing behavior. Separately, a loss predating policy
+   inception is a coverage question, not an SIU one — the indicator returning `False` is correct for
+   the indicator and silent about the larger fact, which connects to the plausibility-floor gap
+   already recorded and needs phase-3 policy data. Do not build the coverage rule in item 2; specify
+   the guard only.*
 3. **`duplicates.feature` framing, `notice_type` interaction, sort proof, and the now-orphaned
    3-day window.** Real correctness and framing gaps, plus a threshold whose own rationale stopped
    holding the moment duplicates became non-blocking evidence instead of a gate — lower severity

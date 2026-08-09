@@ -242,3 +242,23 @@ mutation crosses a boundary that isn't in the visible example data at all (here:
 never inception before loss by a larger margin), that's the case most likely to be hiding an
 implementation decision the specification never made — worth tracing to the actual conditional before
 approving anything nearby in the same batch.
+
+## Code mutation cannot find a guard no test exercises
+
+**What happened.** The `0 <=` lower bound in `_is_recent_inception` has never been exercised with a
+negative interval — every real row in every spec and unit test has an inception date on or before its
+loss date. Code mutation still scores 100%, because standard mutation operators alter a comparison
+(`<=` to `<`, `0` to `1`) rather than deleting a clause, and those variants are killed by the existing
+inception-on-loss-date scenario. Removing the lower bound entirely is not a mutation the tool
+generates, so nothing would catch it.
+
+**Why it matters.** A 100% code mutation score does not mean every branch of a condition is defended
+— only that the mutations the tool knows how to generate are caught. A guard against inputs no test
+produces is invisible to it. This one was found by a mutant surviving in the spec layer, not the code
+layer, which is a useful direction of travel to note: spec-level mutation surfaced a code-level gap
+that code-level mutation could not.
+
+**What would address it.** Nothing about this project's configuration — this is a property of what
+mutation testing structurally can and can't generate, not a misconfiguration. Worth remembering as a
+standing caveat on any 100% code-mutation score: it certifies the mutations tried, not the space of
+inputs the code was never asked to handle.
