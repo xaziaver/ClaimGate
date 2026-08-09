@@ -129,3 +129,23 @@ Feature: SIU indicators
       Then the late reporting indicator is TRUE
       And the recent policy inception indicator is TRUE
       And no other SIU indicator is present
+
+  Rule: The two thresholds are independent and are not interchangeable
+
+    # Both intervals here are 40 days, which sits between the two thresholds.
+    # With each threshold applied to its own indicator, both resolve FALSE:
+    # 40 does not exceed the 45-day late reporting threshold, and 40 exceeds
+    # the 30-day recent policy inception threshold. Swap the two thresholds
+    # and both flip to TRUE. This scenario exists so that an implementation
+    # wiring a threshold to the wrong indicator fails, which no other example
+    # in this file catches - every other example sits outside the band where
+    # the two thresholds disagree.
+    Scenario: Thresholds applied to the wrong indicator produce the wrong result
+      Given today is "2026-08-02"
+      And the loss date is "2026-06-23"
+      And the late reporting threshold is 45 days
+      And the recent policy inception threshold is 30 days
+      And the policy inception date is "2026-05-14"
+      When SIU indicators are computed for the candidate FNOL record
+      Then the late reporting indicator is FALSE
+      And the recent policy inception indicator is FALSE

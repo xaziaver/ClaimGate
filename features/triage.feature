@@ -1,7 +1,7 @@
 Feature: FNOL triage
   As a claims intake system
   I need to assign a severity and route each loss to a queue
-  So that adjusters and SIU see the right claims in the right order
+  So that adjusters see the right claims in the right order
 
   Rule: Severity is assigned from loss type
 
@@ -74,8 +74,8 @@ Feature: FNOL triage
       When the candidate FNOL record is triaged and routed
       Then the assigned severity is "<severity>"
       And the routed queue is "<queue>"
-      And the late reporting SIU flag is <late_reporting>
-      And the recent policy inception SIU flag is <recent_inception>
+      And the late reporting indicator is <late_reporting>
+      And the recent policy inception indicator is <recent_inception>
 
       Examples:
         | loss_type    | loss_amount | loss_date  | inception_date | severity | queue      | late_reporting | recent_inception |
