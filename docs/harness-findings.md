@@ -262,3 +262,58 @@ that code-level mutation could not.
 mutation testing structurally can and can't generate, not a misconfiguration. Worth remembering as a
 standing caveat on any 100% code-mutation score: it certifies the mutations tried, not the space of
 inputs the code was never asked to handle.
+
+## An approved equivalent mutant is a regression test for its own justification
+
+**What happened.** The line-71 approval depends on the `0 <=` lower bound in `_is_recent_inception`,
+which no test exercises. That looked like a guard protected only by a reason string in a ledger. It
+is not: removing the bound makes the mutant killable, the gate detects an approved mutant that no
+longer survives, and the acceptance gate fails as a stale approval. The approval therefore defends
+the code property that makes it valid.
+
+**Why it matters.** This generalizes. Every equivalence approval silently asserts something about the
+implementation, and the stale-approval check turns that assertion into a test. It is the strongest
+answer this harness has to the question of what stops human judgments from rotting as the code moves
+underneath them — stronger than the earlier prune, which only showed stale judgments being detected
+after a spec changed.
+
+**What would address it.** Nothing — this is the mechanism working as designed, worth naming so it
+isn't mistaken for a coincidence. A revisit trigger written into a reason (see line 71's approval) is
+belt-and-suspenders on top of a check the ledger already performs structurally.
+
+## The approval ledger has no per-mutant reason
+
+**What happened.** `gauntlet mutant approve` applies one `--reason` to every currently-surviving
+mutant matching its filter, and a second call overwrites rather than adds. Two mutants in one
+scenario surviving for genuinely different reasons cannot be recorded separately without hand-editing
+`gauntlet.lock.json`, which `CLAUDE.md` forbids. The workaround is one combined reason covering both,
+with each mutant's justification scoped inside the text — which works, but means a reader must parse
+prose to learn why any individual mutant was approved, and a revisit trigger attached to one mutant is
+not machine-associated with it.
+
+**Why it matters.** The ledger's data model is coarser than the judgments it's asked to hold. A
+reviewer relying on `gauntlet mutant list` output to answer "why is *this specific* mutant equivalent"
+gets a paragraph that may address several mutants at once, with no structural marker for which
+sentence belongs to which locator.
+
+**What would address it.** A `--reason` keyed per mutant locator, or at minimum a CLI warning when a
+call's survivor set spans mutants that received different reasons in the same invocation — something
+short of hand-editing the lock file, which stays off-limits.
+
+## Mutant approval defaults to the widest scope
+
+**What happened.** `gauntlet mutant approve` without `--scenario` applies to every surviving mutant in
+the file. Running it that way swept two mutants from an unrelated scenario into an approval batch and
+stamped them with reason text that did not describe them. Caught and corrected, but the default is
+the dangerous direction: the narrow, explicit scope should be the default and the file-wide sweep
+should require an explicit flag, because the failure mode is approving things nobody reviewed with a
+justification that does not apply to them — precisely what the human-approval step exists to prevent.
+
+**Why it matters.** A tool whose unscoped invocation is also its most dangerous one invites exactly
+this mistake: reaching for the plain command and getting more than intended. The cost of that mistake
+here was a wrong reason string, caught by a human reading the output; it could as easily have been a
+mutant nobody actually reviewed getting the same rubber-stamp reason as ones that were.
+
+**What would address it.** Invert the default: `gauntlet mutant approve` with no `--scenario` should
+require an explicit `--all-scenarios` (or equivalent) to touch more than one scenario's survivors, so
+the narrow, safe invocation is the one that requires no extra thought.

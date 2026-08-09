@@ -38,7 +38,11 @@ Ordered by domain severity, not by effort. One line each on why that position.
    not a defect.*
 5. **`triage.feature` thresholds** ($500 theft threshold with no provenance, loss amount affecting
    severity only for theft, `policy_inception_date` availability at intake). Real gaps, but none
-   carries the legal exposure of 1–2, so they sit behind everything above.
+   carries the legal exposure of 1–2, so they sit behind everything above. *Note for whoever revisits
+   the $500 threshold: two acceptance-mutant approvals on `features/triage.feature`'s "Theft severity
+   by loss amount" rule (`500.00->501.00`, `500.01->501.01`) are equivalence judgments about that
+   exact threshold. Changing it goes stale automatically — the gate will report it as a stale approval
+   — and needs re-review against whatever replaces $500, not a surprise when it happens.*
 6. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.

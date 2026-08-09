@@ -40,6 +40,9 @@ list to check before proposing anything that would violate one.
   judgment, say so explicitly instead of proposing around it.
 - Spec approval, mutant approval, and mutant pruning are the human's calls, not something to run
   unprompted.
+- **If an operation crosses an approval boundary by accident, reverse it and escalate. Do not
+  correct it in place.** An accurate reason on an unauthorized approval is still an unauthorized
+  approval.
 - **Commit granularity is what makes the log worth reading, not a record of it having happened.**
   One commit per reopening, or a small series within one — never a batch spanning several
   reopenings. Spec lock and implementation are separate commits, in that order, so the sequence is
