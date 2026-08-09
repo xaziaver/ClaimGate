@@ -12,6 +12,14 @@ Feature: SIU indicators
   # validation.feature: NO_THRESHOLD_CONFIGURED and NO_POLICY_INCEPTION_DATE
   # are the complete set today. Escalate before adding to it.
 
+  Background:
+    # compute_siu_indicators evaluates both indicators in one call, so `now` is
+    # required even by scenarios that only assert recent policy inception. Set
+    # once here so the file cannot develop two reference dates: a per-scenario
+    # value can be changed in one place and missed in another, and every
+    # scenario in this file is date arithmetic.
+    Given today is "2026-08-02"
+
   Rule: Late reporting is evaluated against a threshold supplied by the caller
 
     # Thresholds are never a domain default - same pattern as "now". No
@@ -21,8 +29,7 @@ Feature: SIU indicators
     # until a real value is supplied, and absence of a value is never read as
     # "not late."
     Scenario: No late reporting threshold configured
-      Given today is "2026-08-02"
-      And the loss date is "2025-01-01"
+      Given the loss date is "2025-01-01"
       And no late reporting threshold is configured
       When SIU indicators are computed for the candidate FNOL record
       Then the late reporting indicator is NOT_EVALUATED with reason NO_THRESHOLD_CONFIGURED
@@ -35,8 +42,7 @@ Feature: SIU indicators
     # shared threshold would pass every scenario in this file without the
     # implementation actually keeping the two thresholds distinct.
     Scenario Outline: Late reporting threshold, given an illustrative configured value
-      Given today is "2026-08-02"
-      And the loss date is "<loss_date>"
+      Given the loss date is "<loss_date>"
       And the late reporting threshold is 45 days
       When SIU indicators are computed for the candidate FNOL record
       Then the late reporting indicator is <result>
@@ -105,8 +111,7 @@ Feature: SIU indicators
     # because its required input does not exist - and this scenario proves
     # both resolve honestly to NOT_EVALUATED rather than silently to FALSE.
     Scenario: Neither indicator is evaluated in the shipped configuration
-      Given today is "2026-08-02"
-      And the loss date is "2026-07-15"
+      Given the loss date is "2026-07-15"
       And no late reporting threshold is configured
       And the recent policy inception threshold is 30 days
       And no policy inception date is known
@@ -120,8 +125,7 @@ Feature: SIU indicators
     # Both thresholds below are supplied for this scenario; the late-reporting
     # value remains illustrative only, per the rule above.
     Scenario: Both SIU indicators fire together
-      Given today is "2026-08-02"
-      And the loss date is "2026-06-01"
+      Given the loss date is "2026-06-01"
       And the late reporting threshold is 45 days
       And the recent policy inception threshold is 30 days
       And the policy inception date is "2026-05-20"
@@ -141,8 +145,7 @@ Feature: SIU indicators
     # in this file catches - every other example sits outside the band where
     # the two thresholds disagree.
     Scenario: Thresholds applied to the wrong indicator produce the wrong result
-      Given today is "2026-08-02"
-      And the loss date is "2026-06-23"
+      Given the loss date is "2026-06-23"
       And the late reporting threshold is 45 days
       And the recent policy inception threshold is 30 days
       And the policy inception date is "2026-05-14"
