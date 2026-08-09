@@ -182,9 +182,13 @@
       "approved_at": "2026-08-02T20:52:39+00:00",
       "digest": "sha256:e727d808ad879c86b6747922279cf5245579b696af1bf17a4f68a3fd8cf6ffe3"
     },
+    "spec:features/siu_indicators.feature": {
+      "approved_at": "2026-08-09T16:00:16+00:00",
+      "digest": "sha256:26cc1a149fd1404757d39b0a77bd3faad7a30995e4eec89b721659b03f2c9142"
+    },
     "spec:features/triage.feature": {
-      "approved_at": "2026-08-08T14:15:45+00:00",
-      "digest": "sha256:4b1f171fa628572275f07c1db254d229f786954b8a13de9522fc6435fe9a5679"
+      "approved_at": "2026-08-09T16:00:16+00:00",
+      "digest": "sha256:7a19272daa7fa08a8a62757397038abecca8481d6de857c93cdb1f7a46c6b90d"
     },
     "spec:features/validation.feature": {
       "approved_at": "2026-08-07T00:38:44+00:00",
