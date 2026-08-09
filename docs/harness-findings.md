@@ -80,6 +80,62 @@ harness intervened.
 
 **Status.** Open.
 
+### Mutant approval keys are content-addressed on the whole row
+
+**What happened.** Mutant keys embed every literal cell value in the example row. Changing
+`true`/`false` to `TRUE`/`FALSE` across `triage.feature`'s end-to-end scenario's vocabulary — a
+change to columns those approvals' judgments were never about — staled all 11 approvals on that
+scenario.
+
+**Why it matters.** The same mechanism that makes an approval self-verifying (change the row, the
+judgment goes stale, correctly — see "An approved equivalent mutant is a regression test for its own
+justification") also can't distinguish a change to the cell a judgment was actually about from a
+change to any other cell in the same row. Over-invalidation is the safe failure direction, but it is
+not free: it re-opens judgments nobody needs to re-litigate.
+
+**What would address it.** Key on the mutated cell and the assertions it affects rather than the
+whole row, or report staled approvals grouped by whether the mutated cell itself changed, so a
+reviewer can tell "this judgment might actually be wrong now" from "this judgment's row got a
+cosmetic edit" before re-reviewing either.
+
+**Proposed change.** Key on the mutated cell and the assertions it affects rather than the whole
+row, or report staled approvals grouped by whether the mutated cell itself changed.
+
+**What it cost us.** 11 re-reviews arising from a cosmetic rename. Note this one as a trade-off
+rather than a straightforward defect — over-invalidation is the safe direction, and the fix must not
+weaken the self-verifying property.
+
+**Status.** Open.
+
+### Mutant approval defaults to the widest scope
+
+**What happened.** `gauntlet mutant approve` without `--scenario` applies to every surviving mutant in
+the file. Running it that way swept two mutants from an unrelated scenario into an approval batch and
+stamped them with reason text that did not describe them. Caught and corrected, but the default is
+the dangerous direction: the narrow, explicit scope should be the default and the file-wide sweep
+should require an explicit flag, because the failure mode is approving things nobody reviewed with a
+justification that does not apply to them — precisely what the human-approval step exists to prevent.
+
+**Why it matters.** A tool whose unscoped invocation is also its most dangerous one invites exactly
+this mistake: reaching for the plain command and getting more than intended. The cost of that mistake
+here was a wrong reason string, caught by a human reading the output; it could as easily have been a
+mutant nobody actually reviewed getting the same rubber-stamp reason as ones that were.
+
+**What would address it.** Invert the default: `gauntlet mutant approve` with no `--scenario` should
+require an explicit `--all-scenarios` (or equivalent) to touch more than one scenario's survivors, so
+the narrow, safe invocation is the one that requires no extra thought.
+
+**Proposed change.** Invert the default: `gauntlet mutant approve` with no `--scenario` should
+require an explicit `--all-scenarios` flag to touch more than one scenario's survivors, so the safe,
+narrow invocation is the one requiring no extra thought, not the dangerous, wide one.
+
+**What it cost us.** Running the unscoped command once swept two mutants from an unrelated scenario
+into an approval batch, stamping them with a reason that didn't describe them. Caught and corrected
+by a human reading the output, but the same mechanism could as easily have rubber-stamped a mutant
+nobody had actually reviewed.
+
+**Status.** Open.
+
 ### A gate requiring human review must show the human what to review
 
 **What happened.** The acceptance gate refused to pass until a human judged each of 11 surviving
@@ -144,32 +200,29 @@ branch discipline exists to protect.
 
 **Status.** Open.
 
-### Mutant approval defaults to the widest scope
+### Renaming a spec orphans its approval and leaves a dangling key
 
-**What happened.** `gauntlet mutant approve` without `--scenario` applies to every surviving mutant in
-the file. Running it that way swept two mutants from an unrelated scenario into an approval batch and
-stamped them with reason text that did not describe them. Caught and corrected, but the default is
-the dangerous direction: the narrow, explicit scope should be the default and the file-wide sweep
-should require an explicit flag, because the failure mode is approving things nobody reviewed with a
-justification that does not apply to them — precisely what the human-approval step exists to prevent.
+**What happened.** Approval keys are `spec:<path>`. Renaming `siu_flags.feature` to
+`siu_indicators.feature` orphaned the approval — the new path has no key, so the spec reads as
+never-approved — and left the old key pointing at a file that no longer exists. There is no
+rename-aware command; the rename was a plain `git mv`. Confirmed directly: the next `gauntlet check`
+reported both halves in the same run — `features/siu_flags.feature was approved but no longer
+exists` and `features/siu_indicators.feature is not approved`.
 
-**Why it matters.** A tool whose unscoped invocation is also its most dangerous one invites exactly
-this mistake: reaching for the plain command and getting more than intended. The cost of that mistake
-here was a wrong reason string, caught by a human reading the output; it could as easily have been a
-mutant nobody actually reviewed getting the same rubber-stamp reason as ones that were.
+**Why it matters.** A dangling approval key is silent lock-file rot. Nothing in the gate output
+distinguishes "this key is stale because the file moved" from any other kind of missing approval,
+and nothing would have flagged the old key at all if the rename hadn't also required touching the
+new path for an unrelated reason.
 
-**What would address it.** Invert the default: `gauntlet mutant approve` with no `--scenario` should
-require an explicit `--all-scenarios` (or equivalent) to touch more than one scenario's survivors, so
-the narrow, safe invocation is the one that requires no extra thought.
+**What would address it.** A rename-aware approval command, or at minimum a check that flags any
+lock key whose path doesn't exist in the working tree, rather than only surfacing the consequence
+(an unapproved-seeming spec) without naming the cause.
 
-**Proposed change.** Invert the default: `gauntlet mutant approve` with no `--scenario` should
-require an explicit `--all-scenarios` flag to touch more than one scenario's survivors, so the safe,
-narrow invocation is the one requiring no extra thought, not the dangerous, wide one.
+**Proposed change.** A rename operation that moves approval keys, or at minimum a warning when a
+lock key references a path that is not present.
 
-**What it cost us.** Running the unscoped command once swept two mutants from an unrelated scenario
-into an approval batch, stamping them with a reason that didn't describe them. Caught and corrected
-by a human reading the output, but the same mechanism could as easily have rubber-stamped a mutant
-nobody had actually reviewed.
+**What it cost us.** Nothing here, because we checked before renaming, but a dangling key is silent
+lock-file rot and nothing would have told us.
 
 **Status.** Open.
 
