@@ -1,27 +1,51 @@
-"""Pure SIU fraud-indicator rules for a candidate FNOL record."""
+"""Pure SIU indicator rules for a candidate FNOL record.
+
+Indicators are factual observations only - never a conclusion, never the word
+"fraud" as a system-generated value. See PHASE2_DESIGN.md's "SIU handling"
+section.
+"""
 
 from datetime import date
 
-from claimgate.domain.models import Candidate, SiuFlags
+from claimgate.domain.models import Candidate, SiuIndicatorResult, SiuIndicators
 
-LATE_REPORTING_THRESHOLD_DAYS = 30
-RECENT_INCEPTION_THRESHOLD_DAYS = 30
+NO_THRESHOLD_CONFIGURED = "NO_THRESHOLD_CONFIGURED"
+NO_POLICY_INCEPTION_DATE = "NO_POLICY_INCEPTION_DATE"
 
 
-def compute_siu_flags(candidate: Candidate, now: date) -> SiuFlags:
-    return SiuFlags(
-        late_reporting=_is_late_reporting(candidate.loss_date, now),
-        recent_policy_inception=_is_recent_inception(candidate),
+def compute_siu_indicators(
+    candidate: Candidate,
+    now: date,
+    late_reporting_threshold_days: int | None,
+    recent_inception_threshold_days: int | None,
+) -> SiuIndicators:
+    return SiuIndicators(
+        late_reporting=_evaluate_late_reporting(
+            candidate.loss_date, now, late_reporting_threshold_days
+        ),
+        recent_policy_inception=_evaluate_recent_inception(
+            candidate, recent_inception_threshold_days
+        ),
     )
 
 
-def _is_late_reporting(loss_date: date, now: date) -> bool:
-    return (now - loss_date).days > LATE_REPORTING_THRESHOLD_DAYS
+def _evaluate_late_reporting(
+    loss_date: date, now: date, threshold_days: int | None
+) -> SiuIndicatorResult:
+    if threshold_days is None:
+        return SiuIndicatorResult("NOT_EVALUATED", NO_THRESHOLD_CONFIGURED)
+    is_late = (now - loss_date).days > threshold_days
+    return SiuIndicatorResult("TRUE" if is_late else "FALSE")
 
 
-def _is_recent_inception(candidate: Candidate) -> bool:
+def _evaluate_recent_inception(
+    candidate: Candidate, threshold_days: int | None
+) -> SiuIndicatorResult:
     inception = candidate.policy_inception_date
     if inception is None:
-        return False
+        return SiuIndicatorResult("NOT_EVALUATED", NO_POLICY_INCEPTION_DATE)
+    if threshold_days is None:
+        return SiuIndicatorResult("NOT_EVALUATED", NO_THRESHOLD_CONFIGURED)
     days_since_inception = (candidate.loss_date - inception).days
-    return 0 <= days_since_inception <= RECENT_INCEPTION_THRESHOLD_DAYS
+    is_recent = 0 <= days_since_inception <= threshold_days
+    return SiuIndicatorResult("TRUE" if is_recent else "FALSE")

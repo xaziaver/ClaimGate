@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -41,10 +42,21 @@ class ValidationResult:
         return not self.blockers
 
 
+SiuIndicatorValue = Literal["TRUE", "FALSE", "NOT_EVALUATED"]
+
+
 @dataclass(frozen=True)
-class SiuFlags:
-    late_reporting: bool
-    recent_policy_inception: bool
+class SiuIndicatorResult:
+    # "Unevaluated is not negative" (ASSUMPTIONS.md): reason is set only when
+    # value is NOT_EVALUATED - a required input was missing, not found false.
+    value: SiuIndicatorValue
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class SiuIndicators:
+    late_reporting: SiuIndicatorResult
+    recent_policy_inception: SiuIndicatorResult
 
 
 @dataclass(frozen=True)
