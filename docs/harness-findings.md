@@ -22,6 +22,52 @@ should not move at the same time, or the gate results stop meaning what they app
 findings are recorded for a separate effort. If one of them becomes genuinely blocking rather than
 merely annoying, escalate it rather than working around it quietly.
 
+### Mutation's own coverage-guided test selection goes stale on a test-only change
+
+**What happened.** Not requested — found while verifying whether a unit test was still load-bearing
+after an acceptance scenario was added to cover the same case. Removed one unit test
+(`tests/unit/test_siu.py::test_recent_policy_inception_is_not_evaluated_when_no_threshold_configured`),
+source unchanged, and ran `gauntlet check --gates mutation` against the pre-existing `mutants/`
+cache: reported "score 100.0%, 181 killed" — identical to before the removal. Restored the test file
+to its exact original content (`git diff` showed no difference from the committed version) and ran
+again against that same, now-further-warmed cache: reported "score 96.69%, 6 unresolved" — as if the
+test were still missing. Only after deleting `mutants/` entirely and letting mutmut rebuild from
+scratch did each state report correctly: genuinely removed → 96.69%, 6 unresolved, all six in
+`_evaluate_recent_inception`'s `NOT_EVALUATED`/`NO_THRESHOLD_CONFIGURED` return; genuinely restored →
+100%, 181 killed. `mutants/mutmut-stats.json`'s `tests_by_mangled_function_name` mapping — mutmut's
+own coverage-guided test-selection cache — still listed the just-deleted test as covering
+`claimgate.domain.siu.x__evaluate_recent_inception` after the test was gone, which is consistent with
+mutmut choosing which tests to re-run per mutant from that stale mapping rather than rediscovering it.
+
+**Why it matters.** This is the more dangerous direction, not just an annoyance: a false PASS that
+silently hides a real, currently-existing coverage gap, discovered by accident rather than by the gate
+itself. It is exactly the situation an agent is in immediately after adding a test to close a gap and
+re-running the gate to confirm — the gate can report success without the new test having been
+consulted at all, if `mutants/` happens to hold a cache built before the test existed. The mirror
+failure (stale FAILURE after a genuine fix) is lower-stakes but still wastes a debugging cycle
+believing a restored file is still broken. It also corrects a claim made elsewhere in this same
+document (see the correction note under "The coverage gate reports a stale artifact as a current
+result" below) that mutation is immune to this class of problem because it "genuinely re-executes...
+not because it was cached" — true of the subprocess invocation, false of mutmut's own on-disk state.
+
+**What would address it.** Cache invalidation keyed on test file content, not just source file
+content — or, more simply, gauntlet forcing a clean `mutants/` rebuild whenever any file under the
+configured test path has changed more recently than the cache.
+
+**Proposed change.** `gates/mutation.py`'s `run` should compare the newest mtime under `cfg.tests`
+(or at minimum `tests/unit/`) against the cache's own build time before invoking mutmut, and pass a
+cache-bypass/clean-rebuild flag when the tests are newer — the same freshness-check shape already
+proposed for the coverage gate's stale-artifact finding, applied to a different artifact.
+
+**What it cost us.** Reproduced twice, in both directions, on this reopening's own code: a false pass
+that would have hidden a genuine 6-mutant gap in production code, and a false failure that persisted
+after the file was already restored to its exact committed content. Both times the cache, not the
+subprocess, was the thing lying. Found only because a human's question ("what does the unit test
+prove that the scenario doesn't") prompted verification from a clean state instead of trusting the
+reported number.
+
+**Status.** Open.
+
 ### Interrupted mutation runs leave corrupted source
 
 **What happened.** The acceptance gate mutates spec files in place during mutation testing and
@@ -77,6 +123,43 @@ categories the same.
 twelve firings in a second session. Both times the loop stopped only because an agent recognized the
 documented pattern and refused to keep retrying — not because the retry budget ran out safely or the
 harness intervened.
+
+**Status.** Open.
+
+### The acceptance gate short-circuits mutation on an approval failure
+
+**What happened.** One dangling approval key (`spec:features/siu_flags.feature`, see below) made
+the acceptance gate's approval-verification stage fail. That single failure returned early and
+skipped the mutation stage entirely — for every spec, including `siu_indicators.feature` and
+`triage.feature`, neither of which had any approval problem of their own. `gauntlet check` reported
+only "1 unapproved or modified spec(s)" for the whole gate; nothing hinted that mutation testing
+never ran.
+
+**Why it matters.** Approval state and mutation state are independent concerns — whether a human has
+signed off on a spec's text says nothing about whether its examples are wired to real behavior. Wiring
+them so one failure hides the other converts "a rename left a stale key" into "we have no idea how
+well-tested the other three specs are," for as long as the unrelated key sits there. On this project
+that was the entire span between the rename and the human's manual fix — every `gauntlet check` in
+between reported one line of diagnostic and gave no signal, positive or negative, about mutation on
+any spec.
+
+**What would address it.** Run the mutation stage regardless of approval state and report both
+outcomes, or at minimum report explicitly that mutation was skipped and why, rather than silently
+omitting it from the summary.
+
+**Proposed change.** Decouple the two stages in `gauntlet/gates/acceptance.py`'s `_stages`: run
+`_mutation_outcome` unconditionally (or gate it on baseline-passing only, not on approval), and
+surface an explicit "mutation not run: N spec(s) unapproved" line when approval fails, instead of
+returning before mutation is attempted at all.
+
+**What it cost us.** 18 surviving mutants (7 on `siu_indicators.feature`, 11 on `triage.feature`) and
+11 stale approvals sat undiscovered by any gate output for as long as the one unrelated key was
+unresolved. Recovering them required importing the gate's own mutation source
+(`gauntlet.acceptance.mutation`, `gauntlet.acceptance.gherkin`, `gauntlet.gates.acceptance`) and
+running it directly against the real parsed feature files, bypassing the CLI entirely — the second
+time this project has needed that exact workaround (see "A gate requiring human review must show the
+human what to review" above, which needed it for a different reason: truncated output rather than a
+skipped stage).
 
 **Status.** Open.
 
@@ -228,6 +311,15 @@ result when the artifact predates it.
 
 **Status.** Open.
 
+**Correction (2026-08-09).** "`gates/mutation.py` genuinely re-executes `mutmut run` as a fresh
+subprocess every invocation... not because it was cached" above is true of the subprocess, false of
+mutmut's own internal state. See "Mutation's own coverage-guided test selection goes stale on a
+test-only change" below: a fresh `mutmut run` subprocess can still consult a stale
+`tests_by_mangled_function_name` mapping on disk and report an unchanged score when a test was
+actually added, removed, or edited with no corresponding source change. Kept here as a pointer
+rather than rewritten in place, per this document's own practice of correcting claims after
+observation instead of erasing the original one.
+
 ### The approval ledger has no per-mutant reason
 
 **What happened.** `gauntlet mutant approve` applies one `--reason` to every currently-surviving
@@ -257,6 +349,35 @@ only be recorded with one combined reason covering both, scoped inside the prose
 a revisit trigger attached to one mutant isn't machine-associated with it.
 
 **Status.** Open.
+
+### Acceptance mutation cannot distinguish a deliberately inert value from an untested one
+
+**What happened.** Four of the seven survivors on `siu_indicators.feature` are threshold mutations in
+scenarios where the threshold is supplied precisely so that it has no effect — "No policy inception
+date known" supplies a 30-day recent-inception threshold to prove the NOT_EVALUATED result comes from
+the missing inception date, not a missing threshold. Mutating 30 to 31 changes nothing, correctly:
+the scenario is deliberately showing that this value doesn't matter here.
+
+**Why it matters.** Supplying an inert value to isolate which fact actually drives an outcome is good
+specification design, not a gap in the scenario. The gate cannot tell that apart from a value the
+scenario simply forgot to check — both present identically as a surviving mutant — so it demands the
+same human judgment for each. The equivalent-mutant approval then becomes the only record that the
+inertness was deliberate rather than an oversight.
+
+**What would address it.** None obvious, and possibly none wanted — the gate asking is arguably the
+correct behavior; the alternative is the gate guessing at scenario intent, which is worse. Recorded so
+the pattern is recognized rather than rediscovered per scenario: a reviewer seeing a cluster of
+threshold-literal survivors across scenarios that share a rule (here, all four sit under "Neither
+indicator is evaluated..." and "No policy inception date known"-shaped scenarios) should check whether
+the threshold was inert by design before assuming the scenario under-specifies its assertions.
+
+**Proposed change.** None proposed.
+
+**What it cost us.** Nothing measurable — this is a recognition aid, not a defect with a cost to
+tally.
+
+**Status.** Open, low priority. May be a designed boundary rather than a defect; recorded as a
+proposed-changes entry rather than moved to that section because it hasn't been decided which it is.
 
 ### Renaming a spec orphans its approval and leaves a dangling key
 
@@ -304,6 +425,24 @@ an agent one — CLAUDE.md forbids editing `gauntlet.lock.json`, and there is no
 agent instead. The proposed change above stands; until it ships, "the rename costs a re-approval
 plus removal of the old key" is more precisely "the rename costs a re-approval `gauntlet spec
 approve` can do, plus a lock-file edit only the human can do."
+
+**This entry has now been wrong twice, both times from inference rather than verification.**
+First, the original text claiming a dangling key was undetectable "silent lock-file rot" — corrected
+above once the gate had actually been run. Second, separately: the task that produced this
+reopening's SIU indicators work asked for "the exact command" to remove the orphaned key,
+presupposing one existed. It does not, as the note above establishes. Both wrong claims share the
+same shape this document exists to catch: something that sounded plausible, wasn't checked against
+what the tool actually does, and got acted on (or asked for) anyway. Also verified: this defect is
+absent from Gauntlet's own README "Known issues" section and `BACKLOG.md`, which otherwise list real
+v1 defects with workarounds — grepped directly for "dangling," "orphan," and "rename," no mention of
+approval keys or spec renames anywhere in either file. This is a genuinely new finding for that
+backlog, not a rediscovery of one already listed.
+
+**Resolution, this occurrence (2026-08-09).** The human removed the four lines by hand — the key,
+`approved_at`, `digest`, and closing brace. Verified independently rather than taken on report:
+`git diff -- gauntlet.lock.json` showed exactly a 4-line deletion and nothing else, and `python3 -m
+json.tool gauntlet.lock.json` confirmed the result parses as valid JSON. The acceptance gate's
+approval check passed immediately afterward with no other change required.
 
 ## Designed boundaries
 
