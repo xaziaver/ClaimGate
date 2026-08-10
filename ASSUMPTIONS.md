@@ -146,10 +146,17 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   the 3-day window above — tight equality was cheap when a false positive blocked a notice, expensive
   now that a false negative means a duplicate claim opens. A loss typed `wind_hail` by the insured and
   `water_damage` by the contractor once it comes through the ceiling is the same physical loss
-  reported under two different `loss_type` values, and exact equality silently loses the match. It is
-  also what prevents the `LOSS_ASSESSMENT`/`INITIAL` false positive `duplicates.feature`'s notice_type
-  rule (item 3, this reopening) has to guard against separately — relaxing `loss_type` equality
-  without care would reopen that exact risk. Recording only, not fixing in this item.
+  reported under two different `loss_type` values, and exact equality silently loses the match.
+  Recording only, not fixing in this item.
+- **The `duplicates.feature` notice_type exclusion (`QUEUE.md` item 3) guards only the candidate side
+  of the comparison — an existing claim carries no notice type, so the reverse direction is
+  unguarded.** An ordinary `INITIAL` candidate can still be surfaced as a candidate match against an
+  existing claim that is itself a `LOSS_ASSESSMENT` claim: same policy, same loss date, same
+  `loss_type`, and today nothing tells them apart from that side. `loss_type` equality above is what
+  currently limits this direction in practice, not a rule that guarantees it — the same missing
+  phase-3 input the `NO_EXISTING_CLAIM_NOTICE_TYPE` reason code names (the existing claim's own
+  coverage/notice type, unavailable at intake) appearing on the other side of the comparison.
+  Recording only, not fixing in this item.
 - **Loss type vocabulary, policy number prefixes, and example data across all four feature files
   reflect a multi-line liability book**, not this one: `AU`/`CP`/`CA`/`GL` prefixes,
   `auto_collision` and `auto_comprehensive` loss types, auto policy numbers throughout the

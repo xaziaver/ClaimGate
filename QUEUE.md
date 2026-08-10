@@ -82,7 +82,10 @@ Anything issued but not yet completed, cleared as each is done. This tracks in-f
 the numbered queue above tracks reopenings.
 
 Nothing currently open. `main` is pushed to `https://github.com/xaziaver/ClaimGate`, including
-`reopening/siu-indicators`'s merge; `reopening/siu-indicators` itself is pushed and kept as history.
-`reopening/triage-siu-queue` is deleted, locally and on origin — once item 1 merged it had no
+`reopening/siu-indicators`'s merge, the QUEUE.md accuracy fix (`duplicates.feature` and
+`siu_indicators.feature` are also fully implemented and gated on `main`, not just
+`validation.feature`), and the `ASSUMPTIONS.md` loss_type/notice_type-residual entries recorded
+during `reopening/duplicates`'s spec review; `reopening/siu-indicators` itself is pushed and kept as
+history. `reopening/triage-siu-queue` is deleted, locally and on origin — once item 1 merged it had no
 commits unique to it, and its content is fully preserved in `main`'s own history through the merge
 commit.
