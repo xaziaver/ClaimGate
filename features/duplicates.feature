@@ -90,10 +90,17 @@ Feature: Duplicate candidate detection
     # arrives days or months after the loss it follows, the reason it is
     # never compared is the same, and the window comparison never runs for
     # these two types regardless of how close or far the loss date sits.
+    # The near rows below (2026-06-02) sit one day off the background
+    # claim and would produce CLM-1001 if compared, so the added "no
+    # candidate matches" assertion isn't vacuous here either - same
+    # cheap-negative-assertion pattern PHASE2_DESIGN.md requires for SIU
+    # indicators in response bodies, and the same invariant the
+    # LOSS_ASSESSMENT scenario below proves for its own path.
     Scenario Outline: A follow-on notice type is never compared, regardless of timing
       Given a candidate with policy number "HO-1234567", loss date "<loss_date>", loss type "fire", and notice type "<notice_type>"
       When duplicate detection runs against the existing claims
       Then duplicate matching is NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE
+      And there are no candidate matches
 
       Examples:
         | notice_type  | loss_date  |
