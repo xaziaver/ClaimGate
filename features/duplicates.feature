@@ -12,28 +12,32 @@ Feature: Duplicate candidate detection
   # only a human reviewer makes that judgment, using a candidate match as
   # one piece of evidence toward it.
 
-  # In the Scenario Outline below, an empty matching_claim_id cell asserts
-  # that no candidate match was produced - the same convention
-  # validation.feature uses for an empty blockers cell.
-
   Background:
     Given an existing claim "CLM-1001" with policy number "HO-1234567", loss date "2026-06-01", and loss type "fire"
 
   Rule: A candidate match has the same policy, a loss date within 60 days, and the same loss type
 
     # 60 is a carrier policy decision with no statutory or industry-standard
-    # basis - not derived from any citation in STATUTORY_REGISTER.md. It
-    # exists because the same physical loss is frequently reported twice
-    # under two different stated loss dates: for most Florida property
-    # perils the reporter states a discovery date, not an event date, and
-    # 627.70132(3)'s statutory weather date of loss (landfall, or the date
-    # NOAA verifies the event) is not what ClaimGate captures - only what
-    # the reporter asserts. Under non-blocking evidence the cost asymmetry
-    # is severe: a false positive costs a reviewer one glance; a false
-    # negative opens a second claim carrying its own 627.70131(7)(a)
-    # 60-day pay-or-deny clock. What would correct this value: the
-    # distribution of reported-loss-date deltas across confirmed duplicate
-    # pairs on Windward's book - data this project does not have.
+    # basis - not derived from any citation in STATUTORY_REGISTER.md, and
+    # not derived from the 627.70131(7)(a) pay-or-deny clock mentioned
+    # below either: that clock is also 60 days, but the two 60s are
+    # unrelated - a coincidence of the same number, not a shared source.
+    # This window exists because the same physical loss is frequently
+    # reported twice under two different stated loss dates: for most
+    # Florida property perils the reporter states a discovery date, not an
+    # event date, and 627.70132(3)'s statutory weather date of loss
+    # (landfall, or the date NOAA verifies the event) is not what
+    # ClaimGate captures - only what the reporter asserts. Under
+    # non-blocking evidence the cost asymmetry is severe: a false positive
+    # costs a reviewer one glance; a false negative opens a second claim
+    # carrying its own pay-or-deny clock. What would correct this value:
+    # the distribution of reported-loss-date deltas across confirmed
+    # duplicate pairs on Windward's book - data this project does not
+    # have.
+
+    # In the Scenario Outline below, an empty matching_claim_id cell
+    # asserts that no candidate match was produced - the same convention
+    # validation.feature uses for an empty blockers cell.
     Scenario Outline: Matching against a single existing claim
       Given a candidate with policy number "<policy_number>", loss date "<loss_date>", loss type "<loss_type>", and notice type "INITIAL"
       When duplicate detection runs against the existing claims
@@ -61,12 +65,20 @@ Feature: Duplicate candidate detection
         | CLM-2001 |
         | CLM-2002 |
 
-  Rule: Every notice_type either gets compared for a candidate match, or is explicitly not evaluated with a reason - never silently defaulted
+  Rule: Every notice type either gets compared for a candidate match, or is explicitly not evaluated with a reason - never silently defaulted
 
-    # Reason codes are a closed enumeration, like the reason codes in
-    # siu_indicators.feature: FOLLOW_ON_NOTICE_TYPE and
-    # NO_EXISTING_CLAIM_TYPE are the complete set today. Escalate before
-    # adding to it.
+    # Reason codes are their own closed enumeration, scoped to duplicate
+    # detection - not the same set as siu_indicators.feature's, even
+    # though both use the identical NOT_EVALUATED-plus-reason convention
+    # (ASSUMPTIONS.md's "Unevaluated is not negative"). Duplicate
+    # candidates are an ordinary, unrestricted TRIAGED attribute
+    # (PHASE2_DESIGN.md's record state model); SIU indicators are
+    # restricted-read, in a separate table with their own audit trail
+    # (PHASE2_DESIGN.md's SIU handling section) - the two enumerations
+    # grow independently, and neither spec's "complete set" claim
+    # constrains the other. FOLLOW_ON_NOTICE_TYPE and
+    # NO_EXISTING_CLAIM_NOTICE_TYPE are the complete set for duplicate
+    # detection today. Escalate before adding to it.
 
     # A SUPPLEMENTAL or REOPENED notice declares itself a continuation of a
     # known loss - the existing claim it follows on genuinely does describe
@@ -76,8 +88,8 @@ Feature: Duplicate candidate detection
     # already applied to siu_indicators.feature's TRUE/FALSE/NOT_EVALUATED
     # split). NOT_EVALUATED does not depend on timing: whether the notice
     # arrives days or months after the loss it follows, the reason it is
-    # never compared is the same, so a notice_type-blind matcher's window
-    # arithmetic must never be consulted for these two types.
+    # never compared is the same, and the window comparison never runs for
+    # these two types regardless of how close or far the loss date sits.
     Scenario Outline: A follow-on notice type is never compared, regardless of timing
       Given a candidate with policy number "HO-1234567", loss date "<loss_date>", loss type "fire", and notice type "<notice_type>"
       When duplicate detection runs against the existing claims
@@ -97,11 +109,15 @@ Feature: Duplicate candidate detection
     # the same hurricane. Telling those apart from a duplicate needs the
     # existing claim's own notice/coverage type, which intake does not have
     # until phase 3 - a different reason than the follow-on scenario above,
-    # hence the separate reason code.
+    # hence the separate reason code. The candidate below shares the
+    # background claim's policy, loss date, and loss type exactly, so it
+    # would produce a match if it were compared - this scenario, and its
+    # negative assertion, cannot pass by coincidence with an empty result.
     Scenario: A loss assessment notice is never compared, for a different reason than a follow-on notice
       Given a candidate with policy number "HO-1234567", loss date "2026-06-01", loss type "fire", and notice type "LOSS_ASSESSMENT"
       When duplicate detection runs against the existing claims
-      Then duplicate matching is NOT_EVALUATED with reason NO_EXISTING_CLAIM_TYPE
+      Then duplicate matching is NOT_EVALUATED with reason NO_EXISTING_CLAIM_NOTICE_TYPE
+      And there are no candidate matches
 
     Scenario: An INITIAL notice is still compared normally
       Given a candidate with policy number "HO-1234567", loss date "2026-06-01", loss type "fire", and notice type "INITIAL"
