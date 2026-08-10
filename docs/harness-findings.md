@@ -37,9 +37,9 @@ process lessons stay here.
 
 ## Proposed changes to Gauntlet
 
-#### v1 — finish line
+### v1 — finish line
 
-### Mutation's own coverage-guided test selection goes stale on a test-only change
+#### Mutation's own coverage-guided test selection goes stale on a test-only change
 
 **What happened.** Not requested — found while verifying whether a unit test was still load-bearing
 after an acceptance scenario was added to cover the same case. Removed one unit test
@@ -160,7 +160,7 @@ reported number — not by anything in the harness flagging it.
 
 **Status.** Open.
 
-### Interrupted mutation runs leave corrupted source
+#### Interrupted mutation runs leave corrupted source
 
 **What happened.** The acceptance gate mutates spec files in place during mutation testing and
 restores them afterward. A `gauntlet check` run killed mid-mutation (a tool timeout, exit 143) left
@@ -191,7 +191,7 @@ happened to run `git diff` before the next commit; nothing in the harness itself
 
 **Status.** Open.
 
-### The acceptance gate short-circuits mutation on an approval failure
+#### The acceptance gate short-circuits mutation on an approval failure
 
 **What happened.** One dangling approval key (`spec:features/siu_flags.feature`, see below) made
 the acceptance gate's approval-verification stage fail. That single failure returned early and
@@ -230,7 +230,7 @@ skipped stage).
 
 **Status.** Open.
 
-### The coverage gate reports a stale artifact as a current result
+#### The coverage gate reports a stale artifact as a current result
 
 **What happened.** The tests gate errored at collection — a spec rename had broken a binding file's
 path, so no tests ran at all — yet the same `gauntlet check` invocation reported coverage at
@@ -263,7 +263,7 @@ result when the artifact predates it.
 **Correction (2026-08-09).** "`gates/mutation.py` genuinely re-executes `mutmut run` as a fresh
 subprocess every invocation... not because it was cached" above is true of the subprocess, false of
 mutmut's own internal state. See "Mutation's own coverage-guided test selection goes stale on a
-test-only change" below: a fresh `mutmut run` subprocess can still consult a stale
+test-only change" above: a fresh `mutmut run` subprocess can still consult a stale
 `tests_by_mangled_function_name` mapping on disk and report an unchanged score when a test was
 actually added, removed, or edited with no corresponding source change. Kept here as a pointer
 rather than rewritten in place, per this document's own practice of correcting claims after
@@ -277,7 +277,7 @@ has been right yet. That is not a reason to stop writing claims — it is a reas
 stays provisional until it has actually been run, which is the discipline this document tries to
 enforce on itself as much as on the harness it describes.
 
-### Retry loop burns attempts on non-agent-actionable failures
+#### Retry loop burns attempts on non-agent-actionable failures
 
 **What happened.** The Stop hook's retry-capped `gauntlet stop-check` fired repeatedly against an
 acceptance-gate failure caused by a spec sitting unapproved, awaiting human review — observed at
@@ -308,7 +308,7 @@ harness intervened. Confirmed a third time in a later session, against a conditi
 
 **Status.** Open.
 
-### Mutant approval defaults to the widest scope
+#### Mutant approval defaults to the widest scope
 
 **What happened.** `gauntlet mutant approve` without `--scenario` applies to every surviving mutant in
 the file. Running it that way swept two mutants from an unrelated scenario into an approval batch and
@@ -339,7 +339,7 @@ nobody had actually reviewed.
 
 **Status.** Open.
 
-### Mutant approval keys are content-addressed on the whole row
+#### Mutant approval keys are content-addressed on the whole row
 
 **What happened.** Mutant keys embed every literal cell value in the example row. Changing
 `true`/`false` to `TRUE`/`FALSE` across `triage.feature`'s end-to-end scenario's vocabulary — a
@@ -368,7 +368,7 @@ weaken the self-verifying property.
 
 **Status.** Open.
 
-### Acceptance mutation cannot distinguish a deliberately inert value from an untested one
+#### Acceptance mutation cannot distinguish a deliberately inert value from an untested one
 
 **What happened.** Seven survivors on `siu_indicators.feature` are all threshold-literal
 mutations, and they survive for three different reasons — a distinction only
@@ -404,9 +404,8 @@ The original draft of this entry recorded four of seven as deliberately inert. T
 **What would address it.** None obvious, and possibly none wanted — the gate asking is arguably the
 correct behavior; the alternative is the gate guessing at scenario intent, which is worse. Recorded so
 the pattern is recognized rather than rediscovered per scenario: a reviewer seeing a cluster of
-threshold-literal survivors across scenarios that share a rule (here, all four sit under "Neither
-indicator is evaluated..." and "No policy inception date known"-shaped scenarios) should check whether
-the threshold was inert by design before assuming the scenario under-specifies its assertions.
+threshold-literal survivors should work through each one's actual mechanics before assuming a single
+explanation covers them, since the three mechanisms above present identically.
 
 **Proposed change.** None proposed.
 
@@ -418,7 +417,7 @@ tally.
 **Status.** Open, low priority. May be a designed boundary rather than a defect; recorded as a
 proposed-changes entry rather than moved to that section because it hasn't been decided which it is.
 
-#### v1, blocking v2
+### v1, blocking v2
 
 ARCHITECTURE.md's rule is that the workspace is a client reading "the event
 log and the JSON contract, and nothing else," never a private path into
@@ -428,7 +427,7 @@ around them by reading files directly, so the contract has to grow first.
 Sequencing them as ordinary v1 work risks discovering mid-v2 that the data
 the UI needs is not in the contract.
 
-### A gate requiring human review must show the human what to review
+#### A gate requiring human review must show the human what to review
 
 **What happened.** The acceptance gate refused to pass until a human judged each of 11 surviving
 mutants on `features/triage.feature` equivalent or not. Its own terminal output truncated the list at
@@ -468,7 +467,7 @@ re-deriving the mutant algorithm by hand.
 
 **Status.** Open.
 
-### The approval ledger has no per-mutant reason
+#### The approval ledger has no per-mutant reason
 
 **What happened.** `gauntlet mutant approve` applies one `--reason` to every currently-surviving
 mutant matching its filter, and a second call overwrites rather than adds. Two mutants in one
@@ -500,7 +499,7 @@ a revisit trigger attached to one mutant isn't machine-associated with it.
 
 **Status.** Open.
 
-### Renaming a spec orphans its approval and leaves a dangling key
+#### Renaming a spec orphans its approval and leaves a dangling key
 
 **What happened.** Approval keys are `spec:<path>`. Renaming `siu_flags.feature` to
 `siu_indicators.feature` orphaned the approval — the new path has no key, so the spec reads as
@@ -567,9 +566,9 @@ backlog, not a rediscovery of one already listed.
 json.tool gauntlet.lock.json` confirmed the result parses as valid JSON. The acceptance gate's
 approval check passed immediately afterward with no other change required.
 
-#### v3 — substrate
+### v3 — substrate
 
-### No cross-spec impact check
+#### No cross-spec impact check
 
 **What happened.** Making SIU indicator results three-valued invalidates `triage.feature`, whose
 step definitions assert a boolean against the same shared function. This was caught by an agent
@@ -597,9 +596,9 @@ branch discipline exists to protect.
 
 **Status.** Open.
 
-#### Convention, not code
+### Convention, not code
 
-### Approval reasons go stale silently where the key does not
+#### Approval reasons go stale silently where the key does not
 
 **What happened.** The `triage.feature` approval reason referenced "line 71" and "siu_flags.feature."
 Both were accurate when written. A vocabulary change (`true`/`false` → `TRUE`/`FALSE`) shifted the row
