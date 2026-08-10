@@ -525,6 +525,34 @@ backlog, not a rediscovery of one already listed.
 json.tool gauntlet.lock.json` confirmed the result parses as valid JSON. The acceptance gate's
 approval check passed immediately afterward with no other change required.
 
+### Approval reasons go stale silently where the key does not
+
+**What happened.** The `triage.feature` approval reason referenced "line 71" and "siu_flags.feature."
+Both were accurate when written. A vocabulary change (`true`/`false` → `TRUE`/`FALSE`) shifted the row
+to line 83, and this reopening's rename moved the file to `siu_indicators.feature`. The
+content-addressed key caught the content drift and correctly reported the approval stale; nothing
+caught the line number or the filename, because they live in free prose that no mechanism validates.
+
+**Why it matters.** The reason is the entire record of why a human approved a mutant. A reason pointing
+at a line that now holds something else is worse than no reason at all — a future reviewer follows it
+and reads the wrong row, with no signal that anything is off, since the ledger's own freshness check
+(the digest) still passes.
+
+**What would address it / Proposed change.** None enforceable — prose cannot be validated the way a
+digest can. Convention instead: approval reasons identify a case by what it is (the specific field
+values, the scenario name, the mechanism), never by line number or filename, both of which drift for
+reasons unrelated to whether the judgment itself still holds. Worth stating in guidance since the
+ledger cannot enforce it.
+
+**What it cost us.** Nothing this time — caught during this reopening's own mutant review, when the
+current locator was checked against the live file rather than trusted from the stored reason, and the
+carried-forward reason for the re-approval above was rewritten to identify the case by what it is
+("the row where the mutated inception date postdates the loss date (theft / 2026-06-15)") rather than
+by a line number that had already drifted once and will drift again. The near miss is the point: this
+was one specific reason, checked once, by someone who happened to look.
+
+**Status.** Open, convention rather than code.
+
 ## Designed boundaries
 
 Things the harness deliberately does not do. These are not work items — recorded so nobody mistakes
