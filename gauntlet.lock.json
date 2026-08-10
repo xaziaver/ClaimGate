@@ -178,10 +178,6 @@
       "approved_at": "2026-08-02T20:52:39+00:00",
       "digest": "sha256:94a45743d3ac06527224f77684d368fcb45fdbe766eaab449070cbfef84e5bfa"
     },
-    "spec:features/siu_flags.feature": {
-      "approved_at": "2026-08-02T20:52:39+00:00",
-      "digest": "sha256:e727d808ad879c86b6747922279cf5245579b696af1bf17a4f68a3fd8cf6ffe3"
-    },
     "spec:features/siu_indicators.feature": {
       "approved_at": "2026-08-09T16:00:16+00:00",
       "digest": "sha256:26cc1a149fd1404757d39b0a77bd3faad7a30995e4eec89b721659b03f2c9142"
