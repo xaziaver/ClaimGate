@@ -82,6 +82,22 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   are different facts — if a claim is later determined fraudulent, a record asserting the second
   as the first is a false record in a file a regulator or a court can read. Applies to any phase-2
   attribute whose real inputs don't arrive until phase 3.
+- **Recent-inception reason-code precedence when both required inputs are absent.** When
+  `compute_siu_indicators` is called with no recent-inception threshold configured *and* no policy
+  inception date known, the recent policy inception indicator resolves `NOT_EVALUATED` with reason
+  `NO_POLICY_INCEPTION_DATE`, not `NO_THRESHOLD_CONFIGURED`. Principle: the reason code names the gap
+  that would still block evaluation if the other were closed. With no inception date known,
+  configuring a threshold changes nothing — reporting `NO_THRESHOLD_CONFIGURED` would name a gap
+  whose closure would not help, and would imply a fix that is not one. The missing input outranks
+  the missing rule. This was originally an accident of implementation order, not a decision: the
+  code's pre-existing `inception is None` check ran first because it was already there from before
+  this reopening; the new `threshold_days is None` check was appended after it to satisfy mypy's
+  type narrowing, with no thought given at the time to which reason code should win. Reviewed and
+  confirmed correct against the principle above on a later pass, not left as the accident that
+  produced it. No scenario specifies this in `siu_indicators.feature` — the combination is
+  unreachable in the shipped configuration, where the recent-inception threshold is always a real,
+  kept value of 30. Reachable in phase 2 once thresholds come from jurisdiction config rather than a
+  fixed value — see PHASE2_DESIGN.md's SIU handling section.
 
 ## Undocumented phase-1 thresholds
 

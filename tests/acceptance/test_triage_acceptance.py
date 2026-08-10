@@ -6,7 +6,7 @@ from typing import Any
 
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from tests.api.siu import siu_flags
+from tests.api.siu import siu_indicators
 from tests.api.triage import assign_severity, route_queue, triage_and_route
 
 scenarios("../../features/triage.feature")
@@ -48,9 +48,9 @@ def check_queue(context: dict[str, Any], expected: str) -> None:
 
 
 @given(
-    parsers.parse(
-        'a candidate with loss type "{loss_type}", loss amount {loss_amount}, '
-        'loss date "{loss_date}", and policy inception date "{inception_date}"'
+    parsers.re(
+        r'a candidate with loss type "(?P<loss_type>[^"]*)", loss amount (?P<loss_amount>\S+), '
+        r'loss date "(?P<loss_date>[^"]*)", and policy inception date "(?P<inception_date>[^"]*)"'
     )
 )
 def set_end_to_end_candidate(
@@ -64,7 +64,7 @@ def set_end_to_end_candidate(
         "loss_type": loss_type,
         "loss_amount": Decimal(loss_amount),
         "loss_date": date.fromisoformat(loss_date),
-        "policy_inception_date": date.fromisoformat(inception_date),
+        "policy_inception_date": date.fromisoformat(inception_date) if inception_date else None,
     }
 
 
@@ -75,20 +75,10 @@ def run_triage_and_route(context: dict[str, Any]) -> None:
     context["severity"] = outcome.severity
     context["queue"] = outcome.queue
 
-    flags = siu_flags(
+    context["siu_indicators"] = siu_indicators(
         now=context["today"],
         loss_date=fields["loss_date"],
+        late_reporting_threshold_days=context.get("late_reporting_threshold_days"),
+        recent_inception_threshold_days=context.get("recent_inception_threshold_days"),
         policy_inception_date=fields["policy_inception_date"],
     )
-    context["late_reporting"] = flags.late_reporting
-    context["recent_inception"] = flags.recent_policy_inception
-
-
-@then(parsers.parse("the late reporting SIU flag is {expected}"))
-def check_late_reporting_flag(context: dict[str, Any], expected: str) -> None:
-    assert context["late_reporting"] is (expected == "true")
-
-
-@then(parsers.parse("the recent policy inception SIU flag is {expected}"))
-def check_recent_inception_flag(context: dict[str, Any], expected: str) -> None:
-    assert context["recent_inception"] is (expected == "true")
