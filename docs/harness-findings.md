@@ -27,44 +27,75 @@ merely annoying, escalate it rather than working around it quietly.
 **What happened.** Not requested — found while verifying whether a unit test was still load-bearing
 after an acceptance scenario was added to cover the same case. Removed one unit test
 (`tests/unit/test_siu.py::test_recent_policy_inception_is_not_evaluated_when_no_threshold_configured`),
-source unchanged, and ran `gauntlet check --gates mutation` against the pre-existing `mutants/`
-cache: reported "score 100.0%, 181 killed" — identical to before the removal. Restored the test file
-to its exact original content (`git diff` showed no difference from the committed version) and ran
-again against that same, now-further-warmed cache: reported "score 96.69%, 6 unresolved" — as if the
-test were still missing. Only after deleting `mutants/` entirely and letting mutmut rebuild from
-scratch did each state report correctly: genuinely removed → 96.69%, 6 unresolved, all six in
-`_evaluate_recent_inception`'s `NOT_EVALUATED`/`NO_THRESHOLD_CONFIGURED` return; genuinely restored →
-100%, 181 killed. `mutants/mutmut-stats.json`'s `tests_by_mangled_function_name` mapping — mutmut's
-own coverage-guided test-selection cache — still listed the just-deleted test as covering
-`claimgate.domain.siu.x__evaluate_recent_inception` after the test was gone, which is consistent with
-mutmut choosing which tests to re-run per mutant from that stale mapping rather than rediscovering it.
+source unchanged, and ran `gauntlet check --gates mutation` against a `mutants/` cache built before the
+removal: reported "score 100.0%, 181 killed" — identical to before the removal, as if nothing had
+changed. Only after deleting `mutants/` entirely and letting mutmut rebuild from scratch did the true
+number appear: 96.69%, 6 unresolved, all six in `_evaluate_recent_inception`'s
+`NOT_EVALUATED`/`NO_THRESHOLD_CONFIGURED` return — exactly the branch the deleted test protected.
+`mutants/mutmut-stats.json`'s `tests_by_mangled_function_name` mapping — mutmut's own coverage-guided
+test-selection cache — still listed the just-deleted test as covering
+`claimgate.domain.siu.x__evaluate_recent_inception` after the test was gone, consistent with mutmut
+choosing which tests to re-run per mutant from that stale mapping rather than rediscovering it.
 
-**Why it matters.** This is the more dangerous direction, not just an annoyance: a false PASS that
-silently hides a real, currently-existing coverage gap, discovered by accident rather than by the gate
-itself. It is exactly the situation an agent is in immediately after adding a test to close a gap and
-re-running the gate to confirm — the gate can report success without the new test having been
-consulted at all, if `mutants/` happens to hold a cache built before the test existed. The mirror
-failure (stale FAILURE after a genuine fix) is lower-stakes but still wastes a debugging cycle
-believing a restored file is still broken. It also corrects a claim made elsewhere in this same
-document (see the correction note under "The coverage gate reports a stale artifact as a current
-result" below) that mutation is immune to this class of problem because it "genuinely re-executes...
-not because it was cached" — true of the subprocess invocation, false of mutmut's own on-disk state.
+**Reproduction recipe**, run from a clean working tree with `mutants/` already built once against
+the current suite (a plain `gauntlet check --gates mutation` if it doesn't exist yet):
+
+```
+1. gauntlet check --gates mutation --json      # baseline: score 100.0%, 181 killed
+2. delete test_recent_policy_inception_is_not_evaluated_when_no_threshold_configured
+   from tests/unit/test_siu.py (source untouched)
+3. gauntlet check --gates mutation --json      # WRONG: still reports 100.0%, 181 killed
+4. rm -rf mutants/
+5. gauntlet check --gates mutation --json      # correct: 96.69%, 6 unresolved
+6. git checkout -- tests/unit/test_siu.py      # restore, then rebuild clean before continuing
+```
+
+Steps 1-3-5 reproduced identically three times across two sessions (original discovery plus two
+follow-up cycles run specifically to verify this recipe before writing it down). **Narrower claim than
+originally drafted, corrected before this shipped:** the mirror direction — restoring the test without
+clearing the cache and expecting the gate to keep reporting the stale 96.69% — was observed once in
+the original discovery but did **not** reproduce on two follow-up attempts under controlled,
+cache-cleared-first conditions; both times the very next run after restoring reported the correct
+100% immediately, no cache clear needed. That direction is not asserted as reliable. Only the false
+PASS on removal (steps 1-3) is confirmed reproducible.
+
+**Does the acceptance gate's own spec-mutation share this exposure? Tested directly, not inferred.**
+Weakened `tests/acceptance/test_triage_acceptance.py`'s `check_severity` step to `assert True` and
+called `gauntlet.gates.acceptance.survivors_for` on `features/triage.feature` immediately after, with
+no cache-clearing action of any kind: survivor count went 13 → 41 in that single call. Restored the
+step to its exact original content and called it again, still no cache action: 41 → 13, back to
+baseline. The acceptance gate's mutation mechanism is architecturally different from mutmut's — no
+persistent cache directory; `run_acceptance` invokes `pytest ... -p no:cacheprovider` as a fresh
+subprocess per mutant (`gauntlet/adapters/python.py`) — and behaves correctly here. Said cautiously
+because "probably not" was exactly the wrong instinct about mutation caching until it was tested; this
+one was tested and held up, twice, in both directions.
+
+**Does gauntlet do anything about mutmut's cache today?** No. `adapters/python.py::run_mutmut` calls
+`mutmut run <filters>` and nothing else — no `--no-cache` equivalent, no mtime check, no flag. It
+fully trusts whatever incremental behavior mutmut applies internally.
+
+**Why it matters.** A false PASS is categorically worse than a false failure for a gate that exists
+specifically to catch tests that assert nothing: it is silent, and it is exactly the situation an agent
+is in immediately after adding a test to close a coverage gap and re-running the gate to confirm — the
+gate can report success without the new test having been consulted at all, if `mutants/` predates it.
+It also corrects a claim made elsewhere in this document (see the correction note under "The coverage
+gate reports a stale artifact as a current result" below) that mutation is immune to this class of
+problem because it "genuinely re-executes... not because it was cached" — true of the subprocess
+invocation, false of mutmut's own on-disk coverage-selection state.
 
 **What would address it.** Cache invalidation keyed on test file content, not just source file
 content — or, more simply, gauntlet forcing a clean `mutants/` rebuild whenever any file under the
-configured test path has changed more recently than the cache.
+configured test path is newer than the cache.
 
 **Proposed change.** `gates/mutation.py`'s `run` should compare the newest mtime under `cfg.tests`
 (or at minimum `tests/unit/`) against the cache's own build time before invoking mutmut, and pass a
 cache-bypass/clean-rebuild flag when the tests are newer — the same freshness-check shape already
 proposed for the coverage gate's stale-artifact finding, applied to a different artifact.
 
-**What it cost us.** Reproduced twice, in both directions, on this reopening's own code: a false pass
-that would have hidden a genuine 6-mutant gap in production code, and a false failure that persisted
-after the file was already restored to its exact committed content. Both times the cache, not the
-subprocess, was the thing lying. Found only because a human's question ("what does the unit test
+**What it cost us.** A false pass that would have hidden a genuine 6-mutant gap in production code,
+confirmed reproducible three times. Found only because a human's question ("what does the unit test
 prove that the scenario doesn't") prompted verification from a clean state instead of trusting the
-reported number.
+reported number — not by anything in the harness flagging it.
 
 **Status.** Open.
 
@@ -319,6 +350,14 @@ test-only change" below: a fresh `mutmut run` subprocess can still consult a sta
 actually added, removed, or edited with no corresponding source change. Kept here as a pointer
 rather than rewritten in place, per this document's own practice of correcting claims after
 observation instead of erasing the original one.
+
+**This is the third of the reasoning-not-verification claims this document has had to correct, after
+the two on the dangling-key entry (once claiming a dangling key was undetectable, once assuming CLI
+removal was possible).** The pattern is worth naming directly: every claim in this project written
+from reasoning about how a tool must work, rather than from running it, has been wrong so far. None
+has been right yet. That is not a reason to stop writing claims — it is a reason every one of them
+stays provisional until it has actually been run, which is the discipline this document tries to
+enforce on itself as much as on the harness it describes.
 
 ### The approval ledger has no per-mutant reason
 
