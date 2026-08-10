@@ -6,7 +6,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
    in `siu_review` never reaches an adjuster, and the Fla. Stat. 627.70131(7)(a) 60-day pay-or-deny
    clock keeps running regardless of which queue it sits in — this is a statutory-time defect, not
    a routing preference. *(Done — see below.)*
-2. **`siu_flags.feature` thresholds and framing, together.** Legally sensitive: the 30-day
+2. **`siu_flags.feature` thresholds and framing, together.** *(Done — see below.)* Legally sensitive: the 30-day
    late-reporting indicator flags a large share of a lawful Florida property book against a 1-year
    statutory notice window, and fixing the threshold alone while leaving the fraud-conclusion
    framing in place would still leave the other half of the same exposure standing. *Also carries an
@@ -62,14 +62,25 @@ the only other fully implemented, gated, `main` feature file; it belongs to an e
 (accumulation, `blockers`, `notice_type`, `LOSS_DATE_IN_FUTURE`) that isn't part of this numbered
 queue.
 
-**Item 2 is next.** In addition to the threshold and framing work described above, it now also
-carries the `siu_flags.feature` scenario specifying the inception-after-loss guard found while
-fixing item 1 (see item 2's entry above and `ASSUMPTIONS.md`).
+**Item 2 is done and merged to `main`** (merge commit `9d3fc2d`, 2026-08-10). `siu_flags.feature` is
+renamed `siu_indicators.feature`; `SiuFlags(bool, bool)` becomes `SiuIndicators`, each field a
+three-valued `TRUE`/`FALSE`/`NOT_EVALUATED` result with a reason code, so an indicator whose input
+is missing can never be read as a negative determination. Both thresholds are supplied by the
+caller on every call, never a domain default — the late-reporting threshold ships unconfigured, and
+the recent-inception threshold stays a real, kept value of 30. Fraud-conclusion framing (title,
+narrative, "regardless of whether the claim is otherwise valid") is gone from the spec. `gauntlet
+check` passes on `main` post-merge (34 reviewed-equivalent, no unreviewed acceptance survivors, no
+stale approvals).
+
+**Item 3 is next.**
 
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-Nothing currently open. `main` is pushed to `https://github.com/xaziaver/ClaimGate`;
-`reopening/triage-siu-queue` is merged and pushed, kept as history rather than deleted.
+Nothing currently open. `main` is pushed to `https://github.com/xaziaver/ClaimGate`, including
+`reopening/siu-indicators`'s merge; `reopening/siu-indicators` itself is pushed and kept as history.
+`reopening/triage-siu-queue` is deleted, locally and on origin — once item 1 merged it had no
+commits unique to it, and its content is fully preserved in `main`'s own history through the merge
+commit.
