@@ -334,6 +334,18 @@ transition history).
    needed regardless of whether auth exists. **Do not build the read-side access log until an auth
    system exists to populate it meaningfully** — a read-access log with no real identity behind it
    would be theater, not a record.
+5. **Carried requirement: a scenario for the reason-code precedence when both SIU inputs are
+   absent, once thresholds come from jurisdiction config.** `compute_siu_indicators` resolves
+   `NO_POLICY_INCEPTION_DATE` over `NO_THRESHOLD_CONFIGURED` when both the recent-inception
+   threshold and the policy inception date are missing — the missing input outranks the missing
+   rule; see ASSUMPTIONS.md's carried-requirements entry for the full principle. Unreachable and
+   unspecified today because the recent-inception threshold is a fixed, always-supplied value of 30
+   in the shipped phase-1 configuration. It becomes reachable once thresholds are sourced from the
+   jurisdiction config described under "Jurisdiction axis" above: a jurisdiction whose config omits
+   the recent-inception threshold, combined with a notice carrying no inception date, reaches this
+   exact state for real. A `siu_indicators.feature` scenario specifying the precedence is required
+   when that lands — not before, since a scenario for a combination the shipped system cannot
+   produce would assert behavior nothing can exercise.
 
 A Gherkin scenario asserting SIU indicators are absent from both response bodies is required — a
 cheap negative assertion that catches a regression the moment someone adds a field carelessly.

@@ -41,6 +41,11 @@ def _evaluate_late_reporting(
 def _evaluate_recent_inception(
     candidate: Candidate, threshold_days: int | None
 ) -> SiuIndicatorResult:
+    # Order is deliberate, not incidental: when both inputs are absent, the
+    # reason code must name the gap that would still block evaluation if the
+    # other were closed. A threshold cannot help without an inception date, so
+    # NO_POLICY_INCEPTION_DATE wins - see ASSUMPTIONS.md's carried-requirements
+    # entry. Do not reorder these checks.
     inception = candidate.policy_inception_date
     if inception is None:
         return SiuIndicatorResult("NOT_EVALUATED", NO_POLICY_INCEPTION_DATE)
