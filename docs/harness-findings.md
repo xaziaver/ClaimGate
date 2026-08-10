@@ -59,6 +59,27 @@ cache-cleared-first conditions; both times the very next run after restoring rep
 100% immediately, no cache clear needed. That direction is not asserted as reliable. Only the false
 PASS on removal (steps 1-3) is confirmed reproducible.
 
+**The case that actually matters: weakening, not deleting.** A deleted test changes the test count and
+is visible in a diff by its absence. Ran the same recipe against a *weakened* test instead — same
+function, same call, assertions dropped (`tests/unit/test_siu.py`'s
+`test_recent_policy_inception_is_not_evaluated_when_no_threshold_configured`, changed from asserting
+`.value == "NOT_EVALUATED"` and `.reason == NO_THRESHOLD_CONFIGURED` to calling
+`compute_siu_indicators(...)` and asserting nothing — the exact shape of test CLAUDE.md instructs
+agents not to write, "coverage of code that asserts nothing is worthless," and the one gate that exists
+to catch it). Test count stays at 159; `pytest` reports `1 passed` for it, same as before, because a
+test with no assertions trivially passes. Against the warm cache: "score 100.0%, 181 killed" —
+unchanged, exactly as if the assertions were still there. Cleared `mutants/` and reran: "score 96.69%,
+6 unresolved" — the identical true result as the deletion case, same six mutants, same function. This
+is the more consequential half of the finding: it means the gate can be silently defeated by precisely
+the failure mode it exists to catch, and unlike deletion, nothing about it is visible in a test count
+or an assertion-free diff someone might skim past.
+
+**Third scenario not yet tested: a genuinely new test added for new code, evaluated for the first
+time.** Not run — the two cases above (delete, weaken) both start from a mutant the cache already has
+an opinion about. A brand-new test covering code the cache has never seen would presumably force fresh
+collection, but "presumably" is exactly the word this entry keeps having to retract. Left as an open
+question rather than asserted either way.
+
 **Does the acceptance gate's own spec-mutation share this exposure? Tested directly, not inferred.**
 Weakened `tests/acceptance/test_triage_acceptance.py`'s `check_severity` step to `assert True` and
 called `gauntlet.gates.acceptance.survivors_for` on `features/triage.feature` immediately after, with
@@ -87,13 +108,34 @@ invocation, false of mutmut's own on-disk coverage-selection state.
 content — or, more simply, gauntlet forcing a clean `mutants/` rebuild whenever any file under the
 configured test path is newer than the cache.
 
-**Proposed change.** `gates/mutation.py`'s `run` should compare the newest mtime under `cfg.tests`
-(or at minimum `tests/unit/`) against the cache's own build time before invoking mutmut, and pass a
-cache-bypass/clean-rebuild flag when the tests are newer — the same freshness-check shape already
-proposed for the coverage gate's stale-artifact finding, applied to a different artifact.
+**Proposed change.** The mutation gate should detect whether any file under the mutation test scope
+(`tests/unit/`, per `pyproject.toml`'s `pytest_add_cli_args_test_selection`) has changed since the
+cached results it's about to rely on were produced, and clear or bypass the cache when it has — the
+same freshness-check shape already proposed for the coverage gate's stale-artifact finding, applied to
+mutmut's cache instead of `.gauntlet/coverage.json`. Concretely: `gates/mutation.py`'s `run` compares
+the newest mtime under `cfg.tests` (or at minimum `tests/unit/`) against `mutants/`'s own build time
+before invoking mutmut, and passes whatever cache-bypass mutmut offers (or does `rm -rf mutants/`
+itself) when the tests are newer. The underlying staleness is mutmut's own behavior, so the real,
+upstream fix belongs in mutmut — but the exposure is gauntlet's to close regardless, because gauntlet
+is what reports the number and enforces the `min_score` threshold against it. A caller of `gauntlet
+check` has no visibility into mutmut internals and no reason to expect the number it's given to depend
+on when `mutants/` was last rebuilt.
+
+**Consequence worth stating explicitly, not glossed over.** Every mutation score in this project's
+history — every "100%, N killed" reported in every prior `gauntlet check` run across every prior
+session — was produced against whatever `mutants/` cache state happened to exist at that moment, and
+the gate's output gives no way to tell a freshly-computed number from a reused one; nothing in
+`actual` or the diagnostics distinguishes them. This is not a claim that any specific past number was
+wrong — most of this project's development added tests alongside source changes in the same commit,
+which is a different situation from the isolated delete/weaken-only cases tested here, and no evidence
+gathered says any particular historical score was false. It is a narrower, harder claim: the question
+"was this specific reported score computed fresh or served from cache" cannot currently be answered
+from the gate's output for any run, past or future, until the freshness check above exists.
 
 **What it cost us.** A false pass that would have hidden a genuine 6-mutant gap in production code,
-confirmed reproducible three times. Found only because a human's question ("what does the unit test
+confirmed reproducible three times on deletion and reproduced again, identically, on weakening — the
+more realistic and more dangerous of the two, since a weakened assertion changes neither the test count
+nor the shape of a passing test run. Found only because a human's question ("what does the unit test
 prove that the scenario doesn't") prompted verification from a clean state instead of trusting the
 reported number — not by anything in the harness flagging it.
 
