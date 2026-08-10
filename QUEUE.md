@@ -57,10 +57,12 @@ vs. restricted-read) and don't share one struct, even before phase 2's separate 
 end-to-end scenario's assertions. `gauntlet check` passes on `main` post-merge (`27
 reviewed-equivalent`, no unreviewed acceptance survivors, no stale approvals). The reopening branch
 itself needed its own fix first — it had zero unique commits (a bookmark on `main`'s pre-revert
-history, not a real branch); see `docs/harness-findings.md`. `features/validation.feature` remains
-the only other fully implemented, gated, `main` feature file; it belongs to an earlier reopening
-(accumulation, `blockers`, `notice_type`, `LOSS_DATE_IN_FUTURE`) that isn't part of this numbered
-queue.
+history, not a real branch); see `docs/harness-findings.md`. `features/validation.feature`,
+`features/duplicates.feature`, and `features/siu_indicators.feature` are also fully implemented and
+gated on `main`; `validation.feature` belongs to an earlier reopening (accumulation, `blockers`,
+`notice_type`, `LOSS_DATE_IN_FUTURE`) that isn't part of this numbered queue, while
+`duplicates.feature` and `siu_indicators.feature` are, respectively, this queue's item 3 (next,
+below) and item 2 (just closed above).
 
 **Item 2 is done and merged to `main`** (merge commit `9d3fc2d`, 2026-08-10). `siu_flags.feature` is
 renamed `siu_indicators.feature`; `SiuFlags(bool, bool)` becomes `SiuIndicators`, each field a
