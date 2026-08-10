@@ -141,6 +141,15 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   orphaned (see the decisions.md audit above) — tuned for a model where a match blocked a notice,
   which is no longer how duplicates work. Whoever resolves this reopening should treat the window
   value as open, not just the framing and the `notice_type` interaction.
+- **Exact `loss_type` equality in the duplicate match key is a false-negative source, and a real
+  tradeoff rather than an obvious relaxation.** Chosen under the same blocking model that orphaned
+  the 3-day window above — tight equality was cheap when a false positive blocked a notice, expensive
+  now that a false negative means a duplicate claim opens. A loss typed `wind_hail` by the insured and
+  `water_damage` by the contractor once it comes through the ceiling is the same physical loss
+  reported under two different `loss_type` values, and exact equality silently loses the match. It is
+  also what prevents the `LOSS_ASSESSMENT`/`INITIAL` false positive `duplicates.feature`'s notice_type
+  rule (item 3, this reopening) has to guard against separately — relaxing `loss_type` equality
+  without care would reopen that exact risk. Recording only, not fixing in this item.
 - **Loss type vocabulary, policy number prefixes, and example data across all four feature files
   reflect a multi-line liability book**, not this one: `AU`/`CP`/`CA`/`GL` prefixes,
   `auto_collision` and `auto_comprehensive` loss types, auto policy numbers throughout the
