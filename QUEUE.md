@@ -22,9 +22,19 @@ Ordered by domain severity, not by effort. One line each on why that position.
    already recorded and needs phase-3 policy data. Do not build the coverage rule in item 2; specify
    the guard only.*
 3. **`duplicates.feature` framing, `notice_type` interaction, sort proof, and the now-orphaned
-   3-day window.** Real correctness and framing gaps, plus a threshold whose own rationale stopped
-   holding the moment duplicates became non-blocking evidence instead of a gate — lower severity
-   than 1–2 because nothing here carries statutory exposure.
+   3-day window.** *(Spec locked, implementation not started — see below.)* Real correctness and
+   framing gaps, plus a threshold whose own rationale stopped holding the moment duplicates became
+   non-blocking evidence instead of a gate — lower severity than 1–2 because nothing here carries
+   statutory exposure. *Note for whoever implements this item: ten acceptance-mutant approvals on
+   `features/duplicates.feature`'s "Matching against a single existing claim" scenario — all
+   equivalence judgments about date/loss-type/policy-number mutations on rows already excluded by a
+   policy or loss-type mismatch — are keyed to the pre-reopening row content. Four sit on the exact
+   boundary rows that moved from the 3-day window (`2026-06-04`/`2026-05-29` matched,
+   `2026-06-05`/`2026-05-28` didn't) to the 60-day one; the other six sit on rows whose dates didn't
+   move but whose result column changed shape (`duplicate_ids: [...]` to `matching_claim_id`).
+   Approval keys are content-addressed on the whole row, so all ten go stale on implementation, not
+   just the four with new dates — the gate will report every one, and re-review against the locked
+   spec is mine, not automatic.*
 4. **Coordinated loss type and policy format pass across all four feature files.** A credibility
    and scope-fit problem (a multi-line liability book's vocabulary in a system designed for
    Florida residential property only), not a correctness defect — sequenced after 1–3 and done as one pass because
@@ -74,18 +84,36 @@ narrative, "regardless of whether the claim is otherwise valid") is gone from th
 check` passes on `main` post-merge (34 reviewed-equivalent, no unreviewed acceptance survivors, no
 stale approvals).
 
-**Item 3 is next.**
+**Item 3's spec is drafted, revised twice under review, and locked** on `reopening/duplicates`
+(lock commit `9ebdee1`, 2026-08-11); implementation has not started. `duplicates.feature` moves from
+a preventive framing to non-blocking evidence for a human reviewer — "candidate matches," never
+"probable duplicates." All three non-`INITIAL` notice types now resolve `NOT_EVALUATED` with a
+reason instead of running the window comparison: `SUPPLEMENTAL`/`REOPENED` because a declared
+follow-on already answers the question duplicate detection asks (`FOLLOW_ON_NOTICE_TYPE`);
+`LOSS_ASSESSMENT`, for a different reason, because telling a unit owner's own loss apart from an
+association assessment claim needs the existing claim's coverage type, unavailable at intake until
+phase 3 (`NO_EXISTING_CLAIM_NOTICE_TYPE`). These two reason codes are their own closed enumeration,
+deliberately not shared with `siu_indicators.feature`'s — duplicate candidates are an ordinary,
+unrestricted attribute, SIU indicators are restricted-read in a separate table, and the two
+enumerations grow independently without either constraining the other. The match window changes from
+3 days to 60, symmetric, on reported loss date: a carrier policy decision with no statutory or
+industry-standard basis, set because non-blocking evidence flips the false-positive/false-negative
+cost asymmetry the original 3-day window was tuned against.
 
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-Nothing currently open. `main` is pushed to `https://github.com/xaziaver/ClaimGate`, including
-`reopening/siu-indicators`'s merge, the QUEUE.md accuracy fix (`duplicates.feature` and
-`siu_indicators.feature` are also fully implemented and gated on `main`, not just
-`validation.feature`), and the `ASSUMPTIONS.md` loss_type/notice_type-residual entries recorded
-during `reopening/duplicates`'s spec review; `reopening/siu-indicators` itself is pushed and kept as
-history. `reopening/triage-siu-queue` is deleted, locally and on origin — once item 1 merged it had no
-commits unique to it, and its content is fully preserved in `main`'s own history through the merge
-commit.
+**Item 3's implementation is open, on `reopening/duplicates`.** The spec is locked (`9ebdee1`); the
+matcher, step definitions, and any new result type for the `NOT_EVALUATED`-plus-reason outcome still
+need writing against it. `gauntlet check` staying red on that branch until then is the expected,
+sanctioned pre-implementation state (CLAUDE.md's spec-lock-then-implementation ordering), not a
+problem to route around. See item 3's queue entry above for the stale mutant-approval warning
+implementation will trigger.
+
+`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through this handoff's QUEUE.md
+update; `reopening/duplicates` is pushed through its merge of that update, on top of the spec lock
+(`9ebdee1`). `reopening/siu-indicators` is pushed and kept as history. `reopening/triage-siu-queue` is
+deleted, locally and on origin — once item 1 merged it had no commits unique to it, and its content is
+fully preserved in `main`'s own history through the merge commit.
