@@ -289,6 +289,16 @@ No number of retries clears it — only a human running `gauntlet spec approve` 
 retry budget on a condition that can't change from the agent side wastes it against the failures
 that actually are agent-actionable.
 
+**Structural, not incidental.** ClaimGate's CLAUDE.md requires spec lock and implementation to be
+separate commits, in that order, so the log shows the sequence rather than asserting it. That rule
+guarantees a red tree between the two on *every* reopening: a spec drafted or awaiting approval,
+with no step definitions behind it yet. The human-blocked state is therefore not an accident the
+retry budget occasionally trips over — it is produced deliberately, once per reopening, by a
+convention adopted for reasons that have nothing to do with the harness. Any project that separates
+approval from implementation will generate this state on a fixed schedule. That changes the
+priority: the cost is not "sometimes wastes retries," it is "wastes the full budget every time the
+process works as designed."
+
 **What would address it.** Gates should distinguish failures an agent can fix from failures
 awaiting a human, and the retry loop should stop immediately on the latter rather than counting
 down toward it.
@@ -298,11 +308,17 @@ human-blocked — "spec awaiting `gauntlet spec approve`" is always human-blocke
 immediately on the latter, rather than counting down a shared retry budget that treats both
 categories the same.
 
-**What it cost us.** Confirmed twice, in two separate sessions, against the same underlying cause:
-12 retries burned in one session (12 → 7 → 5 → 4, no change in cause between firings), and a further
-twelve firings in a second session. Both times the loop stopped only because an agent recognized the
-documented pattern and refused to keep retrying — not because the retry budget ran out safely or the
-harness intervened. Confirmed a third time in a later session, against a condition — a dangling approval key with no CLI remedy — that no agent action could ever have cleared.
+**What it cost us.** Four confirmations across four sessions, the same underlying cause each time.
+First: 12 retries burned (12 → 7 → 5 → 4, no change in cause between firings). Second: a further
+twelve firings. Third: against a dangling approval key with no CLI remedy, which no agent action
+could ever have cleared. The first three stopped only because an agent recognized the pattern
+documented here and refused to keep retrying — not because the budget ran out safely or the harness
+intervened. The fourth is the one that changes the picture: the loop ran its full six attempts and
+terminated on its own ("Gauntlet gates still failing after 6 attempts — stopping the retry loop and
+handing this to you"), against a spec awaiting human approval that was unclearable from attempt one.
+So the mitigation observed in the first three sessions — an agent reading this document and
+declining to retry — is memory-dependent, and it did not survive a fresh context. The loop does
+terminate. It just spends everything first.
 
 **Routes to:** BACKLOG.md, v1 item 2 AND v3. See the note for the v1 effort below — this adds a fourth category to that item's taxonomy, and the same distinction recurs in v3's transition query.
 
@@ -416,6 +432,52 @@ tally.
 
 **Status.** Open, low priority. May be a designed boundary rather than a defect; recorded as a
 proposed-changes entry rather than moved to that section because it hasn't been decided which it is.
+
+#### The acceptance gate's remedy names a command that re-baselines a different gate
+
+**What happened.** When `features/duplicates.feature` changed after approval, the acceptance gate
+emitted: "This spec is the human's artifact, not yours: revert the change, or explain why it should
+change and let the human re-approve it with `gauntlet lock`." `gauntlet lock` is not the
+spec-approval command. `gauntlet spec approve` is — the CLI describes it as "Approve one or more
+feature files. The deliberate human review step." `gauntlet lock` is described as "Approve the
+current content of the verified paths," the protect gate's baseline and the counterpart to
+`gauntlet verify`. Two different commands against two different artifacts, and the diagnostic names
+the wrong one.
+
+**Why it matters.** ClaimGate's CLAUDE.md instructs the agent to "act on the remedy rather than
+guessing." That makes remedy text an interface rather than prose: something reads it and does what
+it says. Doing what this one says would not approve the spec — the acceptance gate would still fail
+— and it would re-approve the current content of the verified paths, which on this project are
+`gauntlet.toml`, `gauntlet.lock.json`, and `.claude/settings.json`. Those are precisely the files
+CLAUDE.md forbids the agent to touch, on the grounds that weakening a threshold is not a way to pass
+a gate, and the protect gate is what makes that instruction enforceable rather than advisory. So the
+remedy for a spec-drift failure, followed literally, re-baselines the guardrail against threshold
+tampering. No malice is required; an agent doing exactly what it was told produces it.
+
+**Reasoned, not observed.** The command was never run. The consequence above is derived from the two
+commands' own help text and from the protect gate reporting `3/3 paths unchanged`, not from watching
+it happen — and this project's own record is that claims written from reasoning about how a tool
+must work, rather than from running it, have been wrong. What would confirm it: in a scratch clone,
+modify a verified path, run `gauntlet lock`, and check whether `protect` then reports the modified
+content as approved.
+
+**What would address it.** Command names emitted in gate diagnostics should come from the same
+source as the CLI's own command registration, so a rename cannot leave remedy text pointing
+somewhere else. Short of that, a consistency check over remedy strings versus registered commands.
+
+**Proposed change.** Correct the acceptance gate's remedy to name `gauntlet spec approve`, and add a
+test asserting that every command named in any gate's remedy text resolves to a registered CLI
+command — and, for gates that name one, that it is the command owning that gate's own artifact.
+
+**What it cost us.** Nothing realized: caught while reading a gate diagnostic during review, before
+anyone ran it. Recorded because the surface it sits on is the one the agent is explicitly told to
+trust, and because the wrong command here is not inert — it writes.
+
+**Routes to:** BACKLOG.md, v1. Also `doc-updates.md`'s section 4 consistency sweep, which covers
+README-versus-table drift but not diagnostics-versus-CLI — a different axis from the "Ten gates"
+observation in the note below.
+
+**Status.** Open.
 
 ### v1, blocking v2
 
@@ -861,6 +923,15 @@ empty file announces itself.
 check appended in the same invocation — `&& wc -l <file>` for an export,
 `git diff --stat` after an edit, `git log <branch> ^main` after a branch move.
 The check costs nothing and converts a silent failure into an obvious one.
+
+**A related substitution.** Asked to export a file at a named ref for review,
+an agent instead resolved the ref with `git rev-parse` and read the working
+tree, reporting that as the export. The two agree exactly when the tree is
+clean — which is exactly when the protocol is least needed — and diverge
+precisely in the case it exists to catch. The substitution is invisible in a
+transcript unless you notice that `git show <ref>:<path>` never ran. Reading
+a file is not exporting it, and appending `&& wc -l` guards only the command
+you actually issued.
 
 ### Commit the approval ledger before hand-editing it
 
