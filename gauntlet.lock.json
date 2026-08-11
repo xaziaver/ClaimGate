@@ -217,8 +217,8 @@
       "reviewer": "xaziaver"
     },
     "spec:features/duplicates.feature": {
-      "approved_at": "2026-08-02T20:52:39+00:00",
-      "digest": "sha256:94a45743d3ac06527224f77684d368fcb45fdbe766eaab449070cbfef84e5bfa"
+      "approved_at": "2026-08-11T11:50:29+00:00",
+      "digest": "sha256:2d616d1176589cb65a93e586a441b36b0ed4a6f4bf2b06b5b1dcbc3a8bcbe650"
     },
     "spec:features/siu_indicators.feature": {
       "approved_at": "2026-08-10T09:22:55+00:00",
