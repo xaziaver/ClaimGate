@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from claimgate.domain.duplicates import find_duplicates as _find_duplicates
-from claimgate.domain.models import Candidate, ExistingClaim
+from claimgate.domain.models import Candidate, DuplicateMatchResult, ExistingClaim
 
 
 @dataclass(frozen=True)
@@ -20,9 +20,16 @@ def find_duplicates(
     policy_number: str,
     loss_date: date,
     loss_type: str,
+    notice_type: str,
+    window_days: int,
     existing_claims: list[ExistingClaimRecord],
-) -> list[str]:
-    candidate = Candidate(policy_number=policy_number, loss_date=loss_date, loss_type=loss_type)
+) -> DuplicateMatchResult:
+    candidate = Candidate(
+        policy_number=policy_number,
+        loss_date=loss_date,
+        loss_type=loss_type,
+        notice_type=notice_type,
+    )
     claims = [
         ExistingClaim(
             claim_id=record.claim_id,
@@ -32,4 +39,4 @@ def find_duplicates(
         )
         for record in existing_claims
     ]
-    return _find_duplicates(candidate, claims)
+    return _find_duplicates(candidate, claims, window_days)
