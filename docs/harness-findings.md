@@ -501,6 +501,66 @@ observation in the note below.
 
 **Status.** Open.
 
+#### Background steps are invisible to acceptance mutation entirely
+
+**What happened.** Found while inventorying `loss_type`/`policy_number` vocabulary across
+`features/` ahead of the vocabulary-rename reopening (`QUEUE.md` items 4a–4c), not requested.
+Read `gauntlet.acceptance.mutation`'s `mutants()` directly rather than infer from behavior: it
+iterates `feature.scenarios` only, calling `_example_mutants(scenario)` and
+`_literal_mutants(scenario)` for each. `Feature.background` — confirmed, in
+`gauntlet.acceptance.gherkin`, to be a `list[Step]` populated separately from any `Scenario.steps`
+during parsing — is never passed to either function, so it is never a mutation target at all.
+`features/duplicates.feature`'s Background (`Given an existing claim "CLM-1001" with policy number
+"HO-1234567", loss date "2026-06-01", and loss type "fire"`) supplies those three values to all
+fourteen scenario executions in the file, and none of the three has ever been mutated, in any
+scenario, outline or standalone.
+
+**A second mechanism that compounds it, in the same source file.** `_literal_mutants` also returns
+early for outline scenarios (`if scenario.is_outline: return []`) — literal-text mutation only runs
+against a standalone scenario's own steps. So a value hardcoded in an *outline* scenario's `Given`
+line, outside its Examples table, is equally invisible: `duplicates.feature`'s "A follow-on notice
+type is never compared..." outline fixes `loss type "fire"` and `policy number "HO-1234567"` in its
+Given line, and neither is ever mutated, for the same underlying reason as Background — the line
+just isn't reachable from either mutation path. Together, these two mechanisms are why a naive
+"does this approval's row contain the value" count overstates the current ledger's exposure to a
+vocabulary rename: of `duplicates.feature`'s 18 current approvals, only 10 are actually keyed to a
+mutated loss_type/policy_number table cell (the other 8 look vocabulary-dependent by eye — their
+scenario's `Given` text literally says `fire`/`HO-1234567` — but aren't, because that text was never
+a mutation candidate). Across all four feature files the true count is 21 of 42 current approvals,
+not 42 of 42. Getting that number right required reading both functions; reasoning from the feature
+files alone would have overstated it by exactly the entries this finding describes.
+
+**Why it matters.** The values a Background carries are structurally the ones a spec leans on
+hardest — every scenario in the file inherits them, usually as the fixed point the rest of the
+scenario is measured against (here, the existing claim everything else is or isn't a duplicate of).
+Mutation testing exists to prove an example's values are wired to real behavior, and the Background
+values are exactly the ones it never touches. A bug that only manifests when the existing claim's
+own `loss_type`, `policy_number`, or `claim_id` is wrong would not be caught by acceptance mutation
+at all, in any scenario that relies on Background rather than restating the value itself.
+
+**What would address it.** Extend mutation generation to `feature.background`, using the same
+literal-text approach `_step_mutants` already applies to a standalone scenario's own steps — a
+Background step is not meaningfully different from a `Given` in a non-outline scenario, and the
+existing regex-based literal matching (`LITERAL_PATTERN`) needs no change, only a call site.
+
+**Proposed change.** `gauntlet.acceptance.mutation.mutants()` should also generate literal mutants
+against `feature.background`'s steps — once per feature, not once per scenario, since Background
+text appears once in the file regardless of how many scenarios inherit it — with a distinct
+`kind` (e.g. `"background"`) in the locator, so a surviving mutant there reads as background-sourced
+rather than being misattributed to whichever scenario happens to run first.
+
+**What it cost us.** Nothing realized yet — found during inventory, before any rename landed. The
+near-miss is real: the same content-addressed-locator mechanism already documented under "Mutant
+approval keys are content-addressed on the whole row" would apply here too if it could, except worse
+in the opposite direction — a Background value can change silently, with no stale-approval signal at
+all, because no approval was ever keyed to it in the first place.
+
+**Routes to:** BACKLOG.md, v1. Same family as "Mutant approval keys are content-addressed on the
+whole row" and "Acceptance mutation cannot distinguish a deliberately inert value from an untested
+one" — grouped with acceptance-mutation-coverage gaps.
+
+**Status.** Open.
+
 ### v1, blocking v2
 
 ARCHITECTURE.md's rule is that the workspace is a client reading "the event
