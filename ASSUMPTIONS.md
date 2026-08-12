@@ -141,6 +141,16 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   orphaned (see the decisions.md audit above) — tuned for a model where a match blocked a notice,
   which is no longer how duplicates work. Whoever resolves this reopening should treat the window
   value as open, not just the framing and the `notice_type` interaction.
+  **Resolved by the `reopening/duplicates` merge (`0b4e315`, 2026-08-12; `QUEUE.md` item 3):** the
+  spec now states non-blocking evidence throughout — "candidate matches," never "probable
+  duplicates" or a second claimant's report. `notice_type` is matched explicitly, with
+  `SUPPLEMENTAL`/`REOPENED`/`LOSS_ASSESSMENT` resolving `NOT_EVALUATED` with a reason instead of
+  running the window comparison, rather than being silently treated as a candidate or silently
+  missed. The ascending-order assertion is now proven: evaluation walks input order while emission
+  is explicitly sorted, and the two orders are deliberately different in the example data, so a
+  mutation removing the sort is caught rather than passing by coincidence. The window is 60 days,
+  symmetric on reported loss date, supplied by the caller with no domain default — replacing the
+  orphaned 3-day constant rather than re-tuning it.
 - **Exact `loss_type` equality in the duplicate match key is a false-negative source, and a real
   tradeoff rather than an obvious relaxation.** Chosen under the same blocking model that orphaned
   the 3-day window above — tight equality was cheap when a false positive blocked a notice, expensive

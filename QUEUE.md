@@ -22,7 +22,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
    already recorded and needs phase-3 policy data. Do not build the coverage rule in item 2; specify
    the guard only.*
 3. **`duplicates.feature` framing, `notice_type` interaction, sort proof, and the now-orphaned
-   3-day window.** *(Spec locked, implementation not started — see below.)* Real correctness and
+   3-day window.** *(Done — see below.)* Real correctness and
    framing gaps, plus a threshold whose own rationale stopped holding the moment duplicates became
    non-blocking evidence instead of a gate — lower severity than 1–2 because nothing here carries
    statutory exposure. *Note for whoever implements this item: ten acceptance-mutant approvals on
@@ -45,7 +45,26 @@ Ordered by domain severity, not by effort. One line each on why that position.
    meantime. That's item 1 reusing in-scope vocabulary it already had on hand for a needed
    standard-severity example — the file is temporarily inconsistent (residential vocabulary sitting
    next to auto vocabulary this book doesn't write) until this item's pass reconciles it. Intentional,
-   not a defect.*
+   not a defect. Correction now that item 3 has landed: this note should not be read as identifying
+   `triage.feature` as the only file in that state.
+   `duplicates.feature`'s "Two existing claims both match the candidate" scenario also carries auto
+   vocabulary (`AU-7654321`, `auto_collision`) alongside the file's otherwise-residential examples —
+   present since the original phase-1 spec (`fc86add`), not introduced by item 3's reopening, which
+   left that scenario's data untouched. The mechanism differs (item 1 mixed a new example into an
+   otherwise-auto rule; `duplicates.feature`'s auto and residential vocabulary sit in separate,
+   internally-consistent scenarios, never mixed within one), but both files are in scope for this
+   item, and `duplicates.feature` has been in this state longer.*
+   *Stale-reason note: `triage.feature`'s eleven-survivor mutant approval (`gauntlet.lock.json`,
+   approved 2026-08-10) gives as part of its reason that the `0 <=` lower-bound guard in
+   `_is_recent_inception` is undocumented because "no scenario in siu_indicators.feature,
+   triage.feature, or any unit test exercises an inception date later than a loss date." Item 2 added
+   exactly that scenario the same day (`siu_indicators.feature`'s "An inception date later than the
+   loss date does not fire the indicator"). The approval is probably still valid — the new scenario
+   lives in `siu_indicators.feature`, not `triage.feature`, so the mutant on `triage.feature`'s own
+   row may still be unkillable at that layer for the structural reason the rest of the approval
+   describes — but its stated reason is now factually wrong about what's documented where. This
+   item's vocabulary pass will restale these approvals anyway; that re-review is the moment to
+   rewrite the reason, not before. Do not hand-edit the ledger to fix this now.*
 5. **`triage.feature` thresholds** ($500 theft threshold with no provenance, loss amount affecting
    severity only for theft, `policy_inception_date` availability at intake). Real gaps, but none
    carries the legal exposure of 1–2, so they sit behind everything above. *Note for whoever revisits
@@ -84,36 +103,41 @@ narrative, "regardless of whether the claim is otherwise valid") is gone from th
 check` passes on `main` post-merge (34 reviewed-equivalent, no unreviewed acceptance survivors, no
 stale approvals).
 
-**Item 3's spec is drafted, revised twice under review, and locked** on `reopening/duplicates`
-(lock commit `9ebdee1`, 2026-08-11); implementation has not started. `duplicates.feature` moves from
-a preventive framing to non-blocking evidence for a human reviewer — "candidate matches," never
-"probable duplicates." All three non-`INITIAL` notice types now resolve `NOT_EVALUATED` with a
-reason instead of running the window comparison: `SUPPLEMENTAL`/`REOPENED` because a declared
-follow-on already answers the question duplicate detection asks (`FOLLOW_ON_NOTICE_TYPE`);
-`LOSS_ASSESSMENT`, for a different reason, because telling a unit owner's own loss apart from an
-association assessment claim needs the existing claim's coverage type, unavailable at intake until
-phase 3 (`NO_EXISTING_CLAIM_NOTICE_TYPE`). These two reason codes are their own closed enumeration,
-deliberately not shared with `siu_indicators.feature`'s — duplicate candidates are an ordinary,
-unrestricted attribute, SIU indicators are restricted-read in a separate table, and the two
-enumerations grow independently without either constraining the other. The match window changes from
-3 days to 60, symmetric, on reported loss date: a carrier policy decision with no statutory or
-industry-standard basis, set because non-blocking evidence flips the false-positive/false-negative
-cost asymmetry the original 3-day window was tuned against.
+**Item 3 is done and merged to `main`** (merge commit `0b4e315`, 2026-08-12). `find_duplicates`
+returns `DuplicateMatchResult` (`EVALUATED`/`NOT_EVALUATED`, `matches`, `reason`) instead of a bare
+list, so a candidate that was never compared can't be read as compared-and-clean. `notice_type` is
+matched explicitly, with no fall-through case: `INITIAL` runs the window comparison;
+`SUPPLEMENTAL`/`REOPENED` resolve `NOT_EVALUATED`/`FOLLOW_ON_NOTICE_TYPE` regardless of timing,
+because a declared follow-on already answers the question duplicate detection asks;
+`LOSS_ASSESSMENT` resolves `NOT_EVALUATED`/`NO_EXISTING_CLAIM_NOTICE_TYPE`, because telling a unit
+owner's own loss apart from an association claim needs the existing claim's coverage type,
+unavailable until phase 3. These two reason codes are their own closed enumeration, deliberately not
+shared with `siu_indicators.feature`'s — duplicate candidates are an ordinary, unrestricted
+attribute, SIU indicators are restricted-read in a separate table, and the two enumerations grow
+independently. Any other `notice_type` raises `ValueError` — the first raise in the domain layer —
+rather than adding a third reason code: `validation.feature` already resolves an unrecognized value
+to `NOTICE_TYPE_UNRECOGNIZED`, and `PHASE2_DESIGN.md`'s transition table never lets a notice with a
+blocker reach `TRIAGED`, so `find_duplicates` is never called with one on the designed path — an
+unreachable value is a caller contract violation, not a business outcome to record. The match window
+is a required `window_days` parameter with no domain default, mirroring item 2's thresholds;
+`DUPLICATE_WINDOW_DAYS` is removed rather than changed to 60, since a carrier policy value belongs to
+the caller on every call, and 60 itself — a carrier policy decision, symmetric on reported loss date
+— has no statutory or industry-standard basis. `EVALUATED` as the positive value's spelling is a
+human decision, not spec text: unlike `NOT_EVALUATED` and both reason codes, it appears nowhere in
+`duplicates.feature`, and it will likely resurface when phase 2's serializer settles the still-open
+question of whether these reason codes belong in `reason_codes` (`PHASE2_DESIGN.md`). `gauntlet
+check` passes on `main` post-merge (42 reviewed-equivalent, no unreviewed acceptance survivors, no
+stale approvals). Item 4 is next.
 
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-**Item 3's implementation is open, on `reopening/duplicates`.** The spec is locked (`9ebdee1`); the
-matcher, step definitions, and any new result type for the `NOT_EVALUATED`-plus-reason outcome still
-need writing against it. `gauntlet check` staying red on that branch until then is the expected,
-sanctioned pre-implementation state (CLAUDE.md's spec-lock-then-implementation ordering), not a
-problem to route around. See item 3's queue entry above for the stale mutant-approval warning
-implementation will trigger.
+Nothing open as of this handoff.
 
-`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through this handoff's QUEUE.md
-update; `reopening/duplicates` is pushed through its merge of that update, on top of the spec lock
-(`9ebdee1`). `reopening/siu-indicators` is pushed and kept as history. `reopening/triage-siu-queue` is
-deleted, locally and on origin — once item 1 merged it had no commits unique to it, and its content is
-fully preserved in `main`'s own history through the merge commit.
+`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through item 3's merge and this
+handoff's QUEUE.md/ASSUMPTIONS.md updates. `reopening/duplicates` is pushed through its mutant-review
+commit (`856ed39`) and kept as history, same as `reopening/siu-indicators`. `reopening/triage-siu-queue`
+is deleted, locally and on origin — once item 1 merged it had no commits unique to it, and its content
+is fully preserved in `main`'s own history through the merge commit.
