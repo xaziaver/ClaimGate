@@ -35,36 +35,43 @@ Ordered by domain severity, not by effort. One line each on why that position.
    Approval keys are content-addressed on the whole row, so all ten go stale on implementation, not
    just the four with new dates — the gate will report every one, and re-review against the locked
    spec is mine, not automatic.*
-4. **Coordinated loss type and policy format pass across all four feature files.** A credibility
-   and scope-fit problem (a multi-line liability book's vocabulary in a system designed for
-   Florida residential property only), not a correctness defect — sequenced after 1–3 and done as one pass because
-   `loss_type` vocabulary is shared across every file; fixing it in one file first would leave the
-   others visibly incoherent with it. *Scope note: item 1's reopening added a second `water_damage`
-   example (standard severity, both SIU flags firing) to `triage.feature`'s end-to-end scenario,
-   while `auto_collision`/`auto_comprehensive` remain untouched in the severity rule in the
-   meantime. That's item 1 reusing in-scope vocabulary it already had on hand for a needed
-   standard-severity example — the file is temporarily inconsistent (residential vocabulary sitting
-   next to auto vocabulary this book doesn't write) until this item's pass reconciles it. Intentional,
-   not a defect. Correction now that item 3 has landed: this note should not be read as identifying
-   `triage.feature` as the only file in that state.
-   `duplicates.feature`'s "Two existing claims both match the candidate" scenario also carries auto
-   vocabulary (`AU-7654321`, `auto_collision`) alongside the file's otherwise-residential examples —
-   present since the original phase-1 spec (`fc86add`), not introduced by item 3's reopening, which
-   left that scenario's data untouched. The mechanism differs (item 1 mixed a new example into an
-   otherwise-auto rule; `duplicates.feature`'s auto and residential vocabulary sit in separate,
-   internally-consistent scenarios, never mixed within one), but both files are in scope for this
-   item, and `duplicates.feature` has been in this state longer.*
-   *Stale-reason note: `triage.feature`'s eleven-survivor mutant approval (`gauntlet.lock.json`,
-   approved 2026-08-10) gives as part of its reason that the `0 <=` lower-bound guard in
-   `_is_recent_inception` is undocumented because "no scenario in siu_indicators.feature,
-   triage.feature, or any unit test exercises an inception date later than a loss date." Item 2 added
-   exactly that scenario the same day (`siu_indicators.feature`'s "An inception date later than the
-   loss date does not fire the indicator"). The approval is probably still valid — the new scenario
-   lives in `siu_indicators.feature`, not `triage.feature`, so the mutant on `triage.feature`'s own
-   row may still be unkillable at that layer for the structural reason the rest of the approval
-   describes — but its stated reason is now factually wrong about what's documented where. This
-   item's vocabulary pass will restale these approvals anyway; that re-review is the moment to
-   rewrite the reason, not before. Do not hand-edit the ledger to fix this now.*
+4a. **Loss-type and policy-number vocabulary substitution across `triage.feature` and
+    `duplicates.feature`.** Pure example-data rename, no rule changes: `auto_collision` ->
+    `lightning`, `auto_comprehensive` -> `smoke`, `AU-7654321` -> `HO-7654321`. Credibility and
+    scope fit, not correctness — sequenced first of the three-way split because it is the purely
+    mechanical piece, with nothing for a human to decide beyond the replacement values themselves.
+    *Known blast radius: 21 of the 42 current acceptance-mutant approvals are keyed to rows
+    containing a loss_type or policy_number value and go stale when this lands (11 on
+    `triage.feature`'s end-to-end scenario, 10 on `duplicates.feature`'s "Matching against a single
+    existing claim"). That re-review is mine, not the implementer's. `duplicates.feature`'s three
+    standalone scenarios that also carry this vocabulary in their own `Given` steps ("Two existing
+    claims both match the candidate", "A loss assessment notice is never compared...", "An INITIAL
+    notice is still compared normally") sit at zero approvals today — not because they are
+    unmutated, but because every mutant generated against them was already killed. A rename
+    re-exercises mutation there fresh, with no guarantee of the same kill rate; that part of the
+    blast radius is unbounded, not merely deferred.*
+4b. **The recognized policy-number prefix set is a business rule, not example data.**
+    `POLICY_NUMBER_PATTERN` accepts `HO`, `AU`, `CP`, `CA`, `GL`, so `AU`/`CP`/`CA`/`GL` currently
+    *pass* validation. Removing them flips four rows in `validation.feature`'s "Policy number
+    format" outline from no-blockers to `POLICY_NUMBER_MALFORMED` and requires changing
+    `validation.py`'s regex alongside the spec — a change to what the spec asserts, not a rename, so
+    it gets its own spec lock and its own reopening, sequenced after 4a because it touches code and
+    not only examples. *Open question for that item, not to be answered now: what the recognized set
+    becomes. Policy numbering is carrier-specific with no industry standard. Candidates are `HO`
+    plus `DP` (dwelling fire, common on Florida residential books for landlord and
+    non-owner-occupied risks), possibly `MH` if the estate writes manufactured housing. Note that
+    `LOSS_ASSESSMENT` notices already imply condo risks are in this book whether or not a prefix
+    distinguishes them.*
+4c. **Missing perils: hurricane, sinkhole, and roof_leak.** A completeness gap, not a rename — the
+    one a claims manager would actually stop at: a Florida residential intake system with no way to
+    code a hurricane or a sinkhole claim. See `STATUTORY_REGISTER.md` for why hurricane and sinkhole
+    are statutorily distinct, not just missing labels. Sequenced last of the three because each new
+    value forces a severity decision, which is item 5's territory — adding perils without deciding
+    their severity would push them silently through the standard fallthrough, which is the
+    defaulting `CLAUDE.md`'s first constraint forbids. Either waits for item 5 or merges with it; not
+    scoped further here. *Also see `ASSUMPTIONS.md`'s open decision on `loss_type` conflating perils
+    with Section II coverage categories — this item should not assume an answer to that question
+    either.*
 5. **`triage.feature` thresholds** ($500 theft threshold with no provenance, loss amount affecting
    severity only for theft, `policy_inception_date` availability at intake). Real gaps, but none
    carries the legal exposure of 1–2, so they sit behind everything above. *Note for whoever revisits
@@ -127,7 +134,10 @@ human decision, not spec text: unlike `NOT_EVALUATED` and both reason codes, it 
 `duplicates.feature`, and it will likely resurface when phase 2's serializer settles the still-open
 question of whether these reason codes belong in `reason_codes` (`PHASE2_DESIGN.md`). `gauntlet
 check` passes on `main` post-merge (42 reviewed-equivalent, no unreviewed acceptance survivors, no
-stale approvals). Item 4 is next.
+stale approvals). Item 4 has been split into 4a, 4b, and 4c (see above, 2026-08-12) — the loss-type
+and policy-number vocabulary pass turned out to bundle a pure rename, a business-rule change to
+`validation.py`'s regex, and a completeness gap behind one number, and each needed its own spec lock
+and its own reopening. Item 4a is next.
 
 ## Open instructions
 
