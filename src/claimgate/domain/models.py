@@ -27,6 +27,20 @@ class ExistingClaim:
     loss_type: str
 
 
+DuplicateMatchValue = Literal["EVALUATED", "NOT_EVALUATED"]
+
+
+@dataclass(frozen=True)
+class DuplicateMatchResult:
+    # Same convention as SiuIndicatorResult: reason is set only when value is
+    # NOT_EVALUATED, and matches is only ever populated when value is
+    # EVALUATED - "unevaluated is not negative" (ASSUMPTIONS.md) applies here
+    # as "unevaluated carries no matches", not an empty result read as none found.
+    value: DuplicateMatchValue
+    matches: tuple[str, ...] = ()
+    reason: str | None = None
+
+
 @dataclass(frozen=True)
 class ValidationBlocker:
     code: str

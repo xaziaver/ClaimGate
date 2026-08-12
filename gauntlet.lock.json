@@ -12,64 +12,112 @@
       "approved_at": "2026-08-04T18:42:54+00:00",
       "digest": "sha256:9940150d3044970a0ebb57c868b51d233a774b67150c7c97b36d4f09c5930470"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|AU-7654321|2026-06-01|fire|[]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
-      "digest": "sha256:ceb72fdfce5a0fd8da8ed7dafd8647a34439882233ad64bd01cb44f420b1de87",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+    "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|loss_date|REOPENED|2026-06-02": {
+      "approved_at": "2026-08-11T22:49:19+00:00",
+      "digest": "sha256:3c4be2973033162be3610d1674dbd7d0a0616261ed39508f8125ee572fb74c2e",
+      "reason": "All eight are invariance by design, which is the scenario purpose. SUPPLEMENTAL and REOPENED both resolve NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE, so swapping them cannot change the outcome. The near date (2026-06-02) and far date (2026-12-01) resolve identically because the window comparison never runs for these types - which is what the far rows exist to prove, and they are NOT redundant with the near rows: an implementation that consulted the window before the notice type would return no-match rather than NOT_EVALUATED on the far rows, and only they catch it. Do not prune these rows as duplicative. REVISIT TRIGGER: void if SUPPLEMENTAL and REOPENED ever resolve differently from one another, or if any notice type exclusion becomes conditional on timing.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-05-29|fire|[\"CLM-1001\"]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
-      "digest": "sha256:e1db47fa8a2a41200067de34e0a70051f0267d1d79155c39418af84ff3fef1d4",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+    "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|loss_date|REOPENED|2026-12-01": {
+      "approved_at": "2026-08-11T22:49:19+00:00",
+      "digest": "sha256:d7d5ad67c21c70d22cef7670bfbf740f174b58e5840069bc5a3ca96fc984c488",
+      "reason": "All eight are invariance by design, which is the scenario purpose. SUPPLEMENTAL and REOPENED both resolve NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE, so swapping them cannot change the outcome. The near date (2026-06-02) and far date (2026-12-01) resolve identically because the window comparison never runs for these types - which is what the far rows exist to prove, and they are NOT redundant with the near rows: an implementation that consulted the window before the notice type would return no-match rather than NOT_EVALUATED on the far rows, and only they catch it. Do not prune these rows as duplicative. REVISIT TRIGGER: void if SUPPLEMENTAL and REOPENED ever resolve differently from one another, or if any notice type exclusion becomes conditional on timing.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-06-01|water_damage|[]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
-      "digest": "sha256:ceb72fdfce5a0fd8da8ed7dafd8647a34439882233ad64bd01cb44f420b1de87",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+    "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|loss_date|SUPPLEMENTAL|2026-06-02": {
+      "approved_at": "2026-08-11T22:49:19+00:00",
+      "digest": "sha256:3c4be2973033162be3610d1674dbd7d0a0616261ed39508f8125ee572fb74c2e",
+      "reason": "All eight are invariance by design, which is the scenario purpose. SUPPLEMENTAL and REOPENED both resolve NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE, so swapping them cannot change the outcome. The near date (2026-06-02) and far date (2026-12-01) resolve identically because the window comparison never runs for these types - which is what the far rows exist to prove, and they are NOT redundant with the near rows: an implementation that consulted the window before the notice type would return no-match rather than NOT_EVALUATED on the far rows, and only they catch it. Do not prune these rows as duplicative. REVISIT TRIGGER: void if SUPPLEMENTAL and REOPENED ever resolve differently from one another, or if any notice type exclusion becomes conditional on timing.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-06-04|fire|[\"CLM-1001\"]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
-      "digest": "sha256:cc920c8ae5d713bb8b01f547de98a7f0285c52d8132b459cb74e55fce265520e",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+    "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|loss_date|SUPPLEMENTAL|2026-12-01": {
+      "approved_at": "2026-08-11T22:49:19+00:00",
+      "digest": "sha256:d7d5ad67c21c70d22cef7670bfbf740f174b58e5840069bc5a3ca96fc984c488",
+      "reason": "All eight are invariance by design, which is the scenario purpose. SUPPLEMENTAL and REOPENED both resolve NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE, so swapping them cannot change the outcome. The near date (2026-06-02) and far date (2026-12-01) resolve identically because the window comparison never runs for these types - which is what the far rows exist to prove, and they are NOT redundant with the near rows: an implementation that consulted the window before the notice type would return no-match rather than NOT_EVALUATED on the far rows, and only they catch it. Do not prune these rows as duplicative. REVISIT TRIGGER: void if SUPPLEMENTAL and REOPENED ever resolve differently from one another, or if any notice type exclusion becomes conditional on timing.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|AU-7654321|2026-06-01|fire|[]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
+    "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|notice_type|REOPENED|2026-06-02": {
+      "approved_at": "2026-08-11T22:49:19+00:00",
+      "digest": "sha256:2efca8eea8540e1580b4d79f6012286b47030683b073cade24583d8d57cfee79",
+      "reason": "All eight are invariance by design, which is the scenario purpose. SUPPLEMENTAL and REOPENED both resolve NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE, so swapping them cannot change the outcome. The near date (2026-06-02) and far date (2026-12-01) resolve identically because the window comparison never runs for these types - which is what the far rows exist to prove, and they are NOT redundant with the near rows: an implementation that consulted the window before the notice type would return no-match rather than NOT_EVALUATED on the far rows, and only they catch it. Do not prune these rows as duplicative. REVISIT TRIGGER: void if SUPPLEMENTAL and REOPENED ever resolve differently from one another, or if any notice type exclusion becomes conditional on timing.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|notice_type|REOPENED|2026-12-01": {
+      "approved_at": "2026-08-11T22:49:19+00:00",
+      "digest": "sha256:2efca8eea8540e1580b4d79f6012286b47030683b073cade24583d8d57cfee79",
+      "reason": "All eight are invariance by design, which is the scenario purpose. SUPPLEMENTAL and REOPENED both resolve NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE, so swapping them cannot change the outcome. The near date (2026-06-02) and far date (2026-12-01) resolve identically because the window comparison never runs for these types - which is what the far rows exist to prove, and they are NOT redundant with the near rows: an implementation that consulted the window before the notice type would return no-match rather than NOT_EVALUATED on the far rows, and only they catch it. Do not prune these rows as duplicative. REVISIT TRIGGER: void if SUPPLEMENTAL and REOPENED ever resolve differently from one another, or if any notice type exclusion becomes conditional on timing.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|notice_type|SUPPLEMENTAL|2026-06-02": {
+      "approved_at": "2026-08-11T22:49:19+00:00",
+      "digest": "sha256:5b3365a6542911dc8e21c7e6c443335a03a217f9bda7c0607146c8b3a9f293f4",
+      "reason": "All eight are invariance by design, which is the scenario purpose. SUPPLEMENTAL and REOPENED both resolve NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE, so swapping them cannot change the outcome. The near date (2026-06-02) and far date (2026-12-01) resolve identically because the window comparison never runs for these types - which is what the far rows exist to prove, and they are NOT redundant with the near rows: an implementation that consulted the window before the notice type would return no-match rather than NOT_EVALUATED on the far rows, and only they catch it. Do not prune these rows as duplicative. REVISIT TRIGGER: void if SUPPLEMENTAL and REOPENED ever resolve differently from one another, or if any notice type exclusion becomes conditional on timing.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|notice_type|SUPPLEMENTAL|2026-12-01": {
+      "approved_at": "2026-08-11T22:49:19+00:00",
+      "digest": "sha256:5b3365a6542911dc8e21c7e6c443335a03a217f9bda7c0607146c8b3a9f293f4",
+      "reason": "All eight are invariance by design, which is the scenario purpose. SUPPLEMENTAL and REOPENED both resolve NOT_EVALUATED with reason FOLLOW_ON_NOTICE_TYPE, so swapping them cannot change the outcome. The near date (2026-06-02) and far date (2026-12-01) resolve identically because the window comparison never runs for these types - which is what the far rows exist to prove, and they are NOT redundant with the near rows: an implementation that consulted the window before the notice type would return no-match rather than NOT_EVALUATED on the far rows, and only they catch it. Do not prune these rows as duplicative. REVISIT TRIGGER: void if SUPPLEMENTAL and REOPENED ever resolve differently from one another, or if any notice type exclusion becomes conditional on timing.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|AU-7654321|2026-06-01|fire|": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
+      "digest": "sha256:46b388565bc61dedfa48aa7e3d839a5e51791f1fb1bb5493487ca008820c866f",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-04-02|fire|CLM-1001": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
+      "digest": "sha256:bc4adde0dbc27140e48287c61949d74e0f1bd6982b899e3ae0c862613d01775d",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-06-01|water_damage|": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
+      "digest": "sha256:46b388565bc61dedfa48aa7e3d839a5e51791f1fb1bb5493487ca008820c866f",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_date|HO-1234567|2026-07-31|fire|CLM-1001": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
+      "digest": "sha256:54e062f991566b32a0666475f267293b933c1abf44217834af24a939d9c19bdf",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|AU-7654321|2026-06-01|fire|": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
       "digest": "sha256:12a07acce40932893f0bfca829143dbb591d2245ede72a55cc62a25fb5ac15fc",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|HO-1234567|2026-05-28|fire|[]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|HO-1234567|2026-04-01|fire|": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
       "digest": "sha256:12a07acce40932893f0bfca829143dbb591d2245ede72a55cc62a25fb5ac15fc",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|HO-1234567|2026-06-05|fire|[]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|loss_type|HO-1234567|2026-08-01|fire|": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
       "digest": "sha256:12a07acce40932893f0bfca829143dbb591d2245ede72a55cc62a25fb5ac15fc",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-05-28|fire|[]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-04-01|fire|": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
       "digest": "sha256:b8cdc015640a16a0f8c1f8dfdee854e3c97dc97feecf10677fa8391a7a518c20",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-06-01|water_damage|[]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-06-01|water_damage|": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
       "digest": "sha256:b8cdc015640a16a0f8c1f8dfdee854e3c97dc97feecf10677fa8391a7a518c20",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-06-05|fire|[]": {
-      "approved_at": "2026-08-03T10:37:08+00:00",
+    "mutant:features/duplicates.feature#Matching against a single existing claim|example|policy_number|HO-1234567|2026-08-01|fire|": {
+      "approved_at": "2026-08-11T22:51:01+00:00",
       "digest": "sha256:b8cdc015640a16a0f8c1f8dfdee854e3c97dc97feecf10677fa8391a7a518c20",
-      "reason": "rows already excluded by policy or loss-type mismatch; the date is irrelevant to their outcome",
+      "reason": "Three distinct mechanisms, recorded under one reason only because approval is scoped per scenario and not per mutant - read this as three records. (a) Rows excluded by policy (AU-7654321) or by loss type (water_damage): the row already yields no match on a dimension the mutation does not touch, so no value in the mutated column can change the outcome. (b) Rows excluded by loss-date distance (2026-08-01, 2026-04-01): these agree with the existing claim on both policy and loss type; what excludes them is the date sitting one day outside the window, so mutating either agreeing column is inert. (c) Matching rows whose loss_date is swapped for another matching row value (2026-06-01, 2026-07-31, 2026-04-02): the substituted date is also within 60 days, so the match survives - a swap to 2026-08-01 or 2026-04-01 flips the result and is killed, meaning the plus/minus 60 boundary is proven by those pairs jointly and never by a single row. REVISIT TRIGGER: (b) and (c) are void if the window changes from 60 days; (a) is void if policy or loss-type equality stops being part of the match key.",
       "reviewer": "xaziaver"
     },
     "mutant:features/siu_indicators.feature#An inception date later than the loss date does not fire the indicator|literal|And the recent policy inception threshold is 30 days": {
@@ -217,8 +265,8 @@
       "reviewer": "xaziaver"
     },
     "spec:features/duplicates.feature": {
-      "approved_at": "2026-08-02T20:52:39+00:00",
-      "digest": "sha256:94a45743d3ac06527224f77684d368fcb45fdbe766eaab449070cbfef84e5bfa"
+      "approved_at": "2026-08-11T11:50:29+00:00",
+      "digest": "sha256:2d616d1176589cb65a93e586a441b36b0ed4a6f4bf2b06b5b1dcbc3a8bcbe650"
     },
     "spec:features/siu_indicators.feature": {
       "approved_at": "2026-08-10T09:22:55+00:00",

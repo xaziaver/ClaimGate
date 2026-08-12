@@ -146,6 +146,17 @@ A reporter-facing view, if one is ever added, is a separate resource with its ow
 — not a public alias for this one. The first consumer of an internal endpoint must not freeze
 internal state names into a contract nobody meant to publish.
 
+**Carried requirement, undecided: whether duplicate-detection `NOT_EVALUATED` reason codes belong in
+the notice's `reason_codes` field.** `duplicates.feature`'s notice-type rule (`QUEUE.md` item 3)
+resolves a `SUPPLEMENTAL`, `REOPENED`, or `LOSS_ASSESSMENT` candidate to `NOT_EVALUATED` with a
+reason code (`FOLLOW_ON_NOTICE_TYPE`, `NO_EXISTING_CLAIM_NOTICE_TYPE`) instead of running the
+comparison. This is not settled by the SIU exclusion rule under "SIU handling" below: SIU codes are
+kept out of `reason_codes` because SIU is restricted-read, and duplicate candidates are the
+opposite — an ordinary, unrestricted `TRIAGED` attribute, not a separate access-controlled table.
+Whether these two reason codes surface in the notice's `reason_codes` list alongside validation
+blockers, or stay scoped to a duplicate-candidates-specific field, is a real, undecided question
+with a real rule behind it either way — resolve before the serializer is written, not after.
+
 ## Idempotency
 
 `POST /notices` accepts an optional `Idempotency-Key` **header**, not a body field — it's
