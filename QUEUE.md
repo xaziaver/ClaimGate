@@ -136,8 +136,4 @@ the numbered queue above tracks reopenings.
 
 Nothing open as of this handoff.
 
-`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through item 3's merge and this
-handoff's QUEUE.md/ASSUMPTIONS.md updates. `reopening/duplicates` is pushed through its mutant-review
-commit (`856ed39`) and kept as history, same as `reopening/siu-indicators`. `reopening/triage-siu-queue`
-is deleted, locally and on origin — once item 1 merged it had no commits unique to it, and its content
-is fully preserved in `main`'s own history through the merge commit.
+`main` is pushed to `https://github.com/xaziaver/ClaimGate`
