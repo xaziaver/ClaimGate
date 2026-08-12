@@ -91,11 +91,25 @@ is the more consequential half of the finding: it means the gate can be silently
 the failure mode it exists to catch, and unlike deletion, nothing about it is visible in a test count
 or an assertion-free diff someone might skim past.
 
-**Third scenario not yet tested: a genuinely new test added for new code, evaluated for the first
-time.** Not run — the two cases above (delete, weaken) both start from a mutant the cache already has
-an opinion about. A brand-new test covering code the cache has never seen would presumably force fresh
-collection, but "presumably" is exactly the word this entry keeps having to retract. Left as an open
-question rather than asserted either way.
+**Third scenario, now tested: a genuinely new test added for new code, evaluated for the first
+time.** Previously left open, with the guess that a brand-new test covering code the cache has never
+seen "would presumably force fresh collection." It does not, and "presumably" was again the word to
+retract. During item 3's implementation — a commit adding `_resolve_notice_type_exclusion`, a
+function the cache had never seen — a warm-cache run reported 99.06%, 2 unresolved, both survivors on
+that function's `if notice_type == "INITIAL"` line (mutated to `"XXINITIALXX"` and to `"initial"`,
+both "no test failed"). Impossible on its face: under either mutation every INITIAL candidate falls
+through to the function's `raise ValueError`, so every unit test using INITIAL fails loudly. Clearing
+`mutants/` and rerunning gave 100%, 213 killed, no survivors.
+
+**This is the opposite direction from the confirmed case above, and the asymmetry is the point.**
+Steps 1-3-5 confirm a false PASS: the cache reporting *better* than reality after a test-only change.
+This instance is a false *survivor*: the cache reporting *worse* than reality after a source-adding
+change. Only the conservative direction gets caught, because someone eventually asks why an
+implausible mutant survived; nothing here rules out the dangerous direction on a source-adding
+change, and the two are not symmetric in consequence. The narrow rule that follows is: **a mutation
+score on a commit that adds a function is only meaningful from a cold run.** Note also how it
+surfaced — the gate was *passing* at 99.06% against a 90% threshold. It was found by an agent judging
+a green result implausible, not by anything failing.
 
 **Does the acceptance gate's own spec-mutation share this exposure? Tested directly, not inferred.**
 Weakened `tests/acceptance/test_triage_acceptance.py`'s `check_severity` step to `assert True` and
@@ -319,6 +333,14 @@ handing this to you"), against a spec awaiting human approval that was unclearab
 So the mitigation observed in the first three sessions — an agent reading this document and
 declining to retry — is memory-dependent, and it did not survive a fresh context. The loop does
 terminate. It just spends everything first.
+
+**Fifth confirmation, and it resolves which side drives the loop.** The first four left open whether
+the retries were an agent choosing to try again or the hook re-firing on its own — this document
+said to record that honestly rather than infer it. A later session settles it: the agent explicitly
+stopped, reported a blocking design question it could not answer, and stated it was holding for a
+human decision. The loop still ran four attempts against that held state. Whatever the agent decides,
+the hook re-runs. That narrows the fix as much as it confirms the problem: guidance in a project's
+own CLAUDE.md cannot prevent this, because agent intent is not what drives it. Only the harness can.
 
 **Routes to:** BACKLOG.md, v1 item 2 AND v3. See the note for the v1 effort below — this adds a fourth category to that item's taxonomy, and the same distinction recurs in v3's transition query.
 
@@ -552,10 +574,26 @@ short of hand-editing the lock file, which stays off-limits.
 when a call's survivor set spans mutants that previously received different reasons — something
 short of requiring hand-editing `gauntlet.lock.json`, which stays off-limits per project policy.
 
-**What it cost us.** Two mutants surviving in the same scenario for genuinely different reasons could
-only be recorded with one combined reason covering both, scoped inside the prose. A reader relying on
-`gauntlet mutant list` to learn why any individual mutant was approved has to parse a paragraph, and
-a revisit trigger attached to one mutant isn't machine-associated with it.
+**A cheaper implementation than the one proposed above.** `gauntlet review` already walks pending
+items one at a time and prompts `reason (required)` per item — but `review.apply` dispatches on only
+two namespaces, spec approvals and protected paths. There is no mutant branch, so acceptance
+survivors are invisible to the one command in the CLI built for precisely this interaction.
+Extending that walker to the mutant namespace is a smaller change than adding a per-locator
+`--reason` to `mutant approve`, and it reuses a prompt that already enforces one reason per item.
+
+**What it cost us.** First observed as awkwardness: two mutants in one scenario needing different
+reasons, recorded as one combined paragraph. Later realized as an actual defect in the ledger. Ten
+approvals on `duplicates.feature`'s "Matching against a single existing claim" were written in a
+single call with the reason "rows already excluded by policy or loss-type mismatch; the date is
+irrelevant to their outcome." That was accurate for four of them. For the other six it was false —
+two sat on *matching* rows, which survive because the swapped-in date stays inside the window, and
+four sat on rows excluded by loss-date distance, where policy and loss type both agree and the
+recorded reason names the two dimensions that are not doing the work. All ten stayed in the ledger
+under one false-for-six sentence until a reviewer checked each locator against the example table by
+hand. Nothing flagged it; every digest was valid. So the combined-reason workaround does not merely
+read awkwardly — here it produced a record that was wrong about most of what it covered. The coarse
+call is also the path of least resistance, because the acceptance gate's own diagnostic recommends it
+by name: "have a human review them with `gauntlet mutant approve`.
 
 **Routes to:** BACKLOG.md, v1, blocking v2. An inbox showing why each individual mutant was approved requires a per-locator reason to exist.
 
@@ -685,6 +723,21 @@ carried-forward reason for the re-approval above was rewritten to identify the c
 ("the row where the mutated inception date postdates the loss date (theft / 2026-06-15)") rather than
 by a line number that had already drifted once and will drift again. The near miss is the point: this
 was one specific reason, checked once, by someone who happened to look.
+
+**A second decay mode, found later, not covered by the convention above.** Identifying a case by what
+it is rather than by line number does not protect a reason that asserts something about the *rest of
+the suite*. The eleven-survivor `triage.feature` approval justifies itself partly by stating that the
+`0 <=` lower-bound guard is undocumented — "no scenario in siu_indicators.feature, triage.feature, or
+any unit test exercises an inception date later than a loss date." Item 2 added exactly that scenario
+to `siu_indicators.feature` the same day. The approval is probably still valid: the mutant sits on
+`triage.feature`'s row, and a scenario in another file cannot kill it. What went false is a factual
+claim inside the reason, about a file the approval does not key on. Note what did *not* fire — that
+approval carries a REVISIT TRIGGER, correctly scoped to the guard being removed, relaxed, or
+replaced. The trigger was written for the right risk. A second, untriggered assertion in the same
+prose decayed underneath it. Convention, extending the one above: a reason may state what the
+approval depends on, but should not assert the state of the wider suite unless a trigger covers that
+assertion too — and where it does, the claim should be dated, so a reader knows what it was true of
+rather than whether it is true now.
 
 **Routes to:** Gauntlet's contributor guidance, not BACKLOG.md. Prose cannot be validated; this is a convention for whoever writes approval reasons.
 

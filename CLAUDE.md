@@ -56,7 +56,7 @@ list to check before proposing anything that would violate one.
   `main` only when its spec is locked, its implementation is complete, and `gauntlet check` is
   green. This follows directly from the commit-granularity rule above, not a separate policy.
 - **Reopening branches stay a superset of main.** Documentation commits land on main; reopening
-  work stays on its branch. After any commit to main, merge main into the active reopening branch
+  work stays on its branch. After any commit to main, merge main into the open reopening branch
   so the branch remains a superset. A checked-out reopening branch should always show current
   documentation.
 - **A result that was not computed is never reported as a negative.** An
