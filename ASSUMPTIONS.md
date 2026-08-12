@@ -225,6 +225,23 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   strongest option here may be one well-grounded indicator with its data-availability caveat
   stated, rather than two where one is indefensible — an open question for whoever owns this
   decision, not an answer this project can supply on its own.
+- **`loss_type` conflates perils with Section II coverage categories, and the conflation is
+  load-bearing today, not cosmetic.** `fire`, `water_damage`, `theft`, `wind_hail`, and `vandalism`
+  are perils — physical causes of loss. `injury` and `liability` are Section II liability coverage
+  categories, not perils, and one field can't represent both dimensions of the same loss: a
+  hurricane claim where someone was also hurt has nowhere to go today (see the related defect
+  already recorded above, "'injury' is modelled as a peril rather than a Section II liability
+  coverage"). Two real behaviors are keyed on this single field carrying both kinds of fact at
+  once: `validation.py`'s `_check_injury_fields` branches on `loss_type != "injury"` to decide
+  whether injured-party fields are required, and `triage.py`'s high-severity set is
+  `{"injury", "fire"}` — a peril and a coverage category in the same frozenset because `loss_type`
+  has nowhere else to put either one. Real carriers capture cause of loss and claim/coverage type
+  as separate fields. This is the same shape of question `PHASE2_DESIGN.md` already raises for
+  `notice_type` — "the approval is void the moment required fields vary by notice type" — arriving
+  here for `loss_type`, independently and earlier than expected. Recording as an open decision, not
+  a defect: nothing here is wrong today, and `QUEUE.md` item 4c (missing perils) should not assume
+  an answer to whether `loss_type` eventually splits into separate peril and coverage-type fields —
+  adding perils is orthogonal to, and shouldn't presume the outcome of, that split.
 
 ## Synthetic data
 
