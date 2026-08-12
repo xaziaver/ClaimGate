@@ -5,12 +5,15 @@ provenance, and source. Florida amends property-insurance statutes nearly every 
 alone has been amended five times in thirteen years (chapter-law history below) — so a bare number
 with no citation and no verified-on date is not a fact, it's a guess with confidence attached.
 
-**Verification provenance, stated once here rather than per row:** all values below were verified in
-this project's design conversation, dated **2026-08-05**, against the Florida Legislature's official
-statute text at leg.state.fl.us and DFS Insurance Consumer Advocate session summaries. That
-verification was performed by the project's human reviewer; I (the agent maintaining this file) have
-not independently re-fetched the live statute text in this session, and this file should not be read
-as claiming that independent re-verification. **None of these values gate intake in phase 2** — no
+**Verification provenance, stated once here rather than per row:** the six values in the table below,
+plus the tolling and claim-recordkeeping citations under "Referenced elsewhere" further down, were
+verified in this project's design conversation, dated **2026-08-05**, against the Florida
+Legislature's official statute text at leg.state.fl.us and DFS Insurance Consumer Advocate session
+summaries. That verification was performed by the project's human reviewer; I (the agent maintaining
+this file) have not independently re-fetched the live statute text in this session, and this file
+should not be read as claiming that independent re-verification. **This scoping statement does not
+cover the hurricane and sinkhole citations added 2026-08-12** — see their own, explicitly weaker
+provenance line under "Referenced elsewhere." **None of these values gate intake in phase 2** — no
 threshold below blocks or delays a notice; see `PHASE2_DESIGN.md` for why (the no-rejected-state
 rule, and the late-notice attribute being non-blocking).
 
@@ -38,9 +41,9 @@ context needs it stated more precisely than "current as of the most recent chapt
 
 ## Referenced elsewhere, not full register entries
 
-Two more statutory provisions are load-bearing in `PHASE2_DESIGN.md` but weren't part of the
-six-value list this register was scoped to. Recording their citations here so nothing referenced in
-the design doc is an orphaned citation:
+Four more statutory provisions are load-bearing elsewhere in the project but weren't part of the
+six-value list this register was scoped to: two in `PHASE2_DESIGN.md`, two in `QUEUE.md`'s item 4c.
+Recording their citations here so nothing referenced elsewhere is an orphaned citation:
 
 - **Tolling** — 627.70131(8)(b): the section's deadlines toll when a policyholder fails to supply
   requested material information within 10 days of the request, ending on receipt of that
@@ -48,3 +51,23 @@ the design doc is an orphaned citation:
   ClaimGate does not compute this — see "Pending resolution and tolling" in `PHASE2_DESIGN.md`.
 - **Claim recordkeeping duty** — 627.70131(4)(b), with scope defined by (5)(b) and (9): the audit
   log's statutory grounding. See "Audit log" in `PHASE2_DESIGN.md`.
+- **Hurricane deductible** — 627.701: a separate hurricane deductible applies to personal lines
+  residential property, with hurricane coverage itself defined by cross-reference at 627.4025.
+  627.701(7) separately requires an offer of a $500 deductible applicable to losses from perils
+  other than hurricane, and recent amendments add a separate roof deductible. The point for
+  ClaimGate: hurricane is a statutorily distinct peril with its own deductible math, so a book that
+  codes hurricane damage as `wind_hail` cannot compute its own deductible.
+- **Catastrophic ground cover collapse and sinkhole loss** — 627.706: every insurer authorized to
+  transact property insurance in Florida must provide catastrophic ground cover collapse coverage,
+  and must make sinkhole loss coverage available for additional premium — two distinct coverages
+  with different tests.
+
+**Provenance on the two entries directly above (hurricane, sinkhole) is weaker than this file's usual
+standard, and is stated separately rather than folded into the blanket paragraph at the top of this
+file — do not read the two as the same class of claim.** The six-value table and the
+tolling/recordkeeping entries above were verified by the project's human reviewer, dated
+**2026-08-05**, against the Florida Legislature's official statute text. The hurricane and sinkhole
+citations were checked by the advisor session dated **2026-08-12** against flsenate.gov, from
+search-result excerpts rather than a direct fetch of the full section text. **Re-verification against
+the full statute text is required before either value is hash-locked or used as the basis for a
+locked spec.**
