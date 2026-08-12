@@ -18,8 +18,8 @@ Feature: FNOL triage
         | wind_hail           | standard |
         | vandalism           | standard |
         | liability           | standard |
-        | auto_collision      | standard |
-        | auto_comprehensive  | standard |
+        | lightning           | standard |
+        | smoke               | standard |
 
   Rule: Theft severity depends on the loss amount
 
