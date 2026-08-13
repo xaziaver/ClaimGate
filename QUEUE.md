@@ -64,7 +64,8 @@ Ordered by domain severity, not by effort. One line each on why that position.
     unmutated, but because every mutant generated against them was already killed. A rename
     re-exercises mutation there fresh, with no guarantee of the same kill rate; that part of the
     blast radius is unbounded, not merely deferred.*
-4b. **The recognized policy-number prefix set is a business rule, not example data.**
+4b. **The recognized policy-number prefix set is a business rule, not example data.** *(Done — see
+    below.)*
     `POLICY_NUMBER_PATTERN` accepts `HO`, `AU`, `CP`, `CA`, `GL`, so `AU`/`CP`/`CA`/`GL` currently
     *pass* validation. Removing them flips four rows in `validation.feature`'s "Policy number
     format" outline from no-blockers to `POLICY_NUMBER_MALFORMED` and requires changing
@@ -199,6 +200,29 @@ commits (`8b3fba9`, `d5f14e9`) that had landed on the reopening branch instead o
 this file's own documentation-lands-on-main convention — not unpicked, just carried forward and
 recorded here so the merge doesn't misdescribe itself as 4a alone.
 
+**Item 4b is done and merged to `main`** (merge commit `f78ba74`, 2026-08-13). `POLICY_NUMBER_PATTERN`
+narrows from `HO|AU|CP|CA|GL` to `HO` alone; `AU-1234567`, `CP-1234567`, `CA-1234567`, and
+`GL-1234567` now resolve `POLICY_NUMBER_MALFORMED` instead of passing. Spec locked at `eda826b`.
+HO-only is a carrier scope decision, not a value with statutory or industry-standard support behind
+it — policy numbering is carrier-specific, and `HO` is what's confirmed today. `DP` (dwelling fire,
+common on Florida residential books for landlord and non-owner-occupied risk) is the next candidate
+if the estate turns out to write that line, and `MH` (manufactured housing) after that — both
+excluded now for want of evidence, not by a judgment against them. An unrecognized prefix is a
+blocker like any other malformed policy number, not a refusal: the notice still lands `PENDED`,
+never a rejected or discarded state, per `CLAUDE.md`'s state-model constraint. `validation.feature`'s
+"Policy number format" outline keeps its `AU-1234567`/`CP-1234567`/`CA-1234567`/`GL-1234567` rows
+rather than collapsing them into the existing `XX-1234567` catch-all — deliberately, because they
+document which lines this book does not write, not merely that malformed prefixes are rejected. The
+implementation commit (`6eb403a`) was `src/claimgate/domain/validation.py`'s regex plus
+`tests/unit/test_validation.py`'s four AU/CP/CA/GL rows, the same blind spot 4a found: unit tests
+never read feature files, so they needed their own update to match the locked spec rather than
+catching the gap themselves. `gauntlet check` passes on `main` post-merge (169/169 tests, mutation
+100%/213 killed, 42 reviewed-equivalent — the same figure as after 4a, confirming no new acceptance
+survivors on the "Policy number format" outline and no stale approvals). Item 4c is next in the
+numbered list above, but its own entry already says it waits for item 5 or merges with it, because
+each new peril forces a severity decision that's item 5's territory — that decision is the human's to
+make, not a pickup for the next session.
+
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
@@ -206,6 +230,7 @@ the numbered queue above tracks reopenings.
 
 Nothing open as of this handoff.
 
-`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through item 4a's merge and this
-handoff's QUEUE.md/ASSUMPTIONS.md updates. `reopening/loss-type-vocabulary` is pushed through its tip
-(`d5f14e9`) and kept as history, same as `reopening/duplicates` and `reopening/siu-indicators`.
+`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through item 4b's merge and this
+handoff's QUEUE.md/ASSUMPTIONS.md updates. `reopening/policy-prefix-set` is pushed through its tip
+(`6eb403a`) and kept as history, same as `reopening/loss-type-vocabulary`, `reopening/duplicates`, and
+`reopening/siu-indicators`.

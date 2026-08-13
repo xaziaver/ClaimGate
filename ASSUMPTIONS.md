@@ -171,17 +171,22 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   reflect a multi-line liability book**, not this one: `AU`/`CP`/`CA`/`GL` prefixes,
   `auto_collision` and `auto_comprehensive` loss types, auto policy numbers throughout the
   duplicates examples.
-  **Narrowed, not resolved, by the `reopening/loss-type-vocabulary` merge (`a0983ef`, 2026-08-13;
-  `QUEUE.md` item 4a):** the loss-type and policy-number *example data* is fixed in
-  `triage.feature` (`auto_collision` -> `lightning`, `auto_comprehensive` -> `smoke`) and
-  `duplicates.feature` (`AU-7654321` -> `HO-7654321`, on the policy-mismatch row and the "Two
-  existing claims both match the candidate" scenario). What remains open: the recognized policy-number
-  *prefix set* is still a business rule, not example data — `validation.py`'s
-  `POLICY_NUMBER_PATTERN` still accepts `AU`/`CP`/`CA`/`GL` as valid formats, unchanged by this
-  merge and scoped to `QUEUE.md` item 4b instead. `validation.feature`'s own "Policy number format"
-  outline was not touched — it still asserts `AU-1234567`, `CP-1234567`, `CA-1234567`, and
-  `GL-1234567` as producing no blockers, and item 4b's spec is what flips those assertions to
-  `POLICY_NUMBER_MALFORMED`.
+  **Resolved by the `reopening/loss-type-vocabulary` merge (`a0983ef`, 2026-08-13; `QUEUE.md` item
+  4a) and the `reopening/policy-prefix-set` merge (`f78ba74`, 2026-08-13; `QUEUE.md` item 4b),
+  together:** the loss-type and policy-number *example data* is fixed in `triage.feature`
+  (`auto_collision` -> `lightning`, `auto_comprehensive` -> `smoke`) and `duplicates.feature`
+  (`AU-7654321` -> `HO-7654321`, on the policy-mismatch row and the "Two existing claims both match
+  the candidate" scenario). The recognized policy-number *prefix set* is narrowed to `HO` alone —
+  `validation.py`'s `POLICY_NUMBER_PATTERN` no longer accepts `AU`/`CP`/`CA`/`GL`, and
+  `validation.feature`'s "Policy number format" outline now asserts `AU-1234567`, `CP-1234567`,
+  `CA-1234567`, and `GL-1234567` as `POLICY_NUMBER_MALFORMED` rather than passing — kept as explicit
+  rows rather than folded into the outline's existing malformed-prefix catch-all, because they
+  document which lines this book does not write. Nothing else in `validation.feature`'s own example
+  data still reflects a multi-line book. What genuinely remains open: what the recognized set grows
+  to next (`DP`, then `MH`) is still an open question recorded at `QUEUE.md` item 4b, not decided by
+  this merge; and the number *shape* — two letters, a hyphen, seven digits — is untouched by either
+  merge and stays open below, under "`POLICY_NUMBER_PATTERN` encodes a carrier fact in the domain
+  layer."
 - **"injury" is modelled as a peril rather than a Section II liability coverage.** `loss_type` is
   also single-valued, so a hurricane loss where someone was hurt cannot be represented.
 - **Loss amount affects severity only for theft.** A $50,000 water loss and a $500 water loss
