@@ -48,24 +48,40 @@ Feature: FNOL validation
 
   Rule: The policy number must have a recognized line-of-business prefix and a 7-digit number
 
+    # HO is the only recognized prefix - a carrier scope decision, not a
+    # statutory one. Windward's book is Florida residential property only;
+    # AU (auto), CP (commercial property), CA (commercial auto), and GL
+    # (general liability) are lines this estate does not write. DP (dwelling
+    # fire, common on Florida residential books for landlord and
+    # non-owner-occupied risks) and MH (manufactured housing) were both
+    # considered and excluded for want of evidence the estate actually
+    # writes either - see QUEUE.md item 4b. An unrecognized prefix resolves
+    # POLICY_NUMBER_MALFORMED like any other malformed policy number: a
+    # blocker, not a refusal. PHASE2_DESIGN.md's record state model has no
+    # rejected or discarded state, so a notice carrying this blocker still
+    # lands PENDED, not refused, and a reviewer can still act on it.
+    #
+    # The AU/CP/CA/GL rows stay even though their outcome is now identical
+    # to the XX row's - they document which lines of business this book
+    # does not write, which is worth more than the four extra rows cost.
     Scenario Outline: Policy number format
       Given the policy number is "<policy_number>"
       When the candidate FNOL record is validated
       Then the blockers are <blockers>
 
       Examples:
-        | policy_number | blockers                                |
-        | HO-1234567    |                                          |
-        | AU-1234567    |                                          |
-        | CP-1234567    |                                          |
-        | CA-1234567    |                                          |
-        | GL-1234567    |                                          |
-        | XX-1234567    | POLICY_NUMBER_MALFORMED:policy_number   |
-        | HO-123456     | POLICY_NUMBER_MALFORMED:policy_number   |
-        | HO-12345678   | POLICY_NUMBER_MALFORMED:policy_number   |
-        | ho-1234567    | POLICY_NUMBER_MALFORMED:policy_number   |
-        | HO1234567     | POLICY_NUMBER_MALFORMED:policy_number   |
-        | HO-ABCDEFG    | POLICY_NUMBER_MALFORMED:policy_number   |
+        | policy_number | blockers                              |
+        | HO-1234567    |                                       |
+        | AU-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | CP-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | CA-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | GL-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | XX-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO-123456     | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO-12345678   | POLICY_NUMBER_MALFORMED:policy_number |
+        | ho-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO1234567     | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO-ABCDEFG    | POLICY_NUMBER_MALFORMED:policy_number |
 
     Scenario: An absent policy number is a missing field, not a malformed one
       Given the policy number is ""
