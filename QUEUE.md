@@ -40,10 +40,24 @@ Ordered by domain severity, not by effort. One line each on why that position.
     `lightning`, `auto_comprehensive` -> `smoke`, `AU-7654321` -> `HO-7654321`. Credibility and
     scope fit, not correctness — sequenced first of the three-way split because it is the purely
     mechanical piece, with nothing for a human to decide beyond the replacement values themselves.
-    *Known blast radius: 21 of the 42 current acceptance-mutant approvals are keyed to rows
-    containing a loss_type or policy_number value and go stale when this lands (11 on
-    `triage.feature`'s end-to-end scenario, 10 on `duplicates.feature`'s "Matching against a single
-    existing claim"). That re-review is mine, not the implementer's. `duplicates.feature`'s three
+    *Blast radius, two different questions. 21 of the 42 current acceptance-mutant approvals are
+    keyed to rows containing a loss_type or policy_number value at all (11 on `triage.feature`'s
+    end-to-end scenario, 10 on `duplicates.feature`'s "Matching against a single existing claim") —
+    that answers "how much of the ledger is sensitive to this vocabulary in general," not "how much
+    goes stale from this specific rename," and it stays here rather than being deleted because it's
+    the number 4b or 4c would restale if either changed a different value the same rows contain.
+    The narrower question — what 4a itself stales — has a different, smaller answer, measured
+    against the actual keys rather than assumed from the row inventory: `triage.feature` restales
+    nothing, because no approval anywhere names `auto_collision` or `auto_comprehensive` — all 11
+    end-to-end keys embed `theft`, `fire`, or `water_damage`, and the 2 theft-threshold keys embed
+    only amounts, no loss type at all. On `duplicates.feature`, 2 approvals restale mechanically —
+    the two whose locator keys embed `AU-7654321` (both on the policy-mismatch row, one mutating its
+    loss_date, one mutating its loss_type). But all 10 approvals on "Matching against a single
+    existing claim" share one combined reason, and that reason's prose names `AU-7654321` explicitly;
+    eight of the ten have keys that don't change, so nothing will flag them automatically, and
+    they'll keep citing a value the file no longer contains until someone reads the reason text
+    itself rather than trusting the digest. All ten need re-approving for the prose, not just the two
+    for the key. That re-review is mine, not the implementer's. `duplicates.feature`'s three
     standalone scenarios that also carry this vocabulary in their own `Given` steps ("Two existing
     claims both match the candidate", "A loss assessment notice is never compared...", "An INITIAL
     notice is still compared normally") sit at zero approvals today — not because they are
