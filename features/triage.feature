@@ -86,4 +86,4 @@ Feature: FNOL triage
         | fire         | 50000       | 2026-06-01 | 2026-05-15     | high     | complex    | TRUE           | TRUE             |
         | water_damage | 400.00      | 2026-08-01 | 2024-01-01     | standard | standard   | FALSE          | FALSE            |
         | water_damage | 400.00      | 2026-06-01 | 2026-05-15     | standard | standard   | TRUE           | TRUE             |
-        | theft        | 400.00      | 2026-06-15 |                 | low      | fast_track | TRUE           | NOT_EVALUATED    |
+        | theft        | 400.00      | 2026-06-15 |                | low      | fast_track | TRUE           | NOT_EVALUATED    |
