@@ -98,6 +98,33 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   unreachable in the shipped configuration, where the recent-inception threshold is always a real,
   kept value of 30. Reachable in phase 2 once thresholds come from jurisdiction config rather than a
   fixed value — see PHASE2_DESIGN.md's SIU handling section.
+- **Severity assignments for the new perils (`hurricane`, `sinkhole`, `roof_leak`) — decided
+  2026-08-13, documentation-only session on `main`, no branch/spec/implementation yet (`QUEUE.md`'s
+  merged item 4c).** `sinkhole` is `HIGH`: Florida prescribes an investigation process for sinkhole
+  claims involving engineering and geological testing (627.707 — see `STATUTORY_REGISTER.md`), and
+  it is low-frequency, high-cost, specialty-handled work. `roof_leak` is `STANDARD` —
+  operationally distinct in Florida because of the separate roof deductible and the litigation
+  environment around it, but neither of those is a severity signal at intake. `hurricane` is
+  `STANDARD`, and this answer is a symptom rather than a conclusion: severity is the wrong axis for
+  catastrophe. During a declared event, hurricane claims go to catastrophe staffing with different
+  workflows and reserving, not to the queue an injury claim goes to, and coding hurricane `HIGH`
+  would flood that queue exactly when volume spikes hardest.
+- **Catastrophe handling is a deliberate non-goal for this phase, not an oversight — the reasoning
+  behind `hurricane`'s `STANDARD` severity above, not a separate decision.** If it is ever built, it
+  is a parallel attribute, the way SIU indicators are: `PHASE2_DESIGN.md` already establishes that
+  queue, severity, SIU indicators, and duplicate candidates are attributes rather than states, and
+  `QUEUE.md` item 1 existed precisely because SIU had been crammed into queue routing. Putting
+  catastrophe into severity would repeat that mistake in a different field.
+- **Loss amount is removed from the severity rule entirely, not replaced with a better threshold —
+  decided in the same session.** The current rule applies an amount test to theft alone, the peril
+  where magnitude matters least, and omits it from fire, where it matters most; it was never
+  coherent, so the `$500` figure was the wrong thing to argue about. The deeper reason:
+  `reported_loss_amount` at intake is a reporter's guess, not an appraisal — frequently absent,
+  systematically wrong, and revised within days, so a severity scheme keying on it keys on the least
+  reliable field in the record. Severity derives from loss type alone. No statute or industry
+  standard supports this; it is a carrier policy decision. What would reverse it: a validated
+  exposure figure at intake, not what the caller said. Supersedes the `$500` threshold recorded
+  under "Undocumented phase-1 thresholds" below — that entry is now moot, not merely unsourced.
 
 ## Undocumented phase-1 thresholds
 
@@ -115,6 +142,8 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   the rule rather than justifying it. Also largely academic: Florida homeowners all-other-peril
   deductibles typically run $1,000–$2,500, so most of the "low" band is claims that would not be
   paid at all.
+  **Decided moot, 2026-08-13:** loss amount is removed from the severity rule entirely, not
+  re-thresholded — see "Carried requirements — decided, not yet built" above.
 
 ## Domain defects found, not yet fixed
 
@@ -218,15 +247,29 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
 
 ## Data we do not have at intake
 
-- **`policy_inception_date` has no source.** It is populated directly by fixtures and callers, with
-  no domain code, no infrastructure, no lookup behind it. Policy data does not exist until phase 3.
-  It is also probably not reporter-knowable — a homeowner calling in a loss does not know their
-  policy's inception date — so there is no honest source for this field at intake even in
-  principle, self-reported or otherwise.
-- **Consequence:** the recent-policy-inception SIU indicator cannot be honestly computed until
-  phase 3. Combined with the 30-day late-reporting defect above, both SIU indicators are currently
-  unusable — one because its threshold is indefensible, the other because its required input does
-  not exist.
+- **`policy_inception_date` is available at FNOL via a lookup against the policy administration
+  system — decided 2026-08-13, documentation-only session on `main` (`QUEUE.md`'s merged item 4c);
+  no branch, no spec, no implementation yet.** Previously recorded here as needing policy data that
+  "does not exist until phase 3" and as "probably not reporter-knowable." Both were true only for
+  self-reported data; a system lookup was never considered before and changes the answer. The
+  domain shape does not change: the lookup is I/O and belongs to phase 2's adapter layer, and
+  `compute_siu_indicators` keeps receiving the date as a parameter it never derives itself, exactly
+  as today.
+  **Open, not decided, and blocking the spec:** whether the lookup returns the policy's ORIGINAL
+  inception date or the CURRENT TERM's effective date. The recent-inception indicator means new
+  business — a loss shortly after coverage was first bought. If it resolves to the renewal
+  effective date instead, every policy looks days-old immediately after each annual renewal, and a
+  30-day indicator fires across a lawful book every twelve months — the same defect, in the same
+  shape, `QUEUE.md` item 2 removed from the late-reporting side. This is the human's to answer, not
+  something inferable from the code or from public sources; the merged item's spec cannot be
+  written until it's resolved.
+- **Consequence, updated for the decision above:** the recent-policy-inception indicator's blocking
+  gap was its missing input; that gap is resolved in principle, pending the open lookup-semantics
+  question directly above. Once answered and built, `NOT_EVALUATED` becomes a genuine exception path
+  for this indicator — triggered by an actual lookup miss, not the expected steady state every
+  fixture and caller hits today. The late-reporting indicator's blocking gap (no defensible
+  threshold) is unrelated to this decision and is still open — see the open replacement-threshold
+  decision below.
 - **The phase-1 SIU tests pass at 100% mutation score against fixture data with no real-world
   source.** The gates are correct and the input is fictional; that distinction belongs on the
   record, not just in this file.
