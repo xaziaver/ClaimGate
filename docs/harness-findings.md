@@ -799,6 +799,31 @@ approval depends on, but should not assert the state of the wider suite unless a
 assertion too — and where it does, the claim should be dated, so a reader knows what it was true of
 rather than whether it is true now.
 
+**A second instance, and a sharper convention than the one above.** `duplicates.feature`'s ten
+approvals on "Matching against a single existing claim" share one combined reason (`gauntlet.lock.json`,
+approved **2026-08-11T22:51:01Z**), which explains the policy-mismatch row by quoting its value
+verbatim: *"(a) Rows excluded by policy (`AU-7654321`) or by loss type (`water_damage`): the row
+already yields no match on a dimension the mutation does not touch..."* `QUEUE.md` item 4a's
+vocabulary-substitution reopening renames `AU-7654321` to `HO-7654321`. Only two of the ten approvals
+have locator keys that embed that literal value, so only those two go stale automatically; the other
+eight keep the same key, the same digest, and a reason that now names a policy number the file no
+longer contains, with nothing in the ledger to flag it — a silent decay identical in shape to the
+line-71/`siu_flags.feature` case above, just triggered by a rename instead of a rewrite. This is a
+third decay mode, not a repeat of the two above: the reason quotes *the row's own example data*, which
+is exactly what a vocabulary-substitution reopening changes by design, and the convention already
+stated above — identify a case by "the specific field values" — is what *permits* this, not what
+prevents it. The sharper version: **an approval reason should not quote example data values at all,
+however accurately.** Describe a row by its role in the scenario — "the policy-mismatch row," "the
+row excluded by loss-date distance" — never by its contents, because the contents are precisely the
+part of a row a vocabulary pass is licensed to change without touching what the row proves. Both
+recorded instances would have been prevented by that rule: the original entry's own
+"(theft / 2026-06-15)" parenthetical, above, is itself a value-quote the sharper convention would also
+disallow, and it was written to replace a *line number* — a value-quote was the fix for one fragile
+reference, without noticing it was substituting one fragile reference for another. Worth stating
+plainly rather than leaving implicit: this reason was authored the day after the entry above already
+existed on `main` (`e2e7b89`, 2026-08-10) recording exactly this failure mode. The convention was on
+record, not discovered after the fact, and got walked into anyway one reopening later.
+
 **Routes to:** Gauntlet's contributor guidance, not BACKLOG.md. Prose cannot be validated; this is a convention for whoever writes approval reasons.
 
 **Status.** Open, convention rather than code.
