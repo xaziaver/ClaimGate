@@ -11,15 +11,15 @@ Feature: FNOL triage
       Then the assigned severity is "<severity>"
 
       Examples:
-        | loss_type          | severity |
-        | injury              | high     |
-        | fire                | high     |
-        | water_damage        | standard |
-        | wind_hail           | standard |
-        | vandalism           | standard |
-        | liability           | standard |
-        | lightning           | standard |
-        | smoke               | standard |
+        | loss_type    | severity |
+        | injury       | high     |
+        | fire         | high     |
+        | water_damage | standard |
+        | wind_hail    | standard |
+        | vandalism    | standard |
+        | liability    | standard |
+        | lightning    | standard |
+        | smoke        | standard |
 
   Rule: Theft severity depends on the loss amount
 
