@@ -97,6 +97,24 @@ Ordered by domain severity, not by effort. One line each on why that position.
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
 
+## What to read
+
+`CLAUDE.md`, this file, and `docs/harness-findings.md` every session. The rest is
+per item — a document the current item does not need costs context the work needs
+later.
+
+| Working on | Also read |
+|---|---|
+| 4a, 4b | `ASSUMPTIONS.md` — the vocabulary and policy-prefix entries |
+| 4c, 5 | `ASSUMPTIONS.md` and `STATUTORY_REGISTER.md` |
+| 6 (phase 2) | everything, `PHASE2_DESIGN.md` first |
+| A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
+| A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
+
+`docs/decisions.md` is a dated historical record, not current guidance. Read it
+only when tracing why a phase-1 rule exists, and read `ASSUMPTIONS.md`'s audit of
+it alongside — several of its entries are recorded there as unfounded.
+
 ## Status as of this handoff
 
 **Item 1 is done and merged to `main`** (merge commit `7f985e7`, 2026-08-09). Queue routing derives

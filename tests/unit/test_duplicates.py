@@ -29,7 +29,7 @@ EXISTING_CLAIM = ExistingClaim(
         ("HO-1234567", date(2026, 8, 1), "fire", ()),
         ("HO-1234567", date(2026, 4, 2), "fire", ("CLM-1001",)),
         ("HO-1234567", date(2026, 4, 1), "fire", ()),
-        ("AU-7654321", date(2026, 6, 1), "fire", ()),
+        ("HO-7654321", date(2026, 6, 1), "fire", ()),
         ("HO-1234567", date(2026, 6, 1), "water_damage", ()),
     ],
 )
@@ -54,21 +54,21 @@ def test_matches_are_returned_in_ascending_order_regardless_of_input_order() -> 
     existing_claims = [
         ExistingClaim(
             claim_id="CLM-2002",
-            policy_number="AU-7654321",
+            policy_number="HO-7654321",
             loss_date=date(2026, 6, 11),
-            loss_type="auto_collision",
+            loss_type="lightning",
         ),
         ExistingClaim(
             claim_id="CLM-2001",
-            policy_number="AU-7654321",
+            policy_number="HO-7654321",
             loss_date=date(2026, 6, 10),
-            loss_type="auto_collision",
+            loss_type="lightning",
         ),
     ]
     candidate = Candidate(
-        policy_number="AU-7654321",
+        policy_number="HO-7654321",
         loss_date=date(2026, 6, 10),
-        loss_type="auto_collision",
+        loss_type="lightning",
         notice_type="INITIAL",
     )
 

@@ -50,7 +50,7 @@ decision behind it, with its reasoning, is in [`PHASE2_DESIGN.md`](PHASE2_DESIGN
 | [`STATUTORY_REGISTER.md`](STATUTORY_REGISTER.md) | Every regulatory value referenced by the design, with citation, verification date, and source — because Florida amends these statutes nearly every session. |
 | [`QUEUE.md`](QUEUE.md) | The ordered list of known domain defects and gaps still to be corrected, in severity order, with one line of reasoning each for why it sits where it does. |
 | [`docs/decisions.md`](docs/decisions.md) | Phase-1 business rule decisions as originally recorded — see `ASSUMPTIONS.md`'s audit of this file for which entries are well-founded and which aren't. |
-| [`docs/harness-findings.md`](docs/harness-findings.md) | What using the Gauntlet gate harness itself surfaced — failure modes, process boundaries, and general techniques, discovered rather than assumed. |
+| [`docs/harness-findings.md`](docs/harness-findings.md) | What using the Gauntlet gate with Claude Code harness surfaced; notes for agents working on this project |
 | [`CLAUDE.md`](CLAUDE.md) | The instructions and standing constraints governing how this project's implementation work is done — one of the more interesting artifacts here for anyone evaluating how the work was governed. |
 
 ## Disclaimer

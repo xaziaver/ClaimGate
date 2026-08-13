@@ -18,8 +18,8 @@ from claimgate.domain.triage import assign_severity, route_queue, triage_and_rou
         ("wind_hail", "standard"),
         ("vandalism", "standard"),
         ("liability", "standard"),
-        ("auto_collision", "standard"),
-        ("auto_comprehensive", "standard"),
+        ("lightning", "standard"),
+        ("smoke", "standard"),
     ],
 )
 def test_severity_by_loss_type(loss_type: str, expected_severity: str) -> None:

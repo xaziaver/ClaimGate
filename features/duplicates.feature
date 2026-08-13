@@ -50,15 +50,15 @@ Feature: Duplicate candidate detection
         | HO-1234567    | 2026-08-01 | fire         |                   |
         | HO-1234567    | 2026-04-02 | fire         | CLM-1001          |
         | HO-1234567    | 2026-04-01 | fire         |                   |
-        | AU-7654321    | 2026-06-01 | fire         |                   |
+        | HO-7654321    | 2026-06-01 | fire         |                   |
         | HO-1234567    | 2026-06-01 | water_damage |                   |
 
   Rule: A candidate can match more than one existing claim, returned in ascending claim id order
 
     Scenario: Two existing claims both match the candidate
-      Given an existing claim "CLM-2002" with policy number "AU-7654321", loss date "2026-06-11", and loss type "auto_collision"
-      And an existing claim "CLM-2001" with policy number "AU-7654321", loss date "2026-06-10", and loss type "auto_collision"
-      And a candidate with policy number "AU-7654321", loss date "2026-06-10", loss type "auto_collision", and notice type "INITIAL"
+      Given an existing claim "CLM-2002" with policy number "HO-7654321", loss date "2026-06-11", and loss type "lightning"
+      And an existing claim "CLM-2001" with policy number "HO-7654321", loss date "2026-06-10", and loss type "lightning"
+      And a candidate with policy number "HO-7654321", loss date "2026-06-10", loss type "lightning", and notice type "INITIAL"
       When duplicate detection runs against the existing claims
       Then the candidate matches are:
         | claim_id |

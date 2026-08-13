@@ -17,11 +17,30 @@ the human's.
   `# type: ignore` are last resorts, not shortcuts.
 <!-- gauntlet:end -->
 
+## Context discipline
+
+A session spends most of its context before doing any work. These are the levers,
+in order of what they actually cost.
+
+- **Read only what the current queue item needs.** This file, `QUEUE.md`, and
+  `docs/harness-findings.md` every session. Everything else is conditional, and
+  `QUEUE.md`'s reading table says which per item. Reading a document the current
+  item does not need is not thoroughness.
+- **Pipe gate output.** `gauntlet check 2>&1 | tail -25` shows what failed. The
+  full output on a red run is thousands of tokens and the Stop hook will dump it
+  again whether or not you asked. Never re-read or re-quote a hook dump you have
+  already seen — say what changed since the last one instead.
+- **Grep before you read.** Locate the lines you need, then read a range. Whole
+  files are for files you are about to edit.
+- **Report what changed, not what you looked at.** A report that replays the
+  investigation costs as much as the investigation did.
+
 ## Standing constraints (ClaimGate domain, decided in design conversation)
 
-These survive context loss even when the conversation that produced them doesn't. Full reasoning
-for each lives in `PHASE2_DESIGN.md`, `ASSUMPTIONS.md`, and `STATUTORY_REGISTER.md` — this is the
-list to check before proposing anything that would violate one.
+These survive context loss even when the conversation that produced them doesn't.
+Full reasoning for each lives in `PHASE2_DESIGN.md`, `ASSUMPTIONS.md`, and
+`STATUTORY_REGISTER.md` — read those when the current item needs them, but check
+this list before proposing anything that would violate one.
 
 - Never default a threshold, state name, status code, or retention behaviour. Escalate instead. A
   defaulted rule is a rule nobody approved.
@@ -59,40 +78,28 @@ list to check before proposing anything that would violate one.
   work stays on its branch. After any commit to main, merge main into the open reopening branch
   so the branch remains a superset. A checked-out reopening branch should always show current
   documentation.
-- **A result that was not computed is never reported as a negative.** An
-  indicator whose input is missing, or a comparison that was deliberately not
-  run, resolves to a distinct not-evaluated value with a reason code — never to
-  false, never to an empty result. Two reopenings have now turned on this
-  (`siu_indicators.feature`'s three-valued indicators, `duplicates.feature`'s
-  notice-type rule). It applies to anything phase 2 serializes, not only to
-  these two.
-- **Reason-code enumerations are closed and scoped to one feature.** Duplicate
-  detection's codes are not SIU's, even though both use the same
-  not-evaluated-plus-reason convention; the two sets grow independently and
-  neither file's "complete set" claim constrains the other. Escalate before
-  adding a code to any of them, and never merge two enumerations to avoid
-  editing a locked spec.
-- **A gate failure awaiting a human decision is not a failure to retry.** A spec
-  drafted or awaiting approval, a stale or unreviewed mutant approval, a
-  dangling approval key — none of these clear from your side, and the
-  separate-commits rule above guarantees the first one on every reopening.
-  Report the condition and stop on the first occurrence. Do not spend the retry
-  budget counting down toward a state only the human can change.
-- **Exporting a file at a ref means `git show <ref>:<path> > <file> && wc -l`.**
-  Reading the working tree and reporting it as the export is not the same
-  operation. They agree exactly when the tree is clean, which is when the
-  protocol is least needed, and diverge in precisely the case it exists to
-  catch.
-- **Gauntlet's commands are split by owner, and the split is not guessable from
-  the CLI.** Yours to run: `gauntlet check`, `gauntlet verify`, `gauntlet status`,
-  `gauntlet doctor`, `gauntlet events`. Mine, never run unprompted:
-  `gauntlet spec approve`, `gauntlet mutant approve`, `gauntlet review`, and
-  `gauntlet lock`. `gauntlet lock` in particular does not approve a
-  specification — it re-approves the current content of the protected paths,
-  which are the files you are forbidden to edit. The acceptance gate's own
-  remedy text currently names it for a modified spec; that text is wrong, and
-  the correct command is `gauntlet spec approve`, which is mine.
-- **"Act on the remedy" stops at the approval boundary.** If a remedy names a
-  command from my list above, the remedy is addressed to me: report it and stop.
-  A remedy you cannot run is not an instruction to find something adjacent that
-  you can.
+- **A result that was not computed is never reported as a negative.** An indicator whose input is
+  missing, or a comparison that was deliberately not run, resolves to a distinct not-evaluated
+  value with a reason code — never to false, never to an empty result. Two reopenings have turned
+  on this (`siu_indicators.feature`'s three-valued indicators, `duplicates.feature`'s notice-type
+  rule). It applies to anything phase 2 serializes, not only to these two.
+- **Reason-code enumerations are closed and scoped to one feature.** Duplicate detection's codes
+  are not SIU's, even though both use the same not-evaluated-plus-reason convention; the two sets
+  grow independently and neither file's "complete set" claim constrains the other. Escalate before
+  adding a code to any of them, and never merge two enumerations to avoid editing a locked spec.
+- **A gate failure awaiting a human decision is not a failure to retry.** A spec drafted or
+  awaiting approval, a stale or unreviewed mutant approval, a dangling approval key — none of these
+  clear from your side, and the separate-commits rule above guarantees the first one on every
+  reopening. Report the condition and stop on the first occurrence.
+- **Exporting a file at a ref means `git show <ref>:<path> > <file> && wc -l`.** Reading the
+  working tree and reporting it as the export is not the same operation. They agree exactly when
+  the tree is clean, which is when the protocol is least needed, and diverge in precisely the case
+  it exists to catch.
+- **Gauntlet's commands are split by owner, and the split is not guessable from the CLI.** Yours:
+  `gauntlet check`, `verify`, `status`, `doctor`, `events`. Mine, never run unprompted: `gauntlet
+  spec approve`, `mutant approve`, `mutant prune`, `review`, and `lock`. Note that `gauntlet lock`
+  does not approve a specification — see "Command ownership" in `docs/harness-findings.md`.
+- **"Act on the remedy" stops at the approval boundary.** If a remedy names a command from my list,
+  the remedy is addressed to me: report it and stop. A remedy you cannot run is not an instruction
+  to find something adjacent that you can. The acceptance gate's remedy for a modified spec is
+  currently wrong in exactly this way.
