@@ -255,27 +255,38 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   domain shape does not change: the lookup is I/O and belongs to phase 2's adapter layer, and
   `compute_siu_indicators` keeps receiving the date as a parameter it never derives itself, exactly
   as today.
-  **Open, not decided, and blocking the spec:** whether the lookup returns the policy's ORIGINAL
-  inception date or the CURRENT TERM's effective date. The recent-inception indicator means new
-  business — a loss shortly after coverage was first bought. If it resolves to the renewal
-  effective date instead, every policy looks days-old immediately after each annual renewal, and a
-  30-day indicator fires across a lawful book every twelve months — the same defect, in the same
-  shape, `QUEUE.md` item 2 removed from the late-reporting side. This is the human's to answer, not
-  something inferable from the code or from public sources; the merged item's spec cannot be
-  written until it's resolved.
+  **Decided 2026-08-13: the lookup returns the policy's ORIGINAL inception date — the date
+  continuous coverage with this carrier began — never the current term's effective date.** This was
+  a domain decision, not a data-availability one: both dates are available from the policy
+  administration systems. The recent-inception indicator exists to surface new business — a loss
+  shortly after coverage was first bought. A renewal effective date carries no such signal, and
+  keying on it would fire the indicator across a lawful book every twelve months — the same defect,
+  in the same shape, `QUEUE.md` item 2 already removed from the late-reporting side. A new open
+  assumption follows from this decision, not a blocker on the spec — see "Original inception date
+  and continuous-coverage start diverge on a policy rewrite" under "Open decisions" below.
 - **Consequence, updated for the decision above:** the recent-policy-inception indicator's blocking
-  gap was its missing input; that gap is resolved in principle, pending the open lookup-semantics
-  question directly above. Once answered and built, `NOT_EVALUATED` becomes a genuine exception path
-  for this indicator — triggered by an actual lookup miss, not the expected steady state every
-  fixture and caller hits today. The late-reporting indicator's blocking gap (no defensible
-  threshold) is unrelated to this decision and is still open — see the open replacement-threshold
-  decision below.
+  gap was its missing input; that gap is resolved in principle now that the lookup's semantics are
+  decided. Once the phase-2 adapter is built, `NOT_EVALUATED` becomes a genuine exception path for
+  this indicator — triggered by an actual lookup miss, not the expected steady state every fixture
+  and caller hits today. The late-reporting indicator's blocking gap (no defensible threshold) is
+  unrelated to this decision and is still open — see the open replacement-threshold decision below.
 - **The phase-1 SIU tests pass at 100% mutation score against fixture data with no real-world
   source.** The gates are correct and the input is fictional; that distinction belongs on the
   record, not just in this file.
 
 ## Open decisions
 
+- **Original inception date and continuous-coverage start diverge on a policy rewrite — decided
+  2026-08-13 alongside the ORIGINAL-vs-current-term decision above, recorded as a new open
+  assumption rather than resolved by it.** An administrative rewrite or book transfer issues a new
+  policy number and resets the record date while the customer relationship is unbroken — keying the
+  recent-inception lookup on that date would fire the indicator on a long-standing policyholder,
+  the same failure shape the ORIGINAL-inception decision above exists to prevent. A rewrite
+  following a genuine coverage lapse is different and SHOULD reset the date, since a coverage gap is
+  exactly what the indicator wants to catch. The correct field is whichever survives an
+  administrative rewrite but not a lapse; which field the three policy administration systems expose
+  is unverified. Not a blocker on this spec — needs an answer before the phase-2 adapter is wired,
+  not before the spec is written.
 - **Replacement for the 30-day late-reporting threshold — not being set now.** Setting it quickly
   is the process that produced the 365, the 30, and the 500. Constraints for whoever settles it: a
   bare day count is probably the wrong instrument on a property book, because discovery time varies

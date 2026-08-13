@@ -91,16 +91,23 @@ Ordered by domain severity, not by effort. One line each on why that position.
     A completeness gap, not a rename — the one a claims manager would actually stop at: a Florida
     residential intake system with no way to code a hurricane or a sinkhole claim. See
     `STATUTORY_REGISTER.md` for why hurricane and sinkhole are statutorily distinct, not just missing
-    labels. *Three of the four decisions this item needs are now made — see `ASSUMPTIONS.md`: the new
-    perils' severities (`sinkhole` `HIGH`, `roof_leak` and `hurricane` `STANDARD`, with catastrophe
-    handling recorded as a deliberate non-goal rather than a severity concern); loss amount removed
-    from the severity rule entirely rather than re-thresholded; and `policy_inception_date` now
-    available at intake via a phase-2 adapter lookup, reversing the earlier "no source until phase 3"
-    assumption. What still blocks the spec: the lookup's exact semantics — original inception date vs.
-    current-term effective date — is open and is the human's to answer, not the implementer's; see
-    `ASSUMPTIONS.md`'s "Data we do not have at intake." Also see `ASSUMPTIONS.md`'s open decision on
-    `loss_type` conflating perils with Section II coverage categories — this item should not assume an
-    answer to that question either. Note for whoever writes the spec: two acceptance-mutant approvals
+    labels. *All four decisions this item needs are now made — see `ASSUMPTIONS.md`: the new perils'
+    severities (`sinkhole` `HIGH`, `roof_leak` and `hurricane` `STANDARD`, with catastrophe handling
+    recorded as a deliberate non-goal rather than a severity concern); loss amount removed from the
+    severity rule entirely rather than re-thresholded; `policy_inception_date` now available at
+    intake via a phase-2 adapter lookup, reversing the earlier "no source until phase 3" assumption;
+    and, decided 2026-08-13, the lookup returns the policy's ORIGINAL inception date — the date
+    continuous coverage with this carrier began — never the current term's effective date, since the
+    indicator exists to surface new business and a renewal effective date would fire it across a
+    lawful book every twelve months, the same defect item 2 removed from the reporting gate; see
+    `ASSUMPTIONS.md`'s "Data we do not have at intake." A new open assumption follows from that
+    fourth decision, not a blocker on this spec: original inception and continuous-coverage start
+    diverge when a policy is rewritten, and which policy administration system field survives an
+    administrative rewrite but not a genuine lapse is unverified — needs an answer before the
+    phase-2 adapter is wired, not before this spec is written; see `ASSUMPTIONS.md`'s "Open
+    decisions." Also see `ASSUMPTIONS.md`'s open decision on `loss_type` conflating perils with
+    Section II coverage categories — this item should not assume an answer to that question either.
+    Note for whoever writes the spec: two acceptance-mutant approvals
     on `features/triage.feature`'s "Theft severity by loss amount" rule (`500.00->501.00`,
     `500.01->501.01`) are equivalence judgments about the amount threshold this item removes
     entirely — the rule they're keyed to stops existing, not merely changes value, and re-review is
@@ -238,28 +245,30 @@ make, not a pickup for the next session.
 branch, no spec, no implementation.** They were never sequential: 4c would have assigned severity to
 `hurricane`, `sinkhole`, and `roof_leak` under the severity rule item 5 was about to change. Former
 item 5's own numbered slot is retired; the old item 6 (phase 2 build) is renumbered 5 — nothing
-outside `QUEUE.md` referenced it by number. Three of the four decisions the merged item needs are
-made and recorded in `ASSUMPTIONS.md`: new-peril severities (`sinkhole` `HIGH`, `roof_leak` and
-`hurricane` `STANDARD`, catastrophe handling recorded as a deliberate non-goal); loss amount removed
-from the severity rule entirely rather than re-thresholded; and `policy_inception_date` is available
-at intake via a phase-2 adapter lookup, reversing the earlier "no source until phase 3" assumption.
-The fourth is still open and blocks the spec: whether that lookup returns the policy's original
-inception date or the current term's effective date — see `ASSUMPTIONS.md`'s "Data we do not have at
-intake."
+outside `QUEUE.md` referenced it by number. All four decisions the merged item needs are now made and
+recorded in `ASSUMPTIONS.md`: new-peril severities (`sinkhole` `HIGH`, `roof_leak` and `hurricane`
+`STANDARD`, catastrophe handling recorded as a deliberate non-goal); loss amount removed from the
+severity rule entirely rather than re-thresholded; `policy_inception_date` is available at intake via
+a phase-2 adapter lookup, reversing the earlier "no source until phase 3" assumption; and, decided
+2026-08-13 in this same documentation session, the lookup returns the policy's ORIGINAL inception
+date, never the current term's effective date — see `ASSUMPTIONS.md`'s "Data we do not have at
+intake." A new open assumption follows from that fourth decision, not a blocker on the spec: original
+inception and continuous-coverage start diverge when a policy is rewritten, needing an answer before
+the phase-2 adapter is wired, not before the spec is written — see `ASSUMPTIONS.md`'s "Open
+decisions."
 
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-**The merged item 4c is blocked on a decision, not a pickup.** Its spec cannot be written until the
-human answers whether the `policy_inception_date` lookup returns the policy's original inception
-date or the current term's effective date — see `ASSUMPTIONS.md`'s "Data we do not have at intake."
-Getting this wrong reproduces, in the recent-inception indicator, the exact defect `QUEUE.md` item 2
-already removed from the late-reporting side.
+Nothing open as of this handoff. The lookup-semantics question that previously blocked the merged
+item 4c's spec is decided (original inception date, not current-term effective date); the new open
+assumption it produced (original inception vs. continuous-coverage start on a policy rewrite) does
+not block the spec — see `ASSUMPTIONS.md`'s "Open decisions."
 
 `main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through the 2026-08-13
-documentation session that merged items 4c and 5 and recorded their four underlying decisions
-(QUEUE.md/ASSUMPTIONS.md/STATUTORY_REGISTER.md). `reopening/policy-prefix-set` is pushed through its
-tip (`6eb403a`) and kept as history, same as `reopening/loss-type-vocabulary`,
+documentation session that decided the `policy_inception_date` lookup-semantics question and
+recorded the new open assumption it produced (QUEUE.md/ASSUMPTIONS.md). `reopening/policy-prefix-set`
+is pushed through its tip (`6eb403a`) and kept as history, same as `reopening/loss-type-vocabulary`,
 `reopening/duplicates`, and `reopening/siu-indicators`.
