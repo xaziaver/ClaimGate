@@ -41,9 +41,9 @@ context needs it stated more precisely than "current as of the most recent chapt
 
 ## Referenced elsewhere, not full register entries
 
-Four more statutory provisions are load-bearing elsewhere in the project but weren't part of the
-six-value list this register was scoped to: two in `PHASE2_DESIGN.md`, two in `QUEUE.md`'s item 4c.
-Recording their citations here so nothing referenced elsewhere is an orphaned citation:
+Five more statutory provisions are load-bearing elsewhere in the project but weren't part of the
+six-value list this register was scoped to: two in `PHASE2_DESIGN.md`, three in `QUEUE.md`'s merged
+item 4c. Recording their citations here so nothing referenced elsewhere is an orphaned citation:
 
 - **Tolling** — 627.70131(8)(b): the section's deadlines toll when a policyholder fails to supply
   requested material information within 10 days of the request, ending on receipt of that
@@ -61,13 +61,22 @@ Recording their citations here so nothing referenced elsewhere is an orphaned ci
   transact property insurance in Florida must provide catastrophic ground cover collapse coverage,
   and must make sinkhole loss coverage available for additional premium — two distinct coverages
   with different tests.
+- **Sinkhole claim investigation process** — 627.707: prescribes the investigation, engineering, and
+  geological-testing process an insurer follows once a sinkhole loss is reported, distinct from
+  627.706's coverage-availability requirement above. The point for ClaimGate: this is the basis for
+  `sinkhole` getting its own `HIGH` severity in `QUEUE.md`'s merged item 4c — specialty-handled,
+  low-frequency, high-cost investigation work, not a routine property claim under a different label.
+  **Section number is the human reviewer's recollection of the 2026-08-12 advisor session's
+  citation, recorded here for the first time 2026-08-13** — not independently rechecked in either
+  session; treat the number itself, not only its content, as needing re-verification.
 
-**Provenance on the two entries directly above (hurricane, sinkhole) is weaker than this file's usual
-standard, and is stated separately rather than folded into the blanket paragraph at the top of this
-file — do not read the two as the same class of claim.** The six-value table and the
-tolling/recordkeeping entries above were verified by the project's human reviewer, dated
-**2026-08-05**, against the Florida Legislature's official statute text. The hurricane and sinkhole
-citations were checked by the advisor session dated **2026-08-12** against flsenate.gov, from
+**Provenance on the three entries directly above (hurricane, sinkhole coverage, sinkhole
+investigation process) is weaker than this file's usual standard, and is stated separately rather
+than folded into the blanket paragraph at the top of this file — do not read the three as the same
+class of claim as the six-value table.** The six-value table and the tolling/recordkeeping entries
+above were verified by the project's human reviewer, dated **2026-08-05**, against the Florida
+Legislature's official statute text. The hurricane, sinkhole-coverage, and sinkhole-investigation
+citations were all checked by the advisor session dated **2026-08-12** against flsenate.gov, from
 search-result excerpts rather than a direct fetch of the full section text. **Re-verification against
-the full statute text is required before either value is hash-locked or used as the basis for a
+the full statute text is required before any of the three is hash-locked or used as the basis for a
 locked spec.**
