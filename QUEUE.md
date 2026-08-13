@@ -153,11 +153,56 @@ and policy-number vocabulary pass turned out to bundle a pure rename, a business
 `validation.py`'s regex, and a completeness gap behind one number, and each needed its own spec lock
 and its own reopening. Item 4a is next.
 
+**Item 4a is drafted, not merged.** Branch `reopening/loss-type-vocabulary`, four commits on top of
+`main`: `e86ae20` (the substitution itself), `3cde743` (repads `triage.feature`'s "Severity by loss
+type" table for the new column width and fixes a header/data pipe offset that predated this branch),
+`d793e94` (whitespace-only fix to the end-to-end scenario's NOT_EVALUATED row, also pre-existing,
+`git diff -w` empty), and a merge of `main` forward to keep the branch a superset per this file's own
+convention. Substitutions: `auto_collision` -> `lightning`, `auto_comprehensive` -> `smoke` in
+`triage.feature`'s severity outline; `AU-7654321` -> `HO-7654321` in `duplicates.feature`'s
+policy-mismatch row and its "Two existing claims both match the candidate" scenario. **Verified pure,
+not assumed:** `HO-7654321` matches `POLICY_NUMBER_PATTERN` (tested directly against the compiled
+regex); neither `validation.py` nor `triage.py` enumerates loss types as a closed set — read both
+files directly and confirmed `_check_loss_type` only checks presence via `.strip()`,
+`_check_injury_fields` branches on a single `== "injury"` comparison, and `triage.py`'s
+`assign_severity` checks membership in the 2-element `{"injury", "fire"}` plus a single
+`!= "theft"` comparison, with every other value — `lightning`/`smoke` exactly like
+`auto_collision`/`auto_comprehensive` before them — falling through to `standard`. No `src/` change
+is required. `validation.feature` was not touched. `gauntlet check` on the branch: every gate green
+except `acceptance`, which reports both spec files changed since approval — the sanctioned state
+between spec draft and implementation, not a defect.
+
+**Blast radius, corrected from an earlier draft of this note that conflated two questions.** 21 of
+the 42 current acceptance-mutant approvals sit on rows containing a loss_type or policy_number value
+at all (11 on `triage.feature`'s end-to-end scenario, 10 on `duplicates.feature`'s "Matching against
+a single existing claim") — that is what 4b or 4c would restale if either changed a different value
+those rows contain, not what 4a itself stales. Measured against the actual keys: `triage.feature`
+stales nothing (no approval names `auto_collision` or `auto_comprehensive`). `duplicates.feature`
+stales 2 mechanically — the two whose locator keys embed `AU-7654321` — but **all 10 approvals on
+"Matching against a single existing claim" need pruning and re-approving, not just those two**: the
+other 8 keep unchanged keys and digests while their shared reason's prose still names `AU-7654321`,
+so nothing in the ledger flags them and they'll cite a value the file no longer contains until someone
+reads the text. The re-approval reason must describe rows by role ("the policy-mismatch row," "the
+row excluded by loss-date distance"), never by contents — the sharper convention
+`docs/harness-findings.md`'s "Approval reasons go stale silently where the key does not" entry now
+states, added because this exact case is its second recorded instance. `duplicates.feature`'s three
+standalone scenarios carrying this vocabulary in their own `Given` steps sit at zero approvals today
+and stay unbounded — not restaged by the rename, but re-exercised by it, with no guarantee of the
+same kill rate.
+
+**Test files, for whoever implements.** `tests/unit/test_triage.py` and
+`tests/unit/test_duplicates.py` mirror this example data exactly and change with the implementation
+commit, not the spec — do not update them now. `tests/api/*.py` and `tests/acceptance/*.py` carry no
+hardcoded loss_type or policy_number values (confirmed by grep) and need no changes at all.
+
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-Nothing open as of this handoff.
+- **Item 4a's spec draft on `reopening/loss-type-vocabulary` is awaiting spec approval** (`gauntlet
+  spec approve`, mine to run) before implementation begins. Once implemented: prune and re-approve
+  all 10 stale mutants on `duplicates.feature`'s "Matching against a single existing claim" (see
+  above), not just the 2 that restale mechanically.
 
 `main` is pushed to `https://github.com/xaziaver/ClaimGate`
