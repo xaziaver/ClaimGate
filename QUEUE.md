@@ -36,7 +36,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
    just the four with new dates — the gate will report every one, and re-review against the locked
    spec is mine, not automatic.*
 4a. **Loss-type and policy-number vocabulary substitution across `triage.feature` and
-    `duplicates.feature`.** Pure example-data rename, no rule changes: `auto_collision` ->
+    `duplicates.feature`.** *(Done — see below.)* Pure example-data rename, no rule changes: `auto_collision` ->
     `lightning`, `auto_comprehensive` -> `smoke`, `AU-7654321` -> `HO-7654321`. Credibility and
     scope fit, not correctness — sequenced first of the three-way split because it is the purely
     mechanical piece, with nothing for a human to decide beyond the replacement values themselves.
@@ -169,58 +169,43 @@ check` passes on `main` post-merge (42 reviewed-equivalent, no unreviewed accept
 stale approvals). Item 4 has been split into 4a, 4b, and 4c (see above, 2026-08-12) — the loss-type
 and policy-number vocabulary pass turned out to bundle a pure rename, a business-rule change to
 `validation.py`'s regex, and a completeness gap behind one number, and each needed its own spec lock
-and its own reopening. Item 4a is next.
+and its own reopening. Item 4b is next.
 
-**Item 4a is drafted, not merged.** Branch `reopening/loss-type-vocabulary`, four commits on top of
-`main`: `e86ae20` (the substitution itself), `3cde743` (repads `triage.feature`'s "Severity by loss
-type" table for the new column width and fixes a header/data pipe offset that predated this branch),
-`d793e94` (whitespace-only fix to the end-to-end scenario's NOT_EVALUATED row, also pre-existing,
-`git diff -w` empty), and a merge of `main` forward to keep the branch a superset per this file's own
-convention. Substitutions: `auto_collision` -> `lightning`, `auto_comprehensive` -> `smoke` in
-`triage.feature`'s severity outline; `AU-7654321` -> `HO-7654321` in `duplicates.feature`'s
-policy-mismatch row and its "Two existing claims both match the candidate" scenario. **Verified pure,
-not assumed:** `HO-7654321` matches `POLICY_NUMBER_PATTERN` (tested directly against the compiled
-regex); neither `validation.py` nor `triage.py` enumerates loss types as a closed set — read both
-files directly and confirmed `_check_loss_type` only checks presence via `.strip()`,
-`_check_injury_fields` branches on a single `== "injury"` comparison, and `triage.py`'s
-`assign_severity` checks membership in the 2-element `{"injury", "fire"}` plus a single
-`!= "theft"` comparison, with every other value — `lightning`/`smoke` exactly like
-`auto_collision`/`auto_comprehensive` before them — falling through to `standard`. No `src/` change
-is required. `validation.feature` was not touched. `gauntlet check` on the branch: every gate green
-except `acceptance`, which reports both spec files changed since approval — the sanctioned state
-between spec draft and implementation, not a defect.
-
-**Blast radius, corrected from an earlier draft of this note that conflated two questions.** 21 of
-the 42 current acceptance-mutant approvals sit on rows containing a loss_type or policy_number value
-at all (11 on `triage.feature`'s end-to-end scenario, 10 on `duplicates.feature`'s "Matching against
-a single existing claim") — that is what 4b or 4c would restale if either changed a different value
-those rows contain, not what 4a itself stales. Measured against the actual keys: `triage.feature`
-stales nothing (no approval names `auto_collision` or `auto_comprehensive`). `duplicates.feature`
-stales 2 mechanically — the two whose locator keys embed `AU-7654321` — but **all 10 approvals on
-"Matching against a single existing claim" need pruning and re-approving, not just those two**: the
-other 8 keep unchanged keys and digests while their shared reason's prose still names `AU-7654321`,
-so nothing in the ledger flags them and they'll cite a value the file no longer contains until someone
-reads the text. The re-approval reason must describe rows by role ("the policy-mismatch row," "the
-row excluded by loss-date distance"), never by contents — the sharper convention
-`docs/harness-findings.md`'s "Approval reasons go stale silently where the key does not" entry now
-states, added because this exact case is its second recorded instance. `duplicates.feature`'s three
-standalone scenarios carrying this vocabulary in their own `Given` steps sit at zero approvals today
-and stay unbounded — not restaged by the rename, but re-exercised by it, with no guarantee of the
-same kill rate.
-
-**Test files, for whoever implements.** `tests/unit/test_triage.py` and
-`tests/unit/test_duplicates.py` mirror this example data exactly and change with the implementation
-commit, not the spec — do not update them now. `tests/api/*.py` and `tests/acceptance/*.py` carry no
-hardcoded loss_type or policy_number values (confirmed by grep) and need no changes at all.
+**Item 4a is done and merged to `main`** (merge commit `a0983ef`, 2026-08-13). `auto_collision` ->
+`lightning`, `auto_comprehensive` -> `smoke` in `triage.feature`'s severity outline; `AU-7654321` ->
+`HO-7654321` in `duplicates.feature`'s policy-mismatch row and its "Two existing claims both match
+the candidate" scenario. Spec locked at `84d6c33`. No `src/` change was required, verified rather
+than assumed from the spec: neither `validation.py` nor `triage.py` enumerates loss types as a closed
+set — `_check_loss_type` only checks presence via `.strip()`, `_check_injury_fields` branches on a
+single `== "injury"` comparison, and `assign_severity` checks membership in the 2-element
+`{"injury", "fire"}` plus a single `!= "theft"` comparison, with every other value —
+`lightning`/`smoke` exactly like `auto_collision`/`auto_comprehensive` before them — falling through
+to `standard`; `HO-7654321` matches `POLICY_NUMBER_PATTERN` directly. `validation.feature` was not
+touched. The implementation commit (`a1b4d5e`) turned out to be `tests/unit/test_triage.py` and
+`tests/unit/test_duplicates.py`: they mirrored the pre-reopening example data exactly and stayed
+green throughout the spec-lock-to-merge window because unit tests call the domain functions directly
+and never read feature files — a live instance of `docs/harness-findings.md`'s "A green gate
+sometimes means nothing was checked," invisible to every gate until someone read the two files by
+hand and changed them. Mutant re-review (`690d8b1`) re-approved all ten stale approvals on
+`duplicates.feature`'s "Matching against a single existing claim" — the two whose keys embedded
+`AU-7654321` and the eight whose keys were unchanged but whose shared reason's prose did — rewritten
+to describe rows by role rather than by contents, per the sharper convention
+`docs/harness-findings.md` now states. The three standalone scenarios carrying this vocabulary in
+their own `Given` steps were re-exercised by the rename with no guarantee of the same kill rate; none
+produced a new survivor. `gauntlet check` passes on `main` post-merge (169/169 tests, mutation
+100%/213 killed, 42 reviewed-equivalent — the same figure as before the rename, confirming no new
+acceptance survivors and no remaining stale approvals). This merge also carried two documentation
+commits (`8b3fba9`, `d5f14e9`) that had landed on the reopening branch instead of `main`, contrary to
+this file's own documentation-lands-on-main convention — not unpicked, just carried forward and
+recorded here so the merge doesn't misdescribe itself as 4a alone.
 
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-- **Item 4a's spec draft on `reopening/loss-type-vocabulary` is awaiting spec approval** (`gauntlet
-  spec approve`, mine to run) before implementation begins. Once implemented: prune and re-approve
-  all 10 stale mutants on `duplicates.feature`'s "Matching against a single existing claim" (see
-  above), not just the 2 that restale mechanically.
+Nothing open as of this handoff.
 
-`main` is pushed to `https://github.com/xaziaver/ClaimGate`
+`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through item 4a's merge and this
+handoff's QUEUE.md/ASSUMPTIONS.md updates. `reopening/loss-type-vocabulary` is pushed through its tip
+(`d5f14e9`) and kept as history, same as `reopening/duplicates` and `reopening/siu-indicators`.
