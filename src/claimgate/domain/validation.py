@@ -5,7 +5,7 @@ from datetime import date
 
 from claimgate.domain.models import Candidate, ValidationBlocker, ValidationResult
 
-POLICY_NUMBER_PATTERN = re.compile(r"^(?:HO|AU|CP|CA|GL)-\d{7}$")
+POLICY_NUMBER_PATTERN = re.compile(r"^HO-\d{7}$")
 RECOGNIZED_NOTICE_TYPES = frozenset({"INITIAL", "REOPENED", "SUPPLEMENTAL", "LOSS_ASSESSMENT"})
 
 POLICY_NUMBER_MALFORMED = "POLICY_NUMBER_MALFORMED"
