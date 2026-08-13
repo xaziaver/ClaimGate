@@ -254,6 +254,27 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   an answer to whether `loss_type` eventually splits into separate peril and coverage-type fields —
   adding perils is orthogonal to, and shouldn't presume the outcome of, that split.
 
+- **`POLICY_NUMBER_PATTERN` encodes a carrier fact in the domain layer, and item 4b narrows the
+  prefix set without resolving that.** The regex asserts one numbering *shape* — two letters, a
+  hyphen, seven digits — for all three carriers in the target estate. 4b (`QUEUE.md`) narrows the
+  recognized *prefix* to `HO` alone, but the shape itself stays a domain-layer assumption applied
+  uniformly across Florida Peninsula, Edison, and Ovation, and real carriers number policies
+  differently from one another — Ovation's own format is already recorded above as unverified and
+  possibly different from the other two. `README.md`'s core design commitment is that carrier
+  identity is data, never behavior, and `PHASE2_DESIGN.md`'s swappability tests exist specifically to
+  prove that claim rather than argue it; a domain regex naming a specific number shape is in tension
+  with both — the same shape of problem as the false "lines of business this carrier actually
+  intakes" claim in the `docs/decisions.md` audit above, arriving here for the number format instead
+  of the prefix list.
+  **Why not simply make it caller-supplied, the way the duplicate window and the SIU thresholds
+  were:** those are bare scalars with no structure behind them, so a parameter fully resolves the
+  concern. Parameterizing only the prefix list here would not — the two-letter-hyphen-seven-digit
+  shape would still be fixed in the domain, producing something that reads as configurable without
+  actually being so. The real fix is structural, not a parameter: whether a policy number is
+  well-formed is a fact about the carrier's own numbering scheme, which belongs to phase 2's adapter
+  layer, where carrier differences are designed to live — not to a single domain-wide pattern.
+  Recording only: not fixed in item 4b, and not part of 4b's spec change.
+
 ## Synthetic data
 
 - No real policy numbers, names, addresses, phone numbers, or claim numbers appear anywhere in
