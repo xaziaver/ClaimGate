@@ -70,18 +70,18 @@ Feature: FNOL validation
       Then the blockers are <blockers>
 
       Examples:
-        | policy_number | blockers                                |
-        | HO-1234567    |                                          |
-        | AU-1234567    | POLICY_NUMBER_MALFORMED:policy_number   |
-        | CP-1234567    | POLICY_NUMBER_MALFORMED:policy_number   |
-        | CA-1234567    | POLICY_NUMBER_MALFORMED:policy_number   |
-        | GL-1234567    | POLICY_NUMBER_MALFORMED:policy_number   |
-        | XX-1234567    | POLICY_NUMBER_MALFORMED:policy_number   |
-        | HO-123456     | POLICY_NUMBER_MALFORMED:policy_number   |
-        | HO-12345678   | POLICY_NUMBER_MALFORMED:policy_number   |
-        | ho-1234567    | POLICY_NUMBER_MALFORMED:policy_number   |
-        | HO1234567     | POLICY_NUMBER_MALFORMED:policy_number   |
-        | HO-ABCDEFG    | POLICY_NUMBER_MALFORMED:policy_number   |
+        | policy_number | blockers                              |
+        | HO-1234567    |                                       |
+        | AU-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | CP-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | CA-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | GL-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | XX-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO-123456     | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO-12345678   | POLICY_NUMBER_MALFORMED:policy_number |
+        | ho-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO1234567     | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO-ABCDEFG    | POLICY_NUMBER_MALFORMED:policy_number |
 
     Scenario: An absent policy number is a missing field, not a malformed one
       Given the policy number is ""
