@@ -77,24 +77,35 @@ Ordered by domain severity, not by effort. One line each on why that position.
     non-owner-occupied risks), possibly `MH` if the estate writes manufactured housing. Note that
     `LOSS_ASSESSMENT` notices already imply condo risks are in this book whether or not a prefix
     distinguishes them.*
-4c. **Missing perils: hurricane, sinkhole, and roof_leak.** A completeness gap, not a rename — the
-    one a claims manager would actually stop at: a Florida residential intake system with no way to
-    code a hurricane or a sinkhole claim. See `STATUTORY_REGISTER.md` for why hurricane and sinkhole
-    are statutorily distinct, not just missing labels. Sequenced last of the three because each new
-    value forces a severity decision, which is item 5's territory — adding perils without deciding
-    their severity would push them silently through the standard fallthrough, which is the
-    defaulting `CLAUDE.md`'s first constraint forbids. Either waits for item 5 or merges with it; not
-    scoped further here. *Also see `ASSUMPTIONS.md`'s open decision on `loss_type` conflating perils
-    with Section II coverage categories — this item should not assume an answer to that question
-    either.*
-5. **`triage.feature` thresholds** ($500 theft threshold with no provenance, loss amount affecting
-   severity only for theft, `policy_inception_date` availability at intake). Real gaps, but none
-   carries the legal exposure of 1–2, so they sit behind everything above. *Note for whoever revisits
-   the $500 threshold: two acceptance-mutant approvals on `features/triage.feature`'s "Theft severity
-   by loss amount" rule (`500.00->501.00`, `500.01->501.01`) are equivalence judgments about that
-   exact threshold. Changing it goes stale automatically — the gate will report it as a stale approval
-   — and needs re-review against whatever replaces $500, not a surprise when it happens.*
-6. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
+4c. **Missing perils (`hurricane`, `sinkhole`, `roof_leak`) merged with the severity-rule thresholds
+    formerly at item 5, decided 2026-08-13 not to be sequential.** Originally sequenced with 4c
+    last of the three-way split because each new peril forces a severity decision, which was item
+    5's territory — adding perils without deciding their severity would push them silently through
+    the standard fallthrough, which is the defaulting `CLAUDE.md`'s first constraint forbids. That
+    reasoning turned out to argue for merging, not just ordering: assigning the new perils' severity
+    under a scheme item 5 was about to change would mean doing the work twice, once under the old
+    rule and once under the new one. One reopening, one spec lock. Item 5's own reasoning for sitting
+    behind items 1–2 still holds and carries over: real gaps, but none with 1–2's legal exposure, so
+    the merged item stays behind everything above.
+
+    A completeness gap, not a rename — the one a claims manager would actually stop at: a Florida
+    residential intake system with no way to code a hurricane or a sinkhole claim. See
+    `STATUTORY_REGISTER.md` for why hurricane and sinkhole are statutorily distinct, not just missing
+    labels. *Three of the four decisions this item needs are now made — see `ASSUMPTIONS.md`: the new
+    perils' severities (`sinkhole` `HIGH`, `roof_leak` and `hurricane` `STANDARD`, with catastrophe
+    handling recorded as a deliberate non-goal rather than a severity concern); loss amount removed
+    from the severity rule entirely rather than re-thresholded; and `policy_inception_date` now
+    available at intake via a phase-2 adapter lookup, reversing the earlier "no source until phase 3"
+    assumption. What still blocks the spec: the lookup's exact semantics — original inception date vs.
+    current-term effective date — is open and is the human's to answer, not the implementer's; see
+    `ASSUMPTIONS.md`'s "Data we do not have at intake." Also see `ASSUMPTIONS.md`'s open decision on
+    `loss_type` conflating perils with Section II coverage categories — this item should not assume an
+    answer to that question either. Note for whoever writes the spec: two acceptance-mutant approvals
+    on `features/triage.feature`'s "Theft severity by loss amount" rule (`500.00->501.00`,
+    `500.01->501.01`) are equivalence judgments about the amount threshold this item removes
+    entirely — the rule they're keyed to stops existing, not merely changes value, and re-review is
+    the human's, not automatic.*
+5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
 
@@ -107,8 +118,8 @@ later.
 | Working on | Also read |
 |---|---|
 | 4a, 4b | `ASSUMPTIONS.md` — the vocabulary and policy-prefix entries |
-| 4c, 5 | `ASSUMPTIONS.md` and `STATUTORY_REGISTER.md` |
-| 6 (phase 2) | everything, `PHASE2_DESIGN.md` first |
+| 4c (merged with former item 5) | `ASSUMPTIONS.md` and `STATUTORY_REGISTER.md` |
+| 5 (phase 2) | everything, `PHASE2_DESIGN.md` first |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
 
@@ -223,14 +234,32 @@ numbered list above, but its own entry already says it waits for item 5 or merge
 each new peril forces a severity decision that's item 5's territory — that decision is the human's to
 make, not a pickup for the next session.
 
+**Items 4c and 5 are merged into one item, decided 2026-08-13 — documentation only, on `main`, no
+branch, no spec, no implementation.** They were never sequential: 4c would have assigned severity to
+`hurricane`, `sinkhole`, and `roof_leak` under the severity rule item 5 was about to change. Former
+item 5's own numbered slot is retired; the old item 6 (phase 2 build) is renumbered 5 — nothing
+outside `QUEUE.md` referenced it by number. Three of the four decisions the merged item needs are
+made and recorded in `ASSUMPTIONS.md`: new-peril severities (`sinkhole` `HIGH`, `roof_leak` and
+`hurricane` `STANDARD`, catastrophe handling recorded as a deliberate non-goal); loss amount removed
+from the severity rule entirely rather than re-thresholded; and `policy_inception_date` is available
+at intake via a phase-2 adapter lookup, reversing the earlier "no source until phase 3" assumption.
+The fourth is still open and blocks the spec: whether that lookup returns the policy's original
+inception date or the current term's effective date — see `ASSUMPTIONS.md`'s "Data we do not have at
+intake."
+
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-Nothing open as of this handoff.
+**The merged item 4c is blocked on a decision, not a pickup.** Its spec cannot be written until the
+human answers whether the `policy_inception_date` lookup returns the policy's original inception
+date or the current term's effective date — see `ASSUMPTIONS.md`'s "Data we do not have at intake."
+Getting this wrong reproduces, in the recent-inception indicator, the exact defect `QUEUE.md` item 2
+already removed from the late-reporting side.
 
-`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through item 4b's merge and this
-handoff's QUEUE.md/ASSUMPTIONS.md updates. `reopening/policy-prefix-set` is pushed through its tip
-(`6eb403a`) and kept as history, same as `reopening/loss-type-vocabulary`, `reopening/duplicates`, and
-`reopening/siu-indicators`.
+`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through the 2026-08-13
+documentation session that merged items 4c and 5 and recorded their four underlying decisions
+(QUEUE.md/ASSUMPTIONS.md/STATUTORY_REGISTER.md). `reopening/policy-prefix-set` is pushed through its
+tip (`6eb403a`) and kept as history, same as `reopening/loss-type-vocabulary`,
+`reopening/duplicates`, and `reopening/siu-indicators`.
