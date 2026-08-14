@@ -156,10 +156,20 @@ The acceptance gate writes a pre-mutation copy of every spec it is about to
 mutate to `.gauntlet/mutation-backup/<name>` before mutating it in place
 (`gates/acceptance.py`'s `_backup`, called ahead of each mutation pass). That is
 the intended recovery path for the corrupted-source finding above ("Check `git
-diff` after any interrupted mutation run") — restoring from `git` worked
-because the spec happened to already be committed, but the backup directory is
-the tool's own answer to this exact failure, and it went unused the last time
-that finding fired.
+diff` after any interrupted mutation run") — restore from there, not `git`,
+once a run is confirmed interrupted.
+
+**Correction, 2026-08-14.** An earlier version of this entry cited a specific
+occurrence — a `features/validation.feature` corruption found and `git
+restore`d earlier the same session — as "the last time that finding fired."
+`gauntlet events --limit 0` shows no `run.started` for `command=check` that
+session lacking a matching `run.finished`: both full-gate runs that day
+(09:45:21→09:47:55, 10:15:25→10:18:36) completed cleanly, and no run was
+killed. The claim was an unverified inference at the time, restated as a
+confirmed finding — the exact failure shape this file exists to catch,
+happening to this file. Corrected rather than left standing; what actually
+produced that corruption is unconfirmed, and is not this entry's finding to
+claim.
 
 ### The acceptance gate takes about 150 seconds on the current suite
 
