@@ -7,6 +7,16 @@ Duck Creek's internal systems or data. Every entry below states what was assumed
 would correct it — this file is the difference between a gap that reads as identified and one
 that reads as missed.
 
+**Provenance convention, proposed 2026-08-14.** A dated decision below should carry a provenance
+tag, not a bare "decided": **advisor-recommended, human-ratified** when it rests on an argued chain
+from stated premises to a conclusion — inspectable on its own terms, and wrong if a premise is
+wrong or the argument doesn't follow — that an advisor proposed and the human then approved. A
+decision resting on the human's own direct carrier or claims-handling experience, not derived from
+any chain of reasoning stated in this file, is tagged **human, from carrier experience** instead —
+this file cannot self-check that kind of claim the way it can check an argument, so the tag says
+which kind of trust the entry is asking for. Entries predating this convention carry a bare
+"decided" and should be read as unclassified, not silently reinterpreted as either tag.
+
 ## docs/decisions.md audit
 
 All seven entries classified as: cites an external source; records a rationale; asserts an
@@ -125,6 +135,23 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   standard supports this; it is a carrier policy decision. What would reverse it: a validated
   exposure figure at intake, not what the caller said. Supersedes the `$500` threshold recorded
   under "Undocumented phase-1 thresholds" below — that entry is now moot, not merely unsourced.
+- **Advisor-recommended, human-ratified, 2026-08-14: the `low` severity band and its `fast_track`
+  queue are retired, not left as reachable dead code.** Severity is `standard` or `high`; queues
+  are `standard` and `complex`. The theft-amount rule above was the only producer of `low`, and no
+  peril is a credible fast-track feeder — `roof_leak` least of all, given Florida's separate roof
+  deductible and the litigation environment around it. What would reverse this: a genuine
+  complexity signal captured at intake — single-trade damage, no additional living expense, no
+  injury, no coverage question — which is what a real fast-track band keys on, not amount and not
+  peril, and which needs structured damage capture the FNOL record does not have.
+- **Advisor-recommended, human-ratified, 2026-08-14: the end-to-end outline keeps its `loss_amount`
+  column after loss amount stops affecting severity.** The surviving mutants on that column are the
+  proof of the new rule, not incidental: a mutation that changes the reported amount without moving
+  severity, approved as equivalent, is the spec demonstrating "severity derives from loss type
+  alone" in a form mutation testing can verify. Dropping the column would leave the spec merely not
+  contradicting the rule instead of demonstrating it. `Candidate.loss_amount` stays on the model as
+  captured-not-used; `assign_severity` loses the parameter entirely. Recording the distinction
+  explicitly so a later reader doesn't mistake the unused field for dead code and delete it — it
+  earns its place by what the spec demonstrates with it, not by being read anywhere in `triage.py`.
 
 ## Undocumented phase-1 thresholds
 
