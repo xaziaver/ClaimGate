@@ -106,37 +106,40 @@ Ordered by domain severity, not by effort. One line each on why that position.
     the party/risk in each of the three policy administration systems, needed before the phase-2
     adapter is wired, not before this spec is written. Also see `ASSUMPTIONS.md`'s open decision on
     `loss_type` conflating perils with Section II coverage categories — this item should not assume
-    an answer to that question either. Note for whoever writes the spec: re-review scope is 7
-    acceptance-mutant approvals if the end-to-end outline keeps its `loss_amount` column, 13 if it
-    drops it — not the two this entry previously named. The two on "Theft severity by loss amount"
-    (`500.00`, `500.01`) are gone with the rule regardless. A mutant's locator is the mutated
-    column's header plus every value in its row (`docs/harness-findings.md`), so once the three
-    theft rows in the end-to-end outline have their `severity`/`queue` cells flip from
-    `low`/`fast_track` to `standard`/`standard`, every approval keyed to one of those rows goes
-    stale with them — 5 more, regardless of which column was originally mutated (2 on
-    `inception_date`, 3 on `loss_amount`), bringing the floor to 7. If `loss_amount` is dropped from
-    the table instead of kept as an inert column, every row's locator context changes, not just the
-    three theft rows', taking the remaining 6 end-to-end approvals with it and raising the total to
-    13 — all of `triage.feature`'s current approvals. Re-review is the human's, not automatic,
-    either way.*
+    an answer to that question either. Note for whoever writes the spec: re-review scope is
+    **decided at 7 acceptance-mutant approvals**, not the two this entry previously named — the
+    end-to-end outline keeps its `loss_amount` column (advisor-recommended, human-ratified,
+    2026-08-14; see `ASSUMPTIONS.md`'s "Carried requirements"), so the 13-approval branch of the
+    fork this entry used to carry does not apply. The two on "Theft severity by loss amount"
+    (`500.00`, `500.01`) are gone with the rule. A mutant's locator is the mutated column's header
+    plus every value in its row (`docs/harness-findings.md`), so once the three theft rows in the
+    end-to-end outline have their `severity`/`queue` cells flip from `low`/`fast_track` to
+    `standard`/`standard`, every approval keyed to one of those rows goes stale with them — 5 more,
+    regardless of which column was originally mutated (2 on `inception_date`, 3 on `loss_amount`),
+    for 7 total. Re-review is the human's, not automatic.*
 4d. **`siu_indicators.feature` reopening: everything the recent-inception lookup decision (4c) leaves
     stale in that file, taken together.** Sequenced behind 4c, not started. Two comments still say
     `policy_inception_date` has no source at intake (lines 79-81, 125-129); the Rule and Scenario
     both named "Neither indicator is evaluated in the shipped configuration" and the
     NOT_EVALUATED-becomes-an-exception-path framing both need reconciling with the decided lookup
-    (`ASSUMPTIONS.md`'s "Data we do not have at intake"). *Proposed, not decided:* renaming the
-    field's vocabulary from "policy inception date" to "continuous coverage date" throughout the
-    file, matching the mechanics `ASSUMPTIONS.md` now describes — a rewrite no longer resets the
-    date, so "policy inception" is no longer an accurate name for what the indicator measures. Cost
-    if taken: 5 of `siu_indicators.feature`'s 7 current approvals are keyed to the "recent policy
-    inception threshold is 30 days" literal (the other 2 are the late-reporting threshold's,
-    unrelated to this vocabulary and untouched by it), plus 1 more on `triage.feature` beyond
-    whatever 4c's own change already re-reviews — the end-to-end outline's water_damage-row
-    `inception_date`-column approval, which survives 4c's severity/queue flip (water_damage stays
-    `standard`/`standard` before and after) but not a column-header or template-wording rename.
-    `triage.feature` lines 60-61 carry the same stale "the configuration this system actually ships
-    with" claim about NOT_EVALUATED and are free to fix inside 4c's own lock, since that file is
-    already open there.
+    (`ASSUMPTIONS.md`'s "Data we do not have at intake"). **Advisor-recommended, human-ratified,
+    2026-08-14: the vocabulary rename is decided, and it is surgical** — rename the input date only
+    ("the policy inception date" -> "the continuous coverage date"; column header `inception_date`
+    -> `coverage_start`). Do NOT rename the indicator or the threshold: "recent policy inception" is
+    a correct indicator name and is what SIU reads, and stays as-is. Measured costs, both counted the
+    same way as 4c's (locator = mutated column's header plus every row value): a full rename
+    (indicator and threshold included) would touch 8 approvals; the surgical rename decided here
+    touches 3, all three on `triage.feature`'s `inception_date` column — none on
+    `siu_indicators.feature`, since none of its 7 current approvals are keyed to a step mentioning
+    the date itself, only to the threshold steps this rename leaves untouched. Of those 3: 2 are the
+    end-to-end outline's theft-row approvals, already re-reviewed once under 4c for their
+    `severity`/`queue` flip and re-reviewed again here for the column-header rename — re-reviewed
+    twice, not double-counted as new; the third is the water_damage-row approval, untouched by 4c,
+    new to this item alone. This stays its own item rather than riding inside 4c's lock specifically
+    to avoid that scope creep, at the recorded cost of those 2 approvals being re-reviewed twice
+    instead of once. `triage.feature` lines 60-61 carry the same stale "the configuration this
+    system actually ships with" claim about NOT_EVALUATED and are free to fix inside 4c's own lock,
+    since that file is already open there.
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
