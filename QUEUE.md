@@ -140,6 +140,19 @@ Ordered by domain severity, not by effort. One line each on why that position.
     instead of once. `triage.feature` lines 60-61 carry the same stale "the configuration this
     system actually ships with" claim about NOT_EVALUATED and are free to fix inside 4c's own lock,
     since that file is already open there.
+4e. **Close the loss-type vocabulary in `validation.feature`: an unrecognized loss type should be a
+    blocker, not a silent `standard`.** Sequenced after 4d, not started. Motivation, as fact, not
+    conjecture: `validation.py`'s `_check_loss_type` tests only for non-empty (`.strip()`), with no
+    closed-set check behind it; `triage.py`'s `assign_severity` falls through to `standard` for
+    anything not in the high-severity set. `sinkhole` sat in exactly this gap until item 4c gave it
+    its own row and its own `HIGH` severity — before that, nothing in the codebase would have
+    distinguished a `sinkhole` loss from a typo, and nothing would have failed either way, because
+    nothing checked. *Considered and rejected: adding an "unrecognized loss type resolves standard"
+    scenario to `triage.feature` instead of closing the gap in `validation.feature`.* That would spec
+    the fallthrough as intended behavior — hash-lock the default rather than close the gap it exists
+    because of. The fix belongs at intake validation, where an unrecognized value already becomes a
+    blocker for every other required field, not inside severity assignment, which has no way to
+    refuse a record at all.
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
@@ -155,6 +168,7 @@ later.
 | 4a, 4b | `ASSUMPTIONS.md` — the vocabulary and policy-prefix entries |
 | 4c (merged with former item 5) | `ASSUMPTIONS.md` and `STATUTORY_REGISTER.md` |
 | 4d | `ASSUMPTIONS.md` — "Data we do not have at intake" |
+| 4e | this item's own entry; no other document needed |
 | 5 (phase 2) | everything, `PHASE2_DESIGN.md` first |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
