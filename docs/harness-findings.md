@@ -137,6 +137,46 @@ run killed mid-mutation has left an injected literal inside a step definition. A
 corrupted spec is indistinguishable at a glance from a real edit, so an
 interrupted run is followed by a diff before anything else.
 
+### Every event line carries a run correlation id; runs don't nest, and the log has a size-based ceiling
+
+Every line in `.gauntlet/events.jsonl` is stamped with a `run` id —
+`YYYYMMDDTHHMMSS-<pid>`, assigned once per process in `Log.__init__` and
+written by `build()` (`events.py:60-67`). Runs are separate OS processes and
+never nest, so pairing `run.started` to `run.finished` by that id is exact —
+no FIFO- or depth-matching heuristic is needed, and none should be trusted
+over it. `events.read()` only parses `.gauntlet/events.jsonl` itself; the file
+rotates at 5MB to `.jsonl.1`, which `read()` never opens. `gauntlet events
+--limit 0` is therefore all of the *current* file, not all history — a
+rotation silently drops older runs from anything `events` reports.
+
+### A lock-rejected run and a killed run both orphan `run.started` — `gate.finished` tells them apart
+
+`check` emits `RUN_STARTED` (`cli.py:151`) before entering `_locked_run`. When
+another run already holds the project lock, `_locked_run` catches
+`RunInProgressError`, echoes a message, and raises `typer.Exit(EXIT_OK)` — so
+`_finish` (`cli.py:77`, the only place that emits `RUN_FINISHED`) never runs.
+A lock-rejected run therefore looks like: `run.started`, zero `gate.finished`
+events, exit 0, having executed nothing. A killed run looks like:
+`run.started` plus one `gate.finished` per gate that completed before the
+kill. The `gate.finished` count is what tells the two apart — an orphaned
+`run.started` alone doesn't say which happened. This project's log has both:
+5 lock-rejected runs in 59 seconds on 2026-08-13 (14:16:01-14:17:00), and 4
+killed runs (2026-08-02T21:53, 2026-08-08T11:14, 2026-08-11T22:44,
+2026-08-13T23:14:34). Commit `9927dda` that same afternoon ("limit repeated
+gauntlet check attempts") reacted to the lock-rejection burst without
+diagnosing which of the two failure shapes it was. A lock-rejected run is a
+third way to get a meaningless zero, alongside the pipe trap below and the
+`--changed` scoping question further down.
+
+### Every killed run died inside the acceptance gate
+
+All four killed runs in this project's history died after completing every
+other gate through `mutation`, inside `acceptance`. Not coincidence:
+acceptance is roughly 98% of a full run's wall time (see below) and the only
+gate that mutates spec files in place. A killed `gauntlet check` corrupts a
+spec on essentially every occurrence, not occasionally — treat any killed run
+as a corrupted-spec event by default, not a maybe.
+
 ### `gauntlet check`'s verdict is an exit status, not its printed text
 
 `gauntlet check` signals pass or fail through its exit code (`cli_support.py:19`:
@@ -149,6 +189,17 @@ reported as "exit code 0" through that pipe says nothing about the gate; only
 the printed verdict (`GAUNTLET PASSED` / `GAUNTLET FAILED`) does. `set -o
 pipefail` recovers the real status if the exit code specifically is needed;
 otherwise read the verdict line, not `$?`.
+
+### The exit-status pipe trap has a confirmed realized cost, not just a hypothetical one
+
+The run at `2026-08-13T23:16:37` reported `tests 168/169` and `acceptance: 1
+unapproved or modified spec(s)`, finishing `passed=False` and exiting 2 — the
+gate detected the corruption and named it correctly. That run is the one
+reported in-session as "Background command completed (exit code 0)": piped
+through `tail`, the real exit status was discarded, and the same corruption
+was then independently rediscovered by `git diff` and credited to the diff
+rather than to the gate that had already caught it. Recorded here because it
+happened, not because it could.
 
 ### A corrupted spec from an interrupted mutation run has a recovery path already on disk
 
@@ -171,28 +222,37 @@ happening to this file. Corrected rather than left standing; what actually
 produced that corruption is unconfirmed, and is not this entry's finding to
 claim.
 
-### The acceptance gate takes about 150 seconds on the current suite
+### The acceptance gate's wall time is growing, not fixed at ~150s
 
-Measured directly on a clean run, not estimated: `gauntlet check` spends
-roughly 150s in the acceptance gate against this project's current test suite.
-Any tool timeout set below approximately 180s risks killing the run
-mid-mutation, which is exactly what produces the corrupted-spec state described
-above — this has happened, not merely could. Give `gauntlet check` a timeout
-comfortably above 180s, or run it in the background.
+Across 162 acceptance-gate runs in the log, the maximum observed is 260.3s,
+and the trend is upward, not flat: the four most recent runs measured 186.2s,
+174.1s, 208.2s, and 260.3s. Budget 300s as a floor for any tool timeout
+wrapping `gauntlet check`, and expect that floor to keep rising as the suite
+grows — don't quote a fixed number here again without rechecking the log.
+The exposure isn't evenly distributed: the Stop hook already allows 600s, and
+the `PostToolUse` hook only ever runs the fast gates (`static`, `size`,
+`complexity`) at a 60s budget, neither of which is at risk. Every killed run
+in this project's history was an agent-issued `gauntlet check` through `bash`,
+cut off at whatever that tool call's own timeout happened to be — that is the
+timeout that needs raising, not the hooks'.
 
-### `scope = "changed"` in `gauntlet.toml` is currently inert
+### `scope = "changed"` in `gauntlet.toml` never reaches the mutation gate — but not because `--changed` goes unused
 
-The mutation gate only reads `scope` when `ctx.changed_files` is not `None`
-(`gates/mutation.py:55`: `if str(config.get("scope", "changed")) != "changed"
-or ctx.changed_files is None:`), and `changed_files` stays `None` unless
-`gauntlet check` runs with `--changed` — which defaults to `False`
-(`cli.py:142`). Every run so far has been full-project as a result; the `213
-killed` mutation figures quoted throughout this project's history cover the
-whole suite, not a changed-files subset, regardless of what `gauntlet.toml`
-says. If `--changed` is ever passed, its base is `git status --porcelain
--uall` — working tree against `HEAD`, not commit against commit — so a run
-issued straight after a commit, with a clean tree, would find no changed files
-and the gate would report passed, vacuously, with nothing actually mutated.
+`--changed` is passed constantly: `.claude/settings.json`'s `PostToolUse` hook
+runs `gauntlet check --gates static,size,complexity --changed` on every edit,
+and the log carries 243 such runs. The narrower true claim is about which
+gates that hook selects, not about whether `--changed` is ever used: those 243
+runs are scoped to `static`, `size`, and `complexity` and never include
+`mutation`, so `config.get("scope")` (`gates/mutation.py:55`) is never even
+evaluated for them. Every run that *does* include the mutation gate is a
+full, non-`--changed` `gauntlet check` (the Stop hook, or an agent-issued
+`check`), so the `213 killed` figures quoted throughout this project's history
+are full-project for that reason — not because `--changed` is inert. If
+`--changed` were ever combined with the mutation gate, its base is still `git
+status --porcelain -uall` — working tree against `HEAD`, not commit against
+commit — so a run issued straight after a commit, with a clean tree, would
+find no changed files and the gate would report passed, vacuously, with
+nothing actually mutated.
 
 ## Process and technique
 
