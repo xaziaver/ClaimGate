@@ -284,38 +284,69 @@ numbered list above, but its own entry already says it waits for item 5 or merge
 each new peril forces a severity decision that's item 5's territory — that decision is the human's to
 make, not a pickup for the next session.
 
-**Items 4c and 5 are merged into one item, decided 2026-08-13 — documentation only, on `main`, no
-branch, no spec, no implementation.** They were never sequential: 4c would have assigned severity to
-`hurricane`, `sinkhole`, and `roof_leak` under the severity rule item 5 was about to change. Former
-item 5's own numbered slot is retired; the old item 6 (phase 2 build) is renumbered 5 — nothing
-outside `QUEUE.md` referenced it by number. All four decisions the merged item needs are now made and
-recorded in `ASSUMPTIONS.md`: new-peril severities (`sinkhole` `HIGH`, `roof_leak` and `hurricane`
-`STANDARD`, catastrophe handling recorded as a deliberate non-goal); loss amount removed from the
-severity rule entirely rather than re-thresholded; `policy_inception_date` is available at intake via
-a phase-2 adapter lookup, reversing the earlier "no source until phase 3" assumption; and, decided
-2026-08-13, the lookup returns the policy's ORIGINAL inception date — continuous coverage on the
-risk, not with any one carrier — never the current term's effective date — see `ASSUMPTIONS.md`'s
-"Data we do not have at intake." The mechanics of that lookup (how a rewrite is told apart from a
-lapse, and why "on the risk" rather than "with this carrier" is what the data actually models) are
-now also decided, 2026-08-14, same document; only which identifier resolves to the party/risk in
-each of the three policy administration systems remains unverified, needed before the phase-2
-adapter is wired, not before the spec.
+**Items 4c and 5 are merged into one item.** They were never sequential: 4c would have assigned
+severity to `hurricane`, `sinkhole`, and `roof_leak` under the severity rule item 5 was about to
+change. Former item 5's own numbered slot is retired; the old item 6 (phase 2 build) is renumbered 5
+— nothing outside `QUEUE.md` referenced it by number. Every decision the merged item needs is made
+and recorded in `ASSUMPTIONS.md`: new-peril severities (`sinkhole` `HIGH`, `roof_leak` and
+`hurricane` `STANDARD`, catastrophe handling a deliberate non-goal); loss amount removed from the
+severity rule entirely, and the `low` severity band and `fast_track` queue retired with it — the
+theft-amount rule was their only producer and no peril is a credible fast-track feeder;
+`Candidate.loss_amount` stays on the model captured-not-used rather than removed, so the end-to-end
+outline's surviving mutants on that column can keep demonstrating the independence rather than the
+spec merely not contradicting it; `policy_inception_date` is available at intake via a phase-2
+adapter lookup returning the policy's ORIGINAL inception date — continuous coverage on the risk, not
+with any one carrier, surviving an administrative rewrite but not a genuine lapse — never the
+current term's effective date; see `ASSUMPTIONS.md`'s "Data we do not have at intake" and "Carried
+requirements." Only per-system party/risk identifier resolution remains unverified, needed before
+the phase-2 adapter is wired, not before this spec.
+
+**The spec is drafted, not locked.** Branch `reopening/severity-and-perils`, tip `b3b986a` (two
+commits over `main`: `3875f34` the assertion and table changes, `b3b986a` two explanatory comments,
+verified structurally inert — 90 mutants both before and after, confirmed by calling gauntlet's
+mutation engine directly rather than assumed). `features/triage.feature` only: `hurricane|standard`,
+`roof_leak|standard`, `sinkhole|high` added to "Severity by loss type"; "Theft severity depends on
+the loss amount" (Rule and Scenario Outline) deleted entirely; `low|fast_track` dropped from "Queue
+routing"; the end-to-end outline's three theft rows now assert `standard|standard` with every column,
+including `loss_amount`, kept. No `src/` change, no test change — `gauntlet spec approve` is the
+human's, not run. Locking is the next action on this item, not a pickup task.
+
+**`gauntlet check` fails on this branch, as expected, in two places — not a defect to chase.** The
+`tests` gate: 164/168 passing, the four failures being exactly the sinkhole row and the three
+end-to-end theft rows asserting against unchanged `src/` (`assign_severity` still has no `sinkhole`
+case and still branches on loss amount for `theft`) — this is the spec correctly disagreeing with
+code that hasn't been told about the new rule yet, not a bug. The `acceptance` gate: `1 unapproved or
+modified spec(s)`, `features/triage.feature` changed since its last approval — guaranteed by the
+spec-lock-before-implementation rule (`CLAUDE.md`) and clears only when the human runs `gauntlet spec
+approve` and, later, `lock`.
+
+**Expected ledger outcome once implementation lands (not yet true, a prediction to check against,
+not something to build toward blind):** 7 of `triage.feature`'s 13 current approvals need re-review,
+not 2. The 2 on "Theft severity by loss amount" (`500.00`, `500.01`) vanish as dangling keys — the
+scenario they're keyed to no longer exists, nothing to re-approve. The other 5 — 2 `inception_date`-
+and 3 `loss_amount`-mutated approvals on the three theft rows — are expected to resurface as
+unreviewed survivors under new locators, since the mutations they cover (varying a date or an amount
+that still doesn't move severity) should still be equivalent under the new rule the same way they
+were under the old one. Zero survivors are expected beyond those 5; a sixth or more would mean the
+implementation diverges from the spec in some case this reopening didn't anticipate, not a mutation
+count to explain away.
 
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-**The merged item 4c is blocked on one human decision, not a pickup.** The theft-amount rule is the
-only thing that has ever produced `low` severity — nothing else in `assign_severity` returns it, and
-nothing produces the `fast_track` queue except by routing from `low`. Once loss amount stops
-affecting severity, whether the `low` band and `fast_track` queue survive at all is the human's call,
-not the implementer's: keep them as a queue and severity value no live input can ever reach, or
-retire them along with the rule that fed them. Not deciding it here.
+**`reopening/severity-and-perils`'s spec draft is awaiting the human's `gauntlet spec approve`,
+then `lock`.** Nothing on this item is a pickup for the next session until that happens — see "The
+spec is drafted, not locked" above for the branch, the ref, and what `gauntlet check` is expected to
+say in the meantime. Item 4d (surgical `siu_indicators.feature` rename, decided) and item 4e (close
+`validation.feature`'s loss-type vocabulary, not started) are next after this item closes, in that
+order.
 
-`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through the 2026-08-14
-documentation session that decided the recent-inception lookup's mechanics (party/risk resolution,
-rewrite-vs-lapse, on-the-risk not with-the-carrier), added the reporter-identity defect, corrected
-4c's mutant-approval re-review count, and recorded item 4d (QUEUE.md/ASSUMPTIONS.md).
+`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through the 2026-08-14 session
+that drafted (not locked) `reopening/severity-and-perils`'s spec, recorded the provenance-tagging
+convention plus the `low`/`fast_track` and `loss_amount`-capture decisions, decided item 4d's
+surgical scope, and added item 4e (QUEUE.md/ASSUMPTIONS.md). `reopening/severity-and-perils` is
+pushed through its tip (`b3b986a`).
 `reopening/policy-prefix-set` is pushed through its tip (`6eb403a`) and kept as history, same as
 `reopening/loss-type-vocabulary`, `reopening/duplicates`, and `reopening/siu-indicators`.
