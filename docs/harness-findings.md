@@ -137,6 +137,53 @@ run killed mid-mutation has left an injected literal inside a step definition. A
 corrupted spec is indistinguishable at a glance from a real edit, so an
 interrupted run is followed by a diff before anything else.
 
+### `gauntlet check`'s verdict is an exit status, not its printed text
+
+`gauntlet check` signals pass or fail through its exit code (`cli_support.py:19`:
+`EXIT_OK, EXIT_CONFIG_ERROR, EXIT_GATE_FAILURE = 0, 1, 2`; `cli.py:98`:
+`raise typer.Exit(code=EXIT_OK if ok else EXIT_GATE_FAILURE)`) — 0 on a passing
+gate, 2 on a failing one. `CLAUDE.md`'s own recommended form,
+`gauntlet check 2>&1 | tail -25`, pipes that through `tail`, and it is `tail`'s
+exit status — always 0 on a normal read — that `$?` reports afterward. A run
+reported as "exit code 0" through that pipe says nothing about the gate; only
+the printed verdict (`GAUNTLET PASSED` / `GAUNTLET FAILED`) does. `set -o
+pipefail` recovers the real status if the exit code specifically is needed;
+otherwise read the verdict line, not `$?`.
+
+### A corrupted spec from an interrupted mutation run has a recovery path already on disk
+
+The acceptance gate writes a pre-mutation copy of every spec it is about to
+mutate to `.gauntlet/mutation-backup/<name>` before mutating it in place
+(`gates/acceptance.py`'s `_backup`, called ahead of each mutation pass). That is
+the intended recovery path for the corrupted-source finding above ("Check `git
+diff` after any interrupted mutation run") — restoring from `git` worked
+because the spec happened to already be committed, but the backup directory is
+the tool's own answer to this exact failure, and it went unused the last time
+that finding fired.
+
+### The acceptance gate takes about 150 seconds on the current suite
+
+Measured directly on a clean run, not estimated: `gauntlet check` spends
+roughly 150s in the acceptance gate against this project's current test suite.
+Any tool timeout set below approximately 180s risks killing the run
+mid-mutation, which is exactly what produces the corrupted-spec state described
+above — this has happened, not merely could. Give `gauntlet check` a timeout
+comfortably above 180s, or run it in the background.
+
+### `scope = "changed"` in `gauntlet.toml` is currently inert
+
+The mutation gate only reads `scope` when `ctx.changed_files` is not `None`
+(`gates/mutation.py:55`: `if str(config.get("scope", "changed")) != "changed"
+or ctx.changed_files is None:`), and `changed_files` stays `None` unless
+`gauntlet check` runs with `--changed` — which defaults to `False`
+(`cli.py:142`). Every run so far has been full-project as a result; the `213
+killed` mutation figures quoted throughout this project's history cover the
+whole suite, not a changed-files subset, regardless of what `gauntlet.toml`
+says. If `--changed` is ever passed, its base is `git status --porcelain
+-uall` — working tree against `HEAD`, not commit against commit — so a run
+issued straight after a commit, with a clean tree, would find no changed files
+and the gate would report passed, vacuously, with nothing actually mutated.
+
 ## Process and technique
 
 Lessons about working with the harness rather than about the harness itself.
