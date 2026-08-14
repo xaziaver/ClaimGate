@@ -14,38 +14,24 @@ from claimgate.domain.triage import assign_severity, route_queue, triage_and_rou
     [
         ("injury", "high"),
         ("fire", "high"),
+        ("sinkhole", "high"),
         ("water_damage", "standard"),
         ("wind_hail", "standard"),
         ("vandalism", "standard"),
         ("liability", "standard"),
         ("lightning", "standard"),
         ("smoke", "standard"),
+        ("hurricane", "standard"),
+        ("roof_leak", "standard"),
     ],
 )
 def test_severity_by_loss_type(loss_type: str, expected_severity: str) -> None:
-    assert assign_severity(loss_type, loss_amount=None) == expected_severity
-
-
-@pytest.mark.parametrize(
-    ("loss_amount", "expected_severity"),
-    [
-        (Decimal("499.99"), "low"),
-        (Decimal("500.00"), "standard"),
-        (Decimal("500.01"), "standard"),
-    ],
-)
-def test_theft_severity_by_loss_amount(loss_amount: Decimal, expected_severity: str) -> None:
-    assert assign_severity("theft", loss_amount) == expected_severity
-
-
-def test_non_theft_loss_under_theft_threshold_is_not_low_severity() -> None:
-    assert assign_severity("water_damage", Decimal("400.00")) == "standard"
+    assert assign_severity(loss_type) == expected_severity
 
 
 @pytest.mark.parametrize(
     ("severity", "expected_queue"),
     [
-        ("low", "fast_track"),
         ("standard", "standard"),
         ("high", "complex"),
     ],
@@ -64,8 +50,8 @@ def test_queue_routing(severity: str, expected_queue: str) -> None:
         "expected_queue",
     ),
     [
-        ("theft", Decimal("400.00"), date(2026, 8, 1), date(2024, 1, 1), "low", "fast_track"),
-        ("theft", Decimal("400.00"), date(2026, 6, 15), date(2024, 1, 1), "low", "fast_track"),
+        ("theft", Decimal("400.00"), date(2026, 8, 1), date(2024, 1, 1), "standard", "standard"),
+        ("theft", Decimal("400.00"), date(2026, 6, 15), date(2024, 1, 1), "standard", "standard"),
         ("fire", Decimal("50000"), date(2026, 8, 1), date(2024, 1, 1), "high", "complex"),
         ("fire", Decimal("50000"), date(2026, 8, 1), date(2026, 7, 20), "high", "complex"),
         ("fire", Decimal("50000"), date(2026, 6, 1), date(2026, 5, 15), "high", "complex"),

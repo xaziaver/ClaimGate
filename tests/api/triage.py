@@ -9,8 +9,8 @@ from claimgate.domain.triage import route_queue as _route_queue
 from claimgate.domain.triage import triage_and_route as _triage_and_route
 
 
-def assign_severity(loss_type: str, loss_amount: Decimal | None = None) -> str:
-    return _assign_severity(loss_type, loss_amount)
+def assign_severity(loss_type: str) -> str:
+    return _assign_severity(loss_type)
 
 
 def route_queue(severity: str) -> str:
