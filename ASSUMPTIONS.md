@@ -266,14 +266,33 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   `compute_siu_indicators` keeps receiving the date as a parameter it never derives itself, exactly
   as today.
   **Decided 2026-08-13: the lookup returns the policy's ORIGINAL inception date — the date
-  continuous coverage with this carrier began — never the current term's effective date.** This was
+  continuous coverage on the risk began — never the current term's effective date.** This was
   a domain decision, not a data-availability one: both dates are available from the policy
   administration systems. The recent-inception indicator exists to surface new business — a loss
   shortly after coverage was first bought. A renewal effective date carries no such signal, and
   keying on it would fire the indicator across a lawful book every twelve months — the same defect,
-  in the same shape, `QUEUE.md` item 2 already removed from the late-reporting side. A new open
-  assumption follows from this decision, not a blocker on the spec — see "Original inception date
-  and continuous-coverage start diverge on a policy rewrite" under "Open decisions" below.
+  in the same shape, `QUEUE.md` item 2 already removed from the late-reporting side.
+- **Decided 2026-08-14: how the adapter derives that date, and what "continuous coverage" means.**
+  Answers the mechanics the decision above left open, not a separate question. The adapter does not
+  read a stored inception field. It resolves the party/risk identity from whatever the reporter
+  supplies, pulls every associated policy term for that risk plus cancellations, non-renewals, and
+  reinstatements, and derives the continuous-coverage start from that history. Administrative
+  rewrites and book transfers are transparent to this, because the term chain underneath them is
+  continuous even though the policy number changes.
+  A lapse is a gap in coverage IN FORCE, not a gap in the policy record: a reinstatement effective
+  retroactively to the cancellation date leaves no gap and does not reset the date; one leaving an
+  uncovered interval does. This is what makes the date survive an administrative rewrite but not a
+  genuine lapse.
+  Takeout and assumption business settle a second question this entry previously left open — whether
+  "continuous coverage" means with this carrier or on the risk: it is **on the risk**, regardless of
+  which carrier wrote it, because that is what the available data models. The first term in the
+  assuming carrier's own system carries the prior carrier's continuous-coverage date as a data point,
+  not a reset. **Corrects the "continuous coverage with this carrier began" wording** in the decided
+  entry above and in `QUEUE.md`'s item 4c — narrower than what the lookup can actually compute; both
+  now read "on the risk."
+  **What remains unverified is only per-system mechanics** — which identifier resolves to the
+  party/risk in each of the three policy administration systems. Needed before the phase-2 adapter is
+  wired, not before the spec.
 - **Consequence, updated for the decision above:** the recent-policy-inception indicator's blocking
   gap was its missing input; that gap is resolved in principle now that the lookup's semantics are
   decided. Once the phase-2 adapter is built, `NOT_EVALUATED` becomes a genuine exception path for
@@ -286,17 +305,6 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
 
 ## Open decisions
 
-- **Original inception date and continuous-coverage start diverge on a policy rewrite — decided
-  2026-08-13 alongside the ORIGINAL-vs-current-term decision above, recorded as a new open
-  assumption rather than resolved by it.** An administrative rewrite or book transfer issues a new
-  policy number and resets the record date while the customer relationship is unbroken — keying the
-  recent-inception lookup on that date would fire the indicator on a long-standing policyholder,
-  the same failure shape the ORIGINAL-inception decision above exists to prevent. A rewrite
-  following a genuine coverage lapse is different and SHOULD reset the date, since a coverage gap is
-  exactly what the indicator wants to catch. The correct field is whichever survives an
-  administrative rewrite but not a lapse; which field the three policy administration systems expose
-  is unverified. Not a blocker on this spec — needs an answer before the phase-2 adapter is wired,
-  not before the spec is written.
 - **Replacement for the 30-day late-reporting threshold — not being set now.** Setting it quickly
   is the process that produced the 365, the 30, and the 500. Constraints for whoever settles it: a
   bare day count is probably the wrong instrument on a property book, because discovery time varies
