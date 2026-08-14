@@ -273,8 +273,8 @@
       "digest": "sha256:df4ecad57ee636c6f91f861c95343d5bb4960bb595050985f98917240e5436b6"
     },
     "spec:features/triage.feature": {
-      "approved_at": "2026-08-13T09:01:27+00:00",
-      "digest": "sha256:9f5ccd0b803ec32d1b47654e643b036579342ac0ff36ebb19a411ff0c13e3b3f"
+      "approved_at": "2026-08-14T17:15:20+00:00",
+      "digest": "sha256:049c4e4fe0ff651b906192e8172ab1ed200d8a995481876b8abad65ac4944c64"
     },
     "spec:features/validation.feature": {
       "approved_at": "2026-08-13T17:13:02+00:00",
