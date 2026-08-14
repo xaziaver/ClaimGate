@@ -175,22 +175,64 @@ events, exit 0, having executed nothing. A killed run looks like:
 `run.started` plus one `gate.finished` per gate that completed before the
 kill. The `gate.finished` count is what tells the two apart — an orphaned
 `run.started` alone doesn't say which happened. This project's log has both:
-5 lock-rejected runs in 59 seconds on 2026-08-13 (14:16:01-14:17:00), and 4
-killed runs (2026-08-02T21:53, 2026-08-08T11:14, 2026-08-11T22:44,
-2026-08-13T23:14:34). Commit `9927dda` that same afternoon ("limit repeated
-gauntlet check attempts") reacted to the lock-rejection burst without
-diagnosing which of the two failure shapes it was. A lock-rejected run is a
-third way to get a meaningless zero, alongside the pipe trap below and the
-`--changed` scoping question further down.
+5 lock-rejected runs in 59 seconds on 2026-08-13 (14:16:01-14:17:00), and,
+of the runs that emit `run.started` at all, 4 killed runs (2026-08-02T21:53,
+2026-08-08T11:14, 2026-08-11T22:44, 2026-08-13T23:14:34) — a 5th, found by a
+different method, is recorded below. Commit `9927dda` that same afternoon
+("limit repeated gauntlet check attempts") reacted to the lock-rejection
+burst without diagnosing which of the two failure shapes it was. A
+lock-rejected run is a third way to get a meaningless zero, alongside the
+pipe trap below and the `--changed` scoping question further down.
+
+### `stop-check` runs the full gauntlet but never emits `run.started` or `run.finished` — a third run shape, invisible to any pairing keyed on either
+
+Verified against source, not inferred. `events.RUN_STARTED` is emitted in
+exactly one place in the whole package: inside `check` (`cli.py:151`), before
+`_locked_run`. `stop_check` (`cli.py:220` — the Stop hook's command;
+`.claude/settings.json` wires it to `gauntlet stop-check --max-attempts 1`)
+calls `_locked_run(root, lambda: runner.run_full_gauntlet(...))` at
+`cli.py:235`, under the same project lock `check` uses, but its body never
+calls `log.emit(events.RUN_STARTED, ...)`, and it never reaches `_finish`
+(`cli.py:74`, the only place `RUN_FINISHED` is emitted — that call is local
+to `check`, `cli.py:153`). `run_full_gauntlet` delegates to the same
+`runner.run_gates` that `check` uses, so a stop-check run still emits one
+`gate.finished` per gate, correctly stamped with the run id `Log.__init__`
+assigns per process — it just never brackets them with a `run.started` or
+`run.finished`.
+
+This is not the lock-rejected/killed distinction above — both of those
+presuppose a `run.started` to anchor the analysis, and a stop-check run has
+none at all. It is a complete run with no boundary event on either end,
+findable only by grouping `gate.finished` events by `run` id and checking
+which ids have no matching `run.started`.
+
+**Measured, not estimated: this project's own run-count entries above
+undercounted by exactly this blind spot.** Grouping
+`.gauntlet/events.jsonl` by `run` id: 468 distinct runs have at least one
+`gate.finished` event; only 373 have a matching `run.started`. The other
+100 are stop-check runs — about 21% of every full-gauntlet-shaped execution
+in this project's history — invisible to any count built by pairing from
+`run.started`. One of the 100, `20260811T111732-289837`, completed 10 gates
+(`protect` through `mutation`, `boundary` present) with no `acceptance`
+`gate.finished`: a killed run at 2026-08-11T11:17, distinct from the
+2026-08-11T22:44 one already on record, uncounted until now because it was
+never findable by scanning for orphaned `run.started` events — it never
+emitted one to orphan. It is why the killed-run counts in the entry above and
+the entry below are five, not the four either would have reported on a
+`run.started`-only scan.
 
 ### Every killed run died inside the acceptance gate
 
-All four killed runs in this project's history died after completing every
-other gate through `mutation`, inside `acceptance`. Not coincidence:
+All five known killed runs in this project's history — the four found by
+scanning `run.started`/`gate.finished` pairs (2026-08-02T21:53,
+2026-08-08T11:14, 2026-08-11T22:44, 2026-08-13T23:14:34) plus the
+stop-check-only kill at 2026-08-11T11:17 found above — died after completing
+every other gate through `mutation`, inside `acceptance`. Not coincidence:
 acceptance is roughly 98% of a full run's wall time (see below) and the only
-gate that mutates spec files in place. A killed `gauntlet check` corrupts a
-spec on essentially every occurrence, not occasionally — treat any killed run
-as a corrupted-spec event by default, not a maybe.
+gate that mutates spec files in place. A killed `gauntlet check` (or
+`stop-check`) corrupts a spec on essentially every occurrence, not
+occasionally — treat any killed run as a corrupted-spec event by default,
+not a maybe.
 
 ### `gauntlet check`'s verdict is an exit status, not its printed text
 
