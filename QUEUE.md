@@ -78,7 +78,8 @@ Ordered by domain severity, not by effort. One line each on why that position.
     `LOSS_ASSESSMENT` notices already imply condo risks are in this book whether or not a prefix
     distinguishes them.*
 4c. **Missing perils (`hurricane`, `sinkhole`, `roof_leak`) merged with the severity-rule thresholds
-    formerly at item 5, decided 2026-08-13 not to be sequential.** Originally sequenced with 4c
+    formerly at item 5, decided 2026-08-13 not to be sequential.** *(Done — see below.)*
+    Originally sequenced with 4c
     last of the three-way split because each new peril forces a severity decision, which was item
     5's territory — adding perils without deciding their severity would push them silently through
     the standard fallthrough, which is the defaulting `CLAUDE.md`'s first constraint forbids. That
@@ -137,9 +138,13 @@ Ordered by domain severity, not by effort. One line each on why that position.
     twice, not double-counted as new; the third is the water_damage-row approval, untouched by 4c,
     new to this item alone. This stays its own item rather than riding inside 4c's lock specifically
     to avoid that scope creep, at the recorded cost of those 2 approvals being re-reviewed twice
-    instead of once. `triage.feature` lines 60-61 carry the same stale "the configuration this
-    system actually ships with" claim about NOT_EVALUATED and are free to fix inside 4c's own lock,
-    since that file is already open there.
+    instead of once. `triage.feature`'s copy of that stale claim was corrected inside 4c's lock
+    (`b3b986a`) and now reads "a real path once the phase-2 adapter's lookup can miss, not the
+    configuration this system ships with (see siu_indicators.feature)." That correction created a
+    broken cross-reference this item must close: `triage.feature` now points at
+    `siu_indicators.feature` for the shipped-configuration claim, and `siu_indicators.feature` still
+    asserts the opposite. A reader following the pointer lands on the contradiction rather than the
+    explanation.
 4e. **Close the loss-type vocabulary in `validation.feature`: an unrecognized loss type should be a
     blocker, not a silent `standard`.** Sequenced after 4d, not started. Motivation, as fact, not
     conjecture: `validation.py`'s `_check_loss_type` tests only for non-empty (`.strip()`), with no
@@ -301,52 +306,46 @@ current term's effective date; see `ASSUMPTIONS.md`'s "Data we do not have at in
 requirements." Only per-system party/risk identifier resolution remains unverified, needed before
 the phase-2 adapter is wired, not before this spec.
 
-**The spec is drafted, not locked.** Branch `reopening/severity-and-perils`, tip `b3b986a` (two
-commits over `main`: `3875f34` the assertion and table changes, `b3b986a` two explanatory comments,
-verified structurally inert — 90 mutants both before and after, confirmed by calling gauntlet's
-mutation engine directly rather than assumed). `features/triage.feature` only: `hurricane|standard`,
+**Item 4c is complete and merged.** Branch `reopening/severity-and-perils`, merged to `main` at
+`81f5865`. Five commits: `3875f34` the assertion and table changes, `b3b986a` two explanatory
+comments (structurally inert — 90 mutants before and after, confirmed by calling gauntlet's mutation
+engine directly rather than assumed), `8812493` the spec lock, `def8b2a` the implementation,
+`4f4204b` the prune and re-approval. `features/triage.feature`: `hurricane|standard`,
 `roof_leak|standard`, `sinkhole|high` added to "Severity by loss type"; "Theft severity depends on
-the loss amount" (Rule and Scenario Outline) deleted entirely; `low|fast_track` dropped from "Queue
-routing"; the end-to-end outline's three theft rows now assert `standard|standard` with every column,
-including `loss_amount`, kept. No `src/` change, no test change — `gauntlet spec approve` is the
-human's, not run. Locking is the next action on this item, not a pickup task.
+the loss amount" deleted entirely, Rule and Scenario Outline both; `low|fast_track` dropped from
+"Queue routing"; the end-to-end outline's three theft rows now assert `standard|standard`, every
+column including `loss_amount` kept. `src/claimgate/domain/triage.py`: `sinkhole` added to the
+high-severity set, `_is_low_severity_theft` and `THEFT_LOW_SEVERITY_THRESHOLD` deleted,
+`assign_severity` down to one parameter, `low`/`fast_track` out of `_SEVERITY_QUEUES`.
+`Candidate.loss_amount` stays on the model, captured but unused.
 
-**`gauntlet check` fails on this branch, as expected, in two places — not a defect to chase.** The
-`tests` gate: 164/168 passing, the four failures being exactly the sinkhole row and the three
-end-to-end theft rows asserting against unchanged `src/` (`assign_severity` still has no `sinkhole`
-case and still branches on loss amount for `theft`) — this is the spec correctly disagreeing with
-code that hasn't been told about the new rule yet, not a bug. The `acceptance` gate: `1 unapproved or
-modified spec(s)`, `features/triage.feature` changed since its last approval — guaranteed by the
-spec-lock-before-implementation rule (`CLAUDE.md`) and clears only when the human runs `gauntlet spec
-approve` and, later, `lock`.
+**The predicted ledger outcome held exactly, and was measured rather than accepted.** 7 of
+`triage.feature`'s 13 approvals needed re-review: the 2 keyed to the deleted "Theft severity by loss
+amount" scenario pruned as dangling, and 5 — 2 `inception_date`- and 3 `loss_amount`-mutated, all on
+the three theft rows — resurfacing as unreviewed survivors under new locators. Zero beyond those 5.
+`triage.feature` now carries 11 approvals (8 `loss_amount`, 3 `inception_date`), 40 project-wide.
+Green before merge: 166/166 tests, code mutation 100%/197 killed — down from 213 because the
+theft-amount branch and its constant were deleted, not because coverage weakened — acceptance 4
+specs, 40 reviewed-equivalent.
 
-**Expected ledger outcome once implementation lands (not yet true, a prediction to check against,
-not something to build toward blind):** 7 of `triage.feature`'s 13 current approvals need re-review,
-not 2. The 2 on "Theft severity by loss amount" (`500.00`, `500.01`) vanish as dangling keys — the
-scenario they're keyed to no longer exists, nothing to re-approve. The other 5 — 2 `inception_date`-
-and 3 `loss_amount`-mutated approvals on the three theft rows — are expected to resurface as
-unreviewed survivors under new locators, since the mutations they cover (varying a date or an amount
-that still doesn't move severity) should still be equivalent under the new rule the same way they
-were under the old one. Zero survivors are expected beyond those 5; a sixth or more would mean the
-implementation diverges from the spec in some case this reopening didn't anticipate, not a mutation
-count to explain away.
+**One thing the re-approval fixed that no gate could have caught.** `gauntlet mutant approve` applies
+a single reason to every survivor in scope and overwrites the existing ones, and all 11 survivors sit
+in one scenario — so `--scenario` cannot isolate the new ones, and the 6 previously-approved were
+necessarily re-stamped too. Their inherited reason carried four inaccuracies: a $500 threshold that
+no longer exists; a claim that the `0 <=` lower bound in `_is_recent_inception` was undocumented,
+false since item 2 added the scenario on 2026-08-09; a claim that nothing else in the suite would
+catch that bound's removal, false for the same reason; and a late-reporting threshold given as 30
+where the scenario uses 45. All four are corrected in the reason now on all 11 entries. This was the
+third occasion that text would have carried forward unchanged — locator and digest were identical
+each time, so nothing in the harness could have flagged it. Recorded here because it is the concrete
+cost of the ledger having no per-mutant reason.
 
 ## Open instructions
 
-Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
-the numbered queue above tracks reopenings.
-
-**`reopening/severity-and-perils`'s spec draft is awaiting the human's `gauntlet spec approve`,
-then `lock`.** Nothing on this item is a pickup for the next session until that happens — see "The
-spec is drafted, not locked" above for the branch, the ref, and what `gauntlet check` is expected to
-say in the meantime. Item 4d (surgical `siu_indicators.feature` rename, decided) and item 4e (close
-`validation.feature`'s loss-type vocabulary, not started) are next after this item closes, in that
-order.
-
-`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through the 2026-08-14 session
-that drafted (not locked) `reopening/severity-and-perils`'s spec, recorded the provenance-tagging
-convention plus the `low`/`fast_track` and `loss_amount`-capture decisions, decided item 4d's
-surgical scope, and added item 4e (QUEUE.md/ASSUMPTIONS.md). `reopening/severity-and-perils` is
-pushed through its tip (`b3b986a`).
-`reopening/policy-prefix-set` is pushed through its tip (`6eb403a`) and kept as history, same as
-`reopening/loss-type-vocabulary`, `reopening/duplicates`, and `reopening/siu-indicators`.
+**Nothing is in flight.** Item 4c is merged and `main` is green. Item 4d — the surgical
+`siu_indicators.feature` rename, plus that file's two stale comments, the Rule and Scenario both
+named "Neither indicator is evaluated in the shipped configuration", the NOT_EVALUATED framing, and
+the broken cross-reference 4c created — is next, then item 4e. Neither is started. Both are
+specification work, so both begin with a draft on a `reopening/` branch and stop at the human's
+`gauntlet spec approve`; that stop is guaranteed by the spec-lock-before-implementation rule, not a
+condition to chase.
