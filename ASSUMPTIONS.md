@@ -244,6 +244,16 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   plausibility floor on loss date" above — both need policy data that doesn't exist until phase 3.
   Not fixing, and not adding a scenario, in this reopening: item 1 is queue routing, not SIU
   thresholds. See `QUEUE.md` item 2.
+- **The record captures no reporter identity or relationship to the insured.** FNOL on a Florida
+  residential book arrives from the insured, the agent, a public adjuster, an attorney, a mitigation
+  contractor, or a CAT call center, and the reporter is frequently not the insured. The 7-day
+  acknowledgment duty (627.70131(1)(a) — see `STATUTORY_REGISTER.md`) has a recipient the record
+  cannot name: nothing in `Candidate` records who reported the loss or in what capacity.
+  **Considered and rejected:** "represented at FNOL" (an attorney or public adjuster reporting on
+  the insured's behalf) must not become an SIU indicator. Same legal shape as the 30-day
+  late-reporting rule `QUEUE.md` item 2 already removed — a claimant's lawful exercise of a right,
+  here the right to representation, is not grounds for suspicion, and coding it as a fraud signal
+  reads exactly as badly in a market conduct exam as the late-notice indicator did.
 
 ## Data we do not have at intake
 
