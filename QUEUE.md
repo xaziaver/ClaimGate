@@ -97,21 +97,46 @@ Ordered by domain severity, not by effort. One line each on why that position.
     severity rule entirely rather than re-thresholded; `policy_inception_date` now available at
     intake via a phase-2 adapter lookup, reversing the earlier "no source until phase 3" assumption;
     and, decided 2026-08-13, the lookup returns the policy's ORIGINAL inception date — the date
-    continuous coverage with this carrier began — never the current term's effective date, since the
+    continuous coverage on the risk began — never the current term's effective date, since the
     indicator exists to surface new business and a renewal effective date would fire it across a
     lawful book every twelve months, the same defect item 2 removed from the reporting gate; see
-    `ASSUMPTIONS.md`'s "Data we do not have at intake." A new open assumption follows from that
-    fourth decision, not a blocker on this spec: original inception and continuous-coverage start
-    diverge when a policy is rewritten, and which policy administration system field survives an
-    administrative rewrite but not a genuine lapse is unverified — needs an answer before the
-    phase-2 adapter is wired, not before this spec is written; see `ASSUMPTIONS.md`'s "Open
-    decisions." Also see `ASSUMPTIONS.md`'s open decision on `loss_type` conflating perils with
-    Section II coverage categories — this item should not assume an answer to that question either.
-    Note for whoever writes the spec: two acceptance-mutant approvals
-    on `features/triage.feature`'s "Theft severity by loss amount" rule (`500.00->501.00`,
-    `500.01->501.01`) are equivalence judgments about the amount threshold this item removes
-    entirely — the rule they're keyed to stops existing, not merely changes value, and re-review is
-    the human's, not automatic.*
+    `ASSUMPTIONS.md`'s "Data we do not have at intake." How the adapter derives that date, and that
+    "on the risk" survives a rewrite but not a genuine lapse, is now also decided (2026-08-14, same
+    document) — what remains unverified is per-system mechanics only: which identifier resolves to
+    the party/risk in each of the three policy administration systems, needed before the phase-2
+    adapter is wired, not before this spec is written. Also see `ASSUMPTIONS.md`'s open decision on
+    `loss_type` conflating perils with Section II coverage categories — this item should not assume
+    an answer to that question either. Note for whoever writes the spec: re-review scope is 7
+    acceptance-mutant approvals if the end-to-end outline keeps its `loss_amount` column, 13 if it
+    drops it — not the two this entry previously named. The two on "Theft severity by loss amount"
+    (`500.00`, `500.01`) are gone with the rule regardless. A mutant's locator is the mutated
+    column's header plus every value in its row (`docs/harness-findings.md`), so once the three
+    theft rows in the end-to-end outline have their `severity`/`queue` cells flip from
+    `low`/`fast_track` to `standard`/`standard`, every approval keyed to one of those rows goes
+    stale with them — 5 more, regardless of which column was originally mutated (2 on
+    `inception_date`, 3 on `loss_amount`), bringing the floor to 7. If `loss_amount` is dropped from
+    the table instead of kept as an inert column, every row's locator context changes, not just the
+    three theft rows', taking the remaining 6 end-to-end approvals with it and raising the total to
+    13 — all of `triage.feature`'s current approvals. Re-review is the human's, not automatic,
+    either way.*
+4d. **`siu_indicators.feature` reopening: everything the recent-inception lookup decision (4c) leaves
+    stale in that file, taken together.** Sequenced behind 4c, not started. Two comments still say
+    `policy_inception_date` has no source at intake (lines 79-81, 125-129); the Rule and Scenario
+    both named "Neither indicator is evaluated in the shipped configuration" and the
+    NOT_EVALUATED-becomes-an-exception-path framing both need reconciling with the decided lookup
+    (`ASSUMPTIONS.md`'s "Data we do not have at intake"). *Proposed, not decided:* renaming the
+    field's vocabulary from "policy inception date" to "continuous coverage date" throughout the
+    file, matching the mechanics `ASSUMPTIONS.md` now describes — a rewrite no longer resets the
+    date, so "policy inception" is no longer an accurate name for what the indicator measures. Cost
+    if taken: 5 of `siu_indicators.feature`'s 7 current approvals are keyed to the "recent policy
+    inception threshold is 30 days" literal (the other 2 are the late-reporting threshold's,
+    unrelated to this vocabulary and untouched by it), plus 1 more on `triage.feature` beyond
+    whatever 4c's own change already re-reviews — the end-to-end outline's water_damage-row
+    `inception_date`-column approval, which survives 4c's severity/queue flip (water_damage stays
+    `standard`/`standard` before and after) but not a column-header or template-wording rename.
+    `triage.feature` lines 60-61 carry the same stale "the configuration this system actually ships
+    with" claim about NOT_EVALUATED and are free to fix inside 4c's own lock, since that file is
+    already open there.
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
@@ -126,6 +151,7 @@ later.
 |---|---|
 | 4a, 4b | `ASSUMPTIONS.md` — the vocabulary and policy-prefix entries |
 | 4c (merged with former item 5) | `ASSUMPTIONS.md` and `STATUTORY_REGISTER.md` |
+| 4d | `ASSUMPTIONS.md` — "Data we do not have at intake" |
 | 5 (phase 2) | everything, `PHASE2_DESIGN.md` first |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
@@ -250,25 +276,29 @@ recorded in `ASSUMPTIONS.md`: new-peril severities (`sinkhole` `HIGH`, `roof_lea
 `STANDARD`, catastrophe handling recorded as a deliberate non-goal); loss amount removed from the
 severity rule entirely rather than re-thresholded; `policy_inception_date` is available at intake via
 a phase-2 adapter lookup, reversing the earlier "no source until phase 3" assumption; and, decided
-2026-08-13 in this same documentation session, the lookup returns the policy's ORIGINAL inception
-date, never the current term's effective date — see `ASSUMPTIONS.md`'s "Data we do not have at
-intake." A new open assumption follows from that fourth decision, not a blocker on the spec: original
-inception and continuous-coverage start diverge when a policy is rewritten, needing an answer before
-the phase-2 adapter is wired, not before the spec is written — see `ASSUMPTIONS.md`'s "Open
-decisions."
+2026-08-13, the lookup returns the policy's ORIGINAL inception date — continuous coverage on the
+risk, not with any one carrier — never the current term's effective date — see `ASSUMPTIONS.md`'s
+"Data we do not have at intake." The mechanics of that lookup (how a rewrite is told apart from a
+lapse, and why "on the risk" rather than "with this carrier" is what the data actually models) are
+now also decided, 2026-08-14, same document; only which identifier resolves to the party/risk in
+each of the three policy administration systems remains unverified, needed before the phase-2
+adapter is wired, not before the spec.
 
 ## Open instructions
 
 Anything issued but not yet completed, cleared as each is done. This tracks in-flight instructions;
 the numbered queue above tracks reopenings.
 
-Nothing open as of this handoff. The lookup-semantics question that previously blocked the merged
-item 4c's spec is decided (original inception date, not current-term effective date); the new open
-assumption it produced (original inception vs. continuous-coverage start on a policy rewrite) does
-not block the spec — see `ASSUMPTIONS.md`'s "Open decisions."
+**The merged item 4c is blocked on one human decision, not a pickup.** The theft-amount rule is the
+only thing that has ever produced `low` severity — nothing else in `assign_severity` returns it, and
+nothing produces the `fast_track` queue except by routing from `low`. Once loss amount stops
+affecting severity, whether the `low` band and `fast_track` queue survive at all is the human's call,
+not the implementer's: keep them as a queue and severity value no live input can ever reach, or
+retire them along with the rule that fed them. Not deciding it here.
 
-`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through the 2026-08-13
-documentation session that decided the `policy_inception_date` lookup-semantics question and
-recorded the new open assumption it produced (QUEUE.md/ASSUMPTIONS.md). `reopening/policy-prefix-set`
-is pushed through its tip (`6eb403a`) and kept as history, same as `reopening/loss-type-vocabulary`,
-`reopening/duplicates`, and `reopening/siu-indicators`.
+`main` is pushed to `https://github.com/xaziaver/ClaimGate`, current through the 2026-08-14
+documentation session that decided the recent-inception lookup's mechanics (party/risk resolution,
+rewrite-vs-lapse, on-the-risk not with-the-carrier), added the reporter-identity defect, corrected
+4c's mutant-approval re-review count, and recorded item 4d (QUEUE.md/ASSUMPTIONS.md).
+`reopening/policy-prefix-set` is pushed through its tip (`6eb403a`) and kept as history, same as
+`reopening/loss-type-vocabulary`, `reopening/duplicates`, and `reopening/siu-indicators`.
