@@ -62,27 +62,32 @@ Feature: SIU indicators
     Scenario Outline: Recent policy inception threshold
       Given the loss date is "2026-06-15"
       And the recent policy inception threshold is 30 days
-      And the policy inception date is "<inception_date>"
+      And the continuous coverage date is "<coverage_start>"
       When SIU indicators are computed for the candidate FNOL record
       Then the recent policy inception indicator is <result>
 
       Examples:
-        | inception_date | result |
+        | coverage_start | result |
         | 2026-06-15      | TRUE   |
         | 2026-05-16      | TRUE   |
         | 2026-05-15      | FALSE  |
         | 2026-06-10      | TRUE   |
         | 2026-03-17      | FALSE  |
 
-  Rule: Recent policy inception requires a known inception date
+  Rule: Recent policy inception requires a known continuous coverage date
 
-    # policy_inception_date has no source at intake and is probably not
-    # reporter-knowable at all until phase 3 (ASSUMPTIONS.md). Its absence is
-    # never read as "not recent."
-    Scenario: No policy inception date known
+    # policy_inception_date is available at intake via a phase-2 adapter
+    # lookup against the policy administration system, not captured from the
+    # reporter (see ASSUMPTIONS.md's "Data we do not have at intake"). This
+    # scenario is the lookup missing - the party or risk could not be
+    # resolved, or the resolved coverage history has no continuous-coverage
+    # start to report - not the gap phase 1 has today, where no caller
+    # supplies a date because the adapter has not been built yet. Either way,
+    # absence is never read as "not recent."
+    Scenario: No continuous coverage date known
       Given the loss date is "2026-06-15"
       And the recent policy inception threshold is 30 days
-      And no policy inception date is known
+      And no continuous coverage date is known
       When SIU indicators are computed for the candidate FNOL record
       Then the recent policy inception indicator is NOT_EVALUATED with reason NO_POLICY_INCEPTION_DATE
 
@@ -94,17 +99,17 @@ Feature: SIU indicators
     # inception threshold either, so the type had to admit absence, and absence
     # needed a defined result. Same reason code as late reporting: the
     # condition is "no threshold," not a late-reporting-specific fact. The
-    # inception date below is 5 days before the loss and would fire the
-    # indicator if a threshold were configured, so this scenario cannot pass by
-    # coincidence with a FALSE result.
+    # continuous coverage date below is 5 days before the loss and would fire
+    # the indicator if a threshold were configured, so this scenario cannot
+    # pass by coincidence with a FALSE result.
     Scenario: No recent policy inception threshold configured
       Given the loss date is "2026-06-15"
       And no recent policy inception threshold is configured
-      And the policy inception date is "2026-06-10"
+      And the continuous coverage date is "2026-06-10"
       When SIU indicators are computed for the candidate FNOL record
       Then the recent policy inception indicator is NOT_EVALUATED with reason NO_THRESHOLD_CONFIGURED
 
-  Rule: An inception date after the loss date does not indicate recent inception
+  Rule: A continuous coverage date after the loss date does not indicate recent policy inception
 
     # Specifies the existing 0 <= guard in _is_recent_inception, found by
     # mutation testing during the triage.feature reopening (ASSUMPTIONS.md,
@@ -113,26 +118,32 @@ Feature: SIU indicators
     # honest answer is FALSE, not NOT_EVALUATED. Whether a loss predating its
     # policy's inception is itself a coverage problem is a separate, larger
     # question needing phase-3 policy data - not built here.
-    Scenario: An inception date later than the loss date does not fire the indicator
+    Scenario: A continuous coverage date later than the loss date does not fire the indicator
       Given the loss date is "2026-06-15"
       And the recent policy inception threshold is 30 days
-      And the policy inception date is "2026-06-20"
+      And the continuous coverage date is "2026-06-20"
       When SIU indicators are computed for the candidate FNOL record
       Then the recent policy inception indicator is FALSE
 
-  Rule: Neither indicator is evaluated in the shipped configuration
+  Rule: Both indicators can be NOT_EVALUATED at once, for different reasons
 
-    # This is what the system actually ships as, today: no late-reporting
-    # threshold has been agreed, and policy_inception_date has no source at
-    # intake. Both indicators are unusable, but for two different reasons
-    # (ASSUMPTIONS.md) - one because its threshold is indefensible, the other
-    # because its required input does not exist - and this scenario proves
-    # both resolve honestly to NOT_EVALUATED rather than silently to FALSE.
-    Scenario: Neither indicator is evaluated in the shipped configuration
+    # Today, phase 1, no late-reporting threshold has been agreed and no
+    # caller supplies a continuous coverage date, so both indicators resolve
+    # NOT_EVALUATED here every time - but for two different reasons
+    # (ASSUMPTIONS.md): the late-reporting threshold is undecided, while the
+    # coverage-date gap is an implementation gap, not a data gap - the
+    # phase-2 adapter that looks it up against the policy administration
+    # system is not yet wired (see "Data we do not have at intake"). Once it
+    # is, an absent coverage date here means the lookup missed, not that
+    # intake never had a source for it - the same reason code either way, a
+    # different fact behind it. This scenario proves both resolve honestly to
+    # NOT_EVALUATED rather than silently to FALSE, regardless of which is
+    # true.
+    Scenario: No late reporting threshold configured and no continuous coverage date known
       Given the loss date is "2026-07-15"
       And no late reporting threshold is configured
       And the recent policy inception threshold is 30 days
-      And no policy inception date is known
+      And no continuous coverage date is known
       When SIU indicators are computed for the candidate FNOL record
       Then the late reporting indicator is NOT_EVALUATED with reason NO_THRESHOLD_CONFIGURED
       And the recent policy inception indicator is NOT_EVALUATED with reason NO_POLICY_INCEPTION_DATE
@@ -146,7 +157,7 @@ Feature: SIU indicators
       Given the loss date is "2026-06-01"
       And the late reporting threshold is 45 days
       And the recent policy inception threshold is 30 days
-      And the policy inception date is "2026-05-20"
+      And the continuous coverage date is "2026-05-20"
       When SIU indicators are computed for the candidate FNOL record
       Then the late reporting indicator is TRUE
       And the recent policy inception indicator is TRUE
@@ -166,7 +177,7 @@ Feature: SIU indicators
       Given the loss date is "2026-06-23"
       And the late reporting threshold is 45 days
       And the recent policy inception threshold is 30 days
-      And the policy inception date is "2026-05-14"
+      And the continuous coverage date is "2026-05-14"
       When SIU indicators are computed for the candidate FNOL record
       Then the late reporting indicator is FALSE
       And the recent policy inception indicator is FALSE
