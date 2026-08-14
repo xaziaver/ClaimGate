@@ -78,6 +78,21 @@ a feature file leans on hardest are often the ones nothing checks. Both facts
 matter when estimating what a change will disturb — they are the difference
 between a naive blast-radius count and a real one.
 
+### Mutant counts are checkable directly, without a gate run or an approved spec
+
+The acceptance gate's approval stage skips mutation entirely on an unapproved
+or modified spec (see "A green gate sometimes means nothing was checked"
+below), which blocks the normal path to a mutant count exactly when a
+reopening's draft most needs one — before the human has approved it. The
+mutation engine needs no gate wrapper, though: `from gauntlet.acceptance
+import gherkin, mutation` (importable straight from the `agent-gauntlet`
+editable install's `src/`, not through the `gauntlet` CLI) and
+`mutation.mutants(gherkin.parse(<feature file text>))` returns every candidate
+mutant for that file, group-able by `.scenario` for a per-scenario count —
+e.g. `Counter(m.scenario for m in mutation.mutants(...))`. Confirmed a
+comment-only spec edit changed nothing structural in under a second this way,
+with no gate run and no approval required first.
+
 ### A mutant has two identities, and one of them moves when a neighbouring row changes
 
 `locator` is `scenario|kind|context` — for an example mutant, the mutated
