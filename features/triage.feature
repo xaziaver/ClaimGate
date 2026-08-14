@@ -5,6 +5,25 @@ Feature: FNOL triage
 
   Rule: Severity is assigned from loss type
 
+    # Severity here is a claim-handling judgment, not an estimate of
+    # exposure: injury, fire, and sinkhole need specialist handling from
+    # first touch. sinkhole is high because Florida treats it as its own
+    # coverage with its own investigation regime (see
+    # STATUTORY_REGISTER.md), not because sinkhole losses run large.
+    #
+    # hurricane and roof_leak are standard deliberately, not by omission.
+    # Catastrophe volume and litigation exposure are separate axes this
+    # phase does not model - a hurricane claim in a declared event needs
+    # CAT handling no severity value here can express, and a roof claim
+    # carries its own deductible and notice regime, not a distinct
+    # severity. Reading `standard` as "routine" is exactly the misreading
+    # this note exists to head off.
+    #
+    # This table is a fallthrough, not a closed vocabulary: any loss type
+    # not listed here resolves standard. That is how sinkhole routed
+    # standard, silently, until this reopening - nothing failed. Closing
+    # the vocabulary is a validation-layer concern, queued separately
+    # (see QUEUE.md).
     Scenario Outline: Severity by loss type
       Given the loss type is "<loss_type>"
       When the candidate FNOL record is triaged
@@ -55,6 +74,13 @@ Feature: FNOL triage
     #
     # An empty inception_date cell means no policy inception date is known,
     # the same convention validation.feature uses for an empty blockers cell.
+    #
+    # loss_amount is carried on this record and deliberately affects
+    # nothing: severity derives from loss type alone. The amount is
+    # captured because an FNOL record has one, not because triage reads
+    # it. Mutating any amount in this table changes no expected value, and
+    # those surviving mutants are the spec's own proof of that
+    # independence.
     Scenario Outline: From raw record to queue, with SIU indicators recorded separately and never affecting routing
       Given today is "2026-08-02"
       And the late reporting threshold is 45 days
