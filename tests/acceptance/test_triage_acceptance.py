@@ -17,14 +17,9 @@ def set_loss_type(context: dict[str, Any], value: str) -> None:
     context["loss_type"] = value
 
 
-@given(parsers.parse("the loss amount is {value}"))
-def set_loss_amount(context: dict[str, Any], value: str) -> None:
-    context["loss_amount"] = Decimal(value)
-
-
 @when("the candidate FNOL record is triaged")
 def run_triage(context: dict[str, Any]) -> None:
-    context["severity"] = assign_severity(context["loss_type"], context.get("loss_amount"))
+    context["severity"] = assign_severity(context["loss_type"])
 
 
 @then(parsers.parse('the assigned severity is "{expected}"'))
