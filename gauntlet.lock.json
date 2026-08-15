@@ -257,8 +257,8 @@
       "digest": "sha256:55e6cc5b8bc5492e8e580cca70d0bff9f5dabb9473e93d426ccff548b23c0bbb"
     },
     "spec:features/siu_indicators.feature": {
-      "approved_at": "2026-08-15T11:34:27+00:00",
-      "digest": "sha256:6f72feb5f0a7720b4a87465ead14d95c2c3fbd749fd779d9a03e39907b03ea70"
+      "approved_at": "2026-08-15T23:36:38+00:00",
+      "digest": "sha256:fbf1ff21769fc8fa101547c18e8bdb7d7a152f006d0e63b391563f5b7d866ab6"
     },
     "spec:features/triage.feature": {
       "approved_at": "2026-08-15T11:34:27+00:00",
