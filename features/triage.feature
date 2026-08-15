@@ -65,8 +65,8 @@ Feature: FNOL triage
     # alone would produce. The final example gives no continuous coverage date
     # at all, proving the invariant holds when an indicator is NOT_EVALUATED,
     # not only when it is TRUE or FALSE - a real path once the phase-2
-    # adapter's lookup can miss, not the configuration this system ships with
-    # (see siu_indicators.feature).
+    # adapter's lookup can miss, not merely today's configuration (see
+    # siu_indicators.feature).
     #
     # The thresholds below are supplied by the caller, per siu_indicators.feature;
     # 45 for late reporting is illustrative only, not an approved value - see

@@ -57,6 +57,18 @@ Feature: SIU indicators
 
   Rule: Recent policy inception is evaluated against a threshold supplied by the caller
 
+    # The indicator's name and its input's name differ on purpose, and that
+    # is not an oversight. The indicator is named for what an investigator
+    # observes: coverage obtained shortly before a reported loss. Its input,
+    # the continuous coverage date, is the date continuous coverage on the
+    # risk began, derived from the full term history - deliberately NOT the
+    # current policy's inception date. An administrative rewrite or a takeout
+    # issues a new policy number with a new inception date while coverage
+    # never lapsed, so keying on the policy record's own date would fire the
+    # indicator across a lawful book. The indicator name was left unchanged
+    # when the input was renamed for exactly this reason. See ASSUMPTIONS.md's
+    # "Data we do not have at intake."
+
     # 30 is a real, kept value here (unlike late reporting above) - within the
     # range carriers actually use for this indicator. See ASSUMPTIONS.md.
     Scenario Outline: Recent policy inception threshold
@@ -76,14 +88,14 @@ Feature: SIU indicators
 
   Rule: Recent policy inception requires a known continuous coverage date
 
-    # policy_inception_date is available at intake via a phase-2 adapter
-    # lookup against the policy administration system, not captured from the
-    # reporter (see ASSUMPTIONS.md's "Data we do not have at intake"). This
-    # scenario is the lookup missing - the party or risk could not be
-    # resolved, or the resolved coverage history has no continuous-coverage
-    # start to report - not the gap phase 1 has today, where no caller
-    # supplies a date because the adapter has not been built yet. Either way,
-    # absence is never read as "not recent."
+    # The continuous coverage date is available at intake via a phase-2
+    # adapter lookup against the policy administration system, not captured
+    # from the reporter (see ASSUMPTIONS.md's "Data we do not have at
+    # intake"). This scenario is the lookup missing - the party or risk could
+    # not be resolved, or the resolved coverage history has no
+    # continuous-coverage start to report - not the gap phase 1 has today,
+    # where no caller supplies a date because the adapter has not been built
+    # yet. Either way, absence is never read as "not recent."
     Scenario: No continuous coverage date known
       Given the loss date is "2026-06-15"
       And the recent policy inception threshold is 30 days
