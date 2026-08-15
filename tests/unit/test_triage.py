@@ -71,7 +71,7 @@ def test_triage_and_route_end_to_end(
         loss_type=loss_type,
         loss_amount=loss_amount,
         loss_date=loss_date,
-        policy_inception_date=inception_date,
+        continuous_coverage_date=inception_date,
     )
 
     outcome = triage_and_route(candidate)

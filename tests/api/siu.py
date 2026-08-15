@@ -12,9 +12,9 @@ def siu_indicators(
     loss_date: date,
     late_reporting_threshold_days: int | None,
     recent_inception_threshold_days: int | None,
-    policy_inception_date: date | None = None,
+    continuous_coverage_date: date | None = None,
 ) -> SiuIndicators:
-    candidate = Candidate(loss_date=loss_date, policy_inception_date=policy_inception_date)
+    candidate = Candidate(loss_date=loss_date, continuous_coverage_date=continuous_coverage_date)
     return _compute_siu_indicators(
         candidate,
         now,

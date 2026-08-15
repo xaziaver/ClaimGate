@@ -7,7 +7,7 @@ import pytest
 
 from claimgate.domain.models import Candidate
 from claimgate.domain.siu import (
-    NO_POLICY_INCEPTION_DATE,
+    NO_CONTINUOUS_COVERAGE_DATE,
     NO_THRESHOLD_CONFIGURED,
     compute_siu_indicators,
 )
@@ -61,7 +61,7 @@ def test_late_reporting_is_not_evaluated_when_no_threshold_configured() -> None:
 )
 def test_recent_policy_inception_threshold(inception_date: date, expected_value: str) -> None:
     candidate = dataclasses.replace(
-        BASE_CANDIDATE, loss_date=date(2026, 6, 15), policy_inception_date=inception_date
+        BASE_CANDIDATE, loss_date=date(2026, 6, 15), continuous_coverage_date=inception_date
     )
 
     indicators = compute_siu_indicators(
@@ -79,7 +79,7 @@ def test_recent_policy_inception_threshold(inception_date: date, expected_value:
 # NOT_EVALUATED with a reason, never as a determination that happens to be False.
 def test_recent_policy_inception_is_not_evaluated_when_no_inception_date_known() -> None:
     candidate = dataclasses.replace(
-        BASE_CANDIDATE, loss_date=date(2026, 6, 15), policy_inception_date=None
+        BASE_CANDIDATE, loss_date=date(2026, 6, 15), continuous_coverage_date=None
     )
 
     indicators = compute_siu_indicators(
@@ -87,12 +87,12 @@ def test_recent_policy_inception_is_not_evaluated_when_no_inception_date_known()
     )
 
     assert indicators.recent_policy_inception.value == "NOT_EVALUATED"
-    assert indicators.recent_policy_inception.reason == NO_POLICY_INCEPTION_DATE
+    assert indicators.recent_policy_inception.reason == NO_CONTINUOUS_COVERAGE_DATE
 
 
 def test_recent_policy_inception_is_not_evaluated_when_no_threshold_configured() -> None:
     candidate = dataclasses.replace(
-        BASE_CANDIDATE, loss_date=date(2026, 6, 15), policy_inception_date=date(2026, 6, 10)
+        BASE_CANDIDATE, loss_date=date(2026, 6, 15), continuous_coverage_date=date(2026, 6, 10)
     )
 
     indicators = compute_siu_indicators(candidate, TODAY, LATE_REPORTING_THRESHOLD_DAYS, None)
@@ -103,7 +103,7 @@ def test_recent_policy_inception_is_not_evaluated_when_no_threshold_configured()
 
 def test_inception_date_after_loss_date_does_not_fire_indicator() -> None:
     candidate = dataclasses.replace(
-        BASE_CANDIDATE, loss_date=date(2026, 6, 15), policy_inception_date=date(2026, 6, 20)
+        BASE_CANDIDATE, loss_date=date(2026, 6, 15), continuous_coverage_date=date(2026, 6, 20)
     )
 
     indicators = compute_siu_indicators(
@@ -116,7 +116,7 @@ def test_inception_date_after_loss_date_does_not_fire_indicator() -> None:
 def test_both_indicators_can_fire_together() -> None:
     candidate = Candidate(
         loss_date=date(2026, 6, 1),
-        policy_inception_date=date(2026, 5, 20),
+        continuous_coverage_date=date(2026, 5, 20),
     )
 
     indicators = compute_siu_indicators(
