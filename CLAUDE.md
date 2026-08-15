@@ -103,3 +103,70 @@ this list before proposing anything that would violate one.
   the remedy is addressed to me: report it and stop. A remedy you cannot run is not an instruction
   to find something adjacent that you can. The acceptance gate's remedy for a modified spec is
   currently wrong in exactly this way.
+
+## Session save-point
+
+When asked for a save-point, the current session's context is about to be
+discarded. The test is not "summarise what I did" — it is: **could a session
+with no memory of this conversation resume from the repository alone?**
+
+Work through it in this order, and stop at the first honest answer:
+
+1. Is anything committed but not pushed? Push it. Quote `git log --oneline -1`
+   alongside `git ls-remote --heads origin <branch>` for every branch touched.
+2. Is the working tree clean? If a spec file shows a diff, check whether an
+   acceptance run is live before assuming it is a defect — the gate mutates
+   specs in place for the duration of its run.
+3. Is an open reopening branch still a superset of `main`? Merge and push if not.
+4. Does `QUEUE.md`'s status section describe the state that now exists? It must
+   name: the branch and tip ref of any work in progress, whether a spec is
+   drafted or locked and who owns the next action, any gate failure that is
+   currently expected and why it is guaranteed rather than a defect, and what
+   remains before the item closes. Rewrite it if it does not. If it already
+   does, say so and change nothing.
+5. Is anything you learned this session recorded nowhere? Decisions go to
+   `ASSUMPTIONS.md` with provenance and a date. Harness behaviour and technique
+   go to `docs/harness-findings.md`, established from source or an observed run,
+   never from inference. A gap you cannot place in one of these is itself the
+   finding — say so rather than dropping it.
+6. Report what you changed and what you deliberately left alone.
+
+Do not run `gauntlet spec approve`, `mutant approve`, `mutant prune`, `review`,
+or `lock` as part of a save-point. Those are human actions and a save-point is
+not the moment to take them.
+
+
+## Session start-up
+
+Before any work, orient and verify. Report before acting.
+
+1. Read `QUEUE.md`'s status section, then follow its reading table for the item
+   named there. Do not load documents the table does not list for that item.
+2. `git fetch origin`, then confirm every ref is where the status section says it
+   is. If work is on a reopening branch, `git log --oneline origin/main ^HEAD`
+   must print 0 — a reopening branch stays a superset of `main`. If it does not,
+   STOP: you are reading a `QUEUE.md` older than the handoff written for you.
+   Merge `origin/main`, push, re-read, then continue.
+3. Confirm the working tree is clean and local matches remote for every branch
+   the status section names.
+4. If a spec is described as drafted-not-locked, confirm with `gauntlet spec list`
+   whether it has since been approved. The lock is the human's action and may have
+   happened after the handoff was written.
+5. State what you understand the current state to be and what you propose to do
+   next. If the status section and the repository disagree, say which you are
+   believing and why. Then wait — do not start work on your own reading of the
+   queue unless the task you were given says otherwise.
+
+### Environment notes
+
+- The acceptance gate runs over 300s and is growing. Long timeout or background.
+- `gauntlet check` signals pass/fail by exit status, and the piped form returns
+  tail's status. Read the printed verdict, never `$?`.
+- A concurrent `gauntlet check` exits 0 having executed zero gates. Never relaunch
+  one while another may still be alive.
+- The acceptance mutation engine is importable and pure-stdlib
+  (`gauntlet.acceptance.gherkin`, `gauntlet.acceptance.mutation`). Measure mutant
+  counts and ledger impact directly instead of predicting them, and compare
+  against `gauntlet.lock.json` at the ref you are measuring.
+- A spec file showing a diff during a live acceptance run is the gate's in-place
+  mutation, not a defect. Check whether a run is alive before restoring anything.
