@@ -527,3 +527,37 @@ implementation decision the specification never made — worth tracing to the ac
 approving anything nearby in the same batch.
 
 **Routes to:** Gauntlet's README, "What building this taught us." This is a story about the tool finding something no human and no other gate had, which is what that section is for. Not a work item.
+
+**Annotation, 2026-08-15.** Two names in this entry are dead: `_is_recent_inception`
+became `_evaluate_recent_inception` on 2026-08-09 (`33d602b`), and `inception_date`
+became `coverage_start` in item 4d. The claim that no scenario anywhere exercises an
+inception date after a loss date was true when written and false from 2026-08-09,
+when item 2 added exactly that scenario. Left in place as the historical account.
+
+### A revisit trigger keyed on a symbol name goes inert when the symbol is renamed
+
+`_is_recent_inception` became `_evaluate_recent_inception` on 2026-08-09, in
+`33d602b`, the same commit that implemented item 2. The old name survived six days
+and four queue items: 23 occurrences in `gauntlet.lock.json` including the REVISIT
+TRIGGER on all eleven `triage.feature` approvals, plus `features/siu_indicators.feature`,
+`ASSUMPTIONS.md`, `QUEUE.md`, and this file. Nothing catches it — the code-mutation
+gate does not read approval reasons, and the acceptance gate compares locators and
+digests only. Item 4c's re-approval corrected four other inaccuracies in that same
+reason text and left the dead symbol standing.
+
+A revisit trigger exists to be found when the thing it guards changes. Keyed on a
+name, it is findable only until someone renames the name — and a rename is exactly
+the kind of change that should fire it. State the trigger as behaviour ("the
+rejection of a coverage-start date later than the loss date"), and name the
+implementing symbol only as a locating aid, with a verified-on date.
+
+A second-order cost showed up while verifying this. The check written to confirm the
+correction had landed was a string-absence test — "the reason must not contain
+`_is_recent_inception`" — authored by whoever wrote the replacement prose. It failed
+on the correction itself, because the correction's whole purpose is to name the dead
+symbol and mark it dead. An absence test cannot separate a name used as a live
+reference from a name recorded as retired. Approval reasons are the one artifact in
+this project no gate can validate, and they are prose; a check on them has to be
+read, not grepped. Where a mechanical check is wanted, test the ledger's structure —
+key churn, digest pairing, which scenarios were re-stamped — and leave the prose to a
+human.

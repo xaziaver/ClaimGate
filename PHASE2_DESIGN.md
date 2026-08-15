@@ -347,8 +347,8 @@ transition history).
    would be theater, not a record.
 5. **Carried requirement: a scenario for the reason-code precedence when both SIU inputs are
    absent, once thresholds come from jurisdiction config.** `compute_siu_indicators` resolves
-   `NO_POLICY_INCEPTION_DATE` over `NO_THRESHOLD_CONFIGURED` when both the recent-inception
-   threshold and the policy inception date are missing — the missing input outranks the missing
+   `NO_CONTINUOUS_COVERAGE_DATE` over `NO_THRESHOLD_CONFIGURED` when both the recent-inception
+   threshold and the continuous coverage date are missing — the missing input outranks the missing
    rule; see ASSUMPTIONS.md's carried-requirements entry for the full principle. Unreachable and
    unspecified today because the recent-inception threshold is a fixed, always-supplied value of 30
    in the shipped phase-1 configuration. It becomes reachable once thresholds are sourced from the

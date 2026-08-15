@@ -271,6 +271,17 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   plausibility floor on loss date" above — both need policy data that doesn't exist until phase 3.
   Not fixing, and not adding a scenario, in this reopening: item 1 is queue routing, not SIU
   thresholds. See `QUEUE.md` item 2.
+
+  **RESOLVED 2026-08-09 by item 2; recorded 2026-08-15.** The scenario this entry
+  says was not being added was added — `siu_indicators.feature`'s Rule "A continuous
+  coverage date after the loss date does not indicate recent policy inception".
+  Four names above are dead and are corrected here rather than in the text:
+  `compute_siu_flags` is `compute_siu_indicators`, `_is_recent_inception` is
+  `_evaluate_recent_inception` (both renamed in `33d602b`), `siu_flags.feature` is
+  `siu_indicators.feature`, and `policy_inception_date`/`inception_date` is
+  `continuous_coverage_date`/`coverage_start` after item 4d. The larger question the
+  entry raises — whether a loss predating coverage is a coverage problem — is still
+  open and still needs phase-3 policy data.
 - **The record captures no reporter identity or relationship to the insured.** FNOL on a Florida
   residential book arrives from the insured, the agent, a public adjuster, an attorney, a mitigation
   contractor, or a CAT call center, and the reporter is frequently not the insured. The 7-day
