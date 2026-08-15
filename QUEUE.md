@@ -146,7 +146,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     asserts the opposite. A reader following the pointer lands on the contradiction rather than the
     explanation.
 4f. **`features/siu_indicators.feature:126` names a function, and names a dead
-    one.** The comment on the Rule "A continuous coverage date after the loss date
+    one.** *(Done — see below.)* The comment on the Rule "A continuous coverage date after the loss date
     does not indicate recent policy inception" reads "Specifies the existing 0 <=
     guard in `_is_recent_inception`" — a symbol that has not existed since
     2026-08-09, when `33d602b` renamed it `_evaluate_recent_inception` in the same
@@ -157,6 +157,15 @@ Ordered by domain severity, not by effort. One line each on why that position.
     (established in `d344ab3`), so this costs one spec approve and lock and
     produces zero ledger churn. Its own reopening because it is a spec edit.
     Sequenced before 4e only because it is smaller.
+
+    **Correction, made while closing this item:** "costs one spec approve and
+    lock" above is wrong about what `gauntlet lock` does. `lock` approves the
+    verified config paths the protect gate checks (`.claude/settings.json`,
+    `gauntlet.toml`, `pyproject.toml`) — it has nothing to do with specs.
+    `gauntlet spec approve` writes the spec digest by itself; there is no
+    second, `lock` step for a spec. Running `lock` here would have
+    re-baselined an unrelated gate. Left in place rather than deleted so the
+    mistake stays visible, per this file's own convention.
 
     Note for whoever does this: `gauntlet.lock.json`'s remaining occurrences of
     `_is_recent_inception` are deliberate — they are the correction record inside the
@@ -378,5 +387,19 @@ unscoped approve. Project-wide reviewed-equivalent: **40 -> 34 -> 40**, exactly 
 Green on the reopening branch before merge: 166/166 tests, code mutation 100%/197 killed, acceptance 4
 specs / 0 surviving / 40 reviewed-equivalent / 0 stale.
 
-Item 4f (delete the dead-symbol reference at `siu_indicators.feature:126`) is next, sequenced before
-4e because it is smaller — see its own entry above.
+**Item 4f is done and merged to `main`** (merge commit `26d9b21`, 2026-08-15). The Rule comment at
+`siu_indicators.feature:126` no longer names `_is_recent_inception` (dead since `33d602b` renamed it
+`_evaluate_recent_inception`) or the literal `0 <=` expression alongside it — both are the same
+category of problem, a spec comment describing the implementation's shape rather than the behavior it
+specifies. Spec locked at `f803abd`. Comment-only, spec-only, no `src/` change. The prediction this
+item was written against is now confirmed rather than assumed: `features/siu_indicators.feature`
+yields the same 38 mutants before and after, every locator byte-identical (not just the count), and
+`gauntlet.lock.json`'s diff touches exactly one entry — `spec:features/siu_indicators.feature`,
+digest moved — with zero ledger churn, no mutant or config entry added, removed, or reworded. `gauntlet
+check` passes on `main` post-merge (166/166 tests, mutation 100%/197 killed, 4 specs / 0 surviving /
+40 reviewed-equivalent / 0 stale). See this item's own entry above for a correction made while closing
+it: the entry said the fix "costs one spec approve and lock," which conflates two unrelated gates —
+`gauntlet lock` approves config paths for the protect gate, not specs.
+
+Item 4e (close the loss-type vocabulary gap in `validation.feature`) is next — see its own entry
+above.
