@@ -123,13 +123,14 @@ Feature: SIU indicators
 
   Rule: A continuous coverage date after the loss date does not indicate recent policy inception
 
-    # Specifies the existing 0 <= guard in _is_recent_inception, found by
-    # mutation testing during the triage.feature reopening (ASSUMPTIONS.md,
-    # QUEUE.md item 2) - this does not change behavior. Every input is
-    # present here; they simply describe an impossible situation, so the
-    # honest answer is FALSE, not NOT_EVALUATED. Whether a loss predating its
-    # policy's inception is itself a coverage problem is a separate, larger
-    # question needing phase-3 policy data - not built here.
+    # Specifies a lower-bound guard the implementation already had and no
+    # scenario asserted, found by mutation testing during the triage.feature
+    # reopening (ASSUMPTIONS.md, QUEUE.md item 2) - this does not change
+    # behavior. Every input is present here; they simply describe an
+    # impossible situation, so the honest answer is FALSE, not NOT_EVALUATED.
+    # Whether a loss predating its policy's inception is itself a coverage
+    # problem is a separate, larger question needing phase-3 policy data -
+    # not built here.
     Scenario: A continuous coverage date later than the loss date does not fire the indicator
       Given the loss date is "2026-06-15"
       And the recent policy inception threshold is 30 days
