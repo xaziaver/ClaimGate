@@ -9,7 +9,7 @@ Feature: SIU indicators
   # or claimant. See PHASE2_DESIGN.md's "SIU handling" section.
 
   # Reason codes are a closed enumeration, like the blocker codes in
-  # validation.feature: NO_THRESHOLD_CONFIGURED and NO_POLICY_INCEPTION_DATE
+  # validation.feature: NO_THRESHOLD_CONFIGURED and NO_CONTINUOUS_COVERAGE_DATE
   # are the complete set today. Escalate before adding to it.
 
   Background:
@@ -89,7 +89,7 @@ Feature: SIU indicators
       And the recent policy inception threshold is 30 days
       And no continuous coverage date is known
       When SIU indicators are computed for the candidate FNOL record
-      Then the recent policy inception indicator is NOT_EVALUATED with reason NO_POLICY_INCEPTION_DATE
+      Then the recent policy inception indicator is NOT_EVALUATED with reason NO_CONTINUOUS_COVERAGE_DATE
 
   Rule: Recent policy inception is not evaluated without a threshold
 
@@ -146,7 +146,7 @@ Feature: SIU indicators
       And no continuous coverage date is known
       When SIU indicators are computed for the candidate FNOL record
       Then the late reporting indicator is NOT_EVALUATED with reason NO_THRESHOLD_CONFIGURED
-      And the recent policy inception indicator is NOT_EVALUATED with reason NO_POLICY_INCEPTION_DATE
+      And the recent policy inception indicator is NOT_EVALUATED with reason NO_CONTINUOUS_COVERAGE_DATE
       And no other SIU indicator is present
 
   Rule: Both indicators can fire at once; there is no combined or escalated indicator
