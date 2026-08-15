@@ -22,12 +22,12 @@ def triage_and_route(
     loss_type: str,
     loss_amount: Decimal | None = None,
     loss_date: date,
-    policy_inception_date: date | None = None,
+    continuous_coverage_date: date | None = None,
 ) -> TriageOutcome:
     candidate = Candidate(
         loss_type=loss_type,
         loss_amount=loss_amount,
         loss_date=loss_date,
-        policy_inception_date=policy_inception_date,
+        continuous_coverage_date=continuous_coverage_date,
     )
     return _triage_and_route(candidate)

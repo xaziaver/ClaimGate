@@ -10,7 +10,7 @@ from datetime import date
 from claimgate.domain.models import Candidate, SiuIndicatorResult, SiuIndicators
 
 NO_THRESHOLD_CONFIGURED = "NO_THRESHOLD_CONFIGURED"
-NO_POLICY_INCEPTION_DATE = "NO_POLICY_INCEPTION_DATE"
+NO_CONTINUOUS_COVERAGE_DATE = "NO_CONTINUOUS_COVERAGE_DATE"
 
 
 def compute_siu_indicators(
@@ -43,14 +43,14 @@ def _evaluate_recent_inception(
 ) -> SiuIndicatorResult:
     # Order is deliberate, not incidental: when both inputs are absent, the
     # reason code must name the gap that would still block evaluation if the
-    # other were closed. A threshold cannot help without an inception date, so
-    # NO_POLICY_INCEPTION_DATE wins - see ASSUMPTIONS.md's carried-requirements
+    # other were closed. A threshold cannot help without a coverage date, so
+    # NO_CONTINUOUS_COVERAGE_DATE wins - see ASSUMPTIONS.md's carried-requirements
     # entry. Do not reorder these checks.
-    inception = candidate.policy_inception_date
-    if inception is None:
-        return SiuIndicatorResult("NOT_EVALUATED", NO_POLICY_INCEPTION_DATE)
+    coverage_start = candidate.continuous_coverage_date
+    if coverage_start is None:
+        return SiuIndicatorResult("NOT_EVALUATED", NO_CONTINUOUS_COVERAGE_DATE)
     if threshold_days is None:
         return SiuIndicatorResult("NOT_EVALUATED", NO_THRESHOLD_CONFIGURED)
-    days_since_inception = (candidate.loss_date - inception).days
+    days_since_inception = (candidate.loss_date - coverage_start).days
     is_recent = 0 <= days_since_inception <= threshold_days
     return SiuIndicatorResult("TRUE" if is_recent else "FALSE")

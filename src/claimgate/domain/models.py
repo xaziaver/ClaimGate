@@ -13,7 +13,7 @@ class Candidate:
     loss_type: str = ""
     notice_type: str = ""
     loss_amount: Decimal | None = None
-    policy_inception_date: date | None = None
+    continuous_coverage_date: date | None = None
     injured_party_name: str | None = None
     injured_party_contact: str | None = None
     injury_description: str | None = None

@@ -16,14 +16,14 @@ def set_loss_date(context: dict[str, Any], value: str) -> None:
     context["loss_date"] = date.fromisoformat(value)
 
 
-@given(parsers.parse('the policy inception date is "{value}"'))
-def set_policy_inception_date(context: dict[str, Any], value: str) -> None:
-    context["policy_inception_date"] = date.fromisoformat(value)
+@given(parsers.parse('the continuous coverage date is "{value}"'))
+def set_continuous_coverage_date(context: dict[str, Any], value: str) -> None:
+    context["continuous_coverage_date"] = date.fromisoformat(value)
 
 
-@given("no policy inception date is known")
-def clear_policy_inception_date(context: dict[str, Any]) -> None:
-    context["policy_inception_date"] = None
+@given("no continuous coverage date is known")
+def clear_continuous_coverage_date(context: dict[str, Any]) -> None:
+    context["continuous_coverage_date"] = None
 
 
 @given("no late reporting threshold is configured")
@@ -43,7 +43,7 @@ def run_compute_siu_indicators(context: dict[str, Any]) -> None:
         loss_date=context["loss_date"],
         late_reporting_threshold_days=context.get("late_reporting_threshold_days"),
         recent_inception_threshold_days=context.get("recent_inception_threshold_days"),
-        policy_inception_date=context.get("policy_inception_date"),
+        continuous_coverage_date=context.get("continuous_coverage_date"),
     )
 
 

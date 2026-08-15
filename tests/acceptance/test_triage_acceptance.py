@@ -45,7 +45,7 @@ def check_queue(context: dict[str, Any], expected: str) -> None:
 @given(
     parsers.re(
         r'a candidate with loss type "(?P<loss_type>[^"]*)", loss amount (?P<loss_amount>\S+), '
-        r'loss date "(?P<loss_date>[^"]*)", and policy inception date "(?P<inception_date>[^"]*)"'
+        r'loss date "(?P<loss_date>[^"]*)", and continuous coverage date "(?P<coverage_start>[^"]*)"'
     )
 )
 def set_end_to_end_candidate(
@@ -53,13 +53,13 @@ def set_end_to_end_candidate(
     loss_type: str,
     loss_amount: str,
     loss_date: str,
-    inception_date: str,
+    coverage_start: str,
 ) -> None:
     context["candidate_fields"] = {
         "loss_type": loss_type,
         "loss_amount": Decimal(loss_amount),
         "loss_date": date.fromisoformat(loss_date),
-        "policy_inception_date": date.fromisoformat(inception_date) if inception_date else None,
+        "continuous_coverage_date": date.fromisoformat(coverage_start) if coverage_start else None,
     }
 
 
@@ -75,5 +75,5 @@ def run_triage_and_route(context: dict[str, Any]) -> None:
         loss_date=fields["loss_date"],
         late_reporting_threshold_days=context.get("late_reporting_threshold_days"),
         recent_inception_threshold_days=context.get("recent_inception_threshold_days"),
-        policy_inception_date=fields["policy_inception_date"],
+        continuous_coverage_date=fields["continuous_coverage_date"],
     )
