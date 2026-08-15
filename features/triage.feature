@@ -62,7 +62,7 @@ Feature: FNOL triage
     # which is exactly the leak the restricted-attribute design exists to
     # prevent. These examples cover severity alone, one indicator firing, and
     # both firing at once, and the queue never changes from what severity
-    # alone would produce. The final example gives no policy inception date
+    # alone would produce. The final example gives no continuous coverage date
     # at all, proving the invariant holds when an indicator is NOT_EVALUATED,
     # not only when it is TRUE or FALSE - a real path once the phase-2
     # adapter's lookup can miss, not the configuration this system ships with
@@ -72,7 +72,7 @@ Feature: FNOL triage
     # 45 for late reporting is illustrative only, not an approved value - see
     # that file's rule for why.
     #
-    # An empty inception_date cell means no policy inception date is known,
+    # An empty coverage_start cell means no continuous coverage date is known,
     # the same convention validation.feature uses for an empty blockers cell.
     #
     # loss_amount is carried on this record and deliberately affects
@@ -85,7 +85,7 @@ Feature: FNOL triage
       Given today is "2026-08-02"
       And the late reporting threshold is 45 days
       And the recent policy inception threshold is 30 days
-      And a candidate with loss type "<loss_type>", loss amount <loss_amount>, loss date "<loss_date>", and policy inception date "<inception_date>"
+      And a candidate with loss type "<loss_type>", loss amount <loss_amount>, loss date "<loss_date>", and continuous coverage date "<coverage_start>"
       When the candidate FNOL record is triaged and routed
       Then the assigned severity is "<severity>"
       And the routed queue is "<queue>"
@@ -93,7 +93,7 @@ Feature: FNOL triage
       And the recent policy inception indicator is <recent_inception>
 
       Examples:
-        | loss_type    | loss_amount | loss_date  | inception_date | severity | queue    | late_reporting | recent_inception |
+        | loss_type    | loss_amount | loss_date  | coverage_start | severity | queue    | late_reporting | recent_inception |
         | theft        | 400.00      | 2026-08-01 | 2024-01-01     | standard | standard | FALSE          | FALSE            |
         | theft        | 400.00      | 2026-06-15 | 2024-01-01     | standard | standard | TRUE           | FALSE            |
         | fire         | 50000       | 2026-08-01 | 2024-01-01     | high     | complex  | FALSE          | FALSE            |
