@@ -329,6 +329,18 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
 - **The phase-1 SIU tests pass at 100% mutation score against fixture data with no real-world
   source.** The gates are correct and the input is fictional; that distinction belongs on the
   record, not just in this file.
+- **Advisor-recommended, human-ratified, 2026-08-15: the SIU reason code `NO_POLICY_INCEPTION_DATE`
+  is renamed `NO_CONTINUOUS_COVERAGE_DATE`, in the spec draft so far, not yet implemented.** It names
+  the same date the rest of item 4d's vocabulary rename retitled everywhere else in
+  `siu_indicators.feature` and `triage.feature`; leaving it would have the record assert a value
+  named for exactly the artifact the rename exists to stop naming. Nothing consumes this value as
+  serialized output yet — whether SIU's reason codes belong in a `reason_codes` field is still an
+  open question (`PHASE2_DESIGN.md`) — so this is the cheapest point in the value's life to change
+  it: before any consumer, human or system, comes to depend on the old spelling. The reason-code
+  enumeration stays closed and unchanged in membership: `NO_THRESHOLD_CONFIGURED` and (now)
+  `NO_CONTINUOUS_COVERAGE_DATE` are still the complete set, per `CLAUDE.md`'s reason-code-enumeration
+  constraint — this is a rename, not an addition. `src/claimgate/domain/siu.py`'s constant is
+  unchanged until implementation follows the lock.
 
 ## Open decisions
 
