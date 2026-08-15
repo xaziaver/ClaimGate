@@ -119,7 +119,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     regardless of which column was originally mutated (2 on `inception_date`, 3 on `loss_amount`),
     for 7 total. Re-review is the human's, not automatic.*
 4d. **`siu_indicators.feature` reopening: everything the recent-inception lookup decision (4c) leaves
-    stale in that file, taken together.** Sequenced behind 4c, not started. Two comments still say
+    stale in that file, taken together.** *(Done — see below.)* Two comments used to say
     `policy_inception_date` has no source at intake (lines 79-81, 125-129); the Rule and Scenario
     both named "Neither indicator is evaluated in the shipped configuration" and the
     NOT_EVALUATED-becomes-an-exception-path framing both need reconciling with the decided lookup
@@ -145,8 +145,26 @@ Ordered by domain severity, not by effort. One line each on why that position.
     `siu_indicators.feature` for the shipped-configuration claim, and `siu_indicators.feature` still
     asserts the opposite. A reader following the pointer lands on the contradiction rather than the
     explanation.
+4f. **`features/siu_indicators.feature:126` names a function, and names a dead
+    one.** The comment on the Rule "A continuous coverage date after the loss date
+    does not indicate recent policy inception" reads "Specifies the existing 0 <=
+    guard in `_is_recent_inception`" — a symbol that has not existed since
+    2026-08-09, when `33d602b` renamed it `_evaluate_recent_inception` in the same
+    commit that created it. `CLAUDE.md` forbids a Gherkin scenario naming a
+    function, and the surrounding sentence carries its meaning without the symbol,
+    so the fix is deleting the reference rather than correcting the name.
+    Spec-only and comment-only: comment edits leave mutant counts unchanged
+    (established in `d344ab3`), so this costs one spec approve and lock and
+    produces zero ledger churn. Its own reopening because it is a spec edit.
+    Sequenced before 4e only because it is smaller.
+
+    Note for whoever does this: `gauntlet.lock.json`'s remaining occurrences of
+    `_is_recent_inception` are deliberate — they are the correction record inside the
+    triage approval reason, marked dead with a date. They are not part of this sweep.
+    The ledger is never hand-edited (`CLAUDE.md`), and rewriting an approval reason is
+    a re-approval, not a documentation fix.
 4e. **Close the loss-type vocabulary in `validation.feature`: an unrecognized loss type should be a
-    blocker, not a silent `standard`.** Sequenced after 4d, not started. Motivation, as fact, not
+    blocker, not a silent `standard`.** Sequenced after 4f, not started. Motivation, as fact, not
     conjecture: `validation.py`'s `_check_loss_type` tests only for non-empty (`.strip()`), with no
     closed-set check behind it; `triage.py`'s `assign_severity` falls through to `standard` for
     anything not in the high-severity set. `sinkhole` sat in exactly this gap until item 4c gave it
@@ -173,6 +191,7 @@ later.
 | 4a, 4b | `ASSUMPTIONS.md` — the vocabulary and policy-prefix entries |
 | 4c (merged with former item 5) | `ASSUMPTIONS.md` and `STATUTORY_REGISTER.md` |
 | 4d | `ASSUMPTIONS.md` — "Data we do not have at intake" |
+| 4f | this item's own entry; no other document needed |
 | 4e | this item's own entry; no other document needed |
 | 5 (phase 2) | everything, `PHASE2_DESIGN.md` first |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
@@ -332,7 +351,7 @@ specs, 40 reviewed-equivalent.
 a single reason to every survivor in scope and overwrites the existing ones, and all 11 survivors sit
 in one scenario — so `--scenario` cannot isolate the new ones, and the 6 previously-approved were
 necessarily re-stamped too. Their inherited reason carried four inaccuracies: a $500 threshold that
-no longer exists; a claim that the `0 <=` lower bound in `_is_recent_inception` was undocumented,
+no longer exists; a claim that the `0 <=` lower bound in `_evaluate_recent_inception` was undocumented,
 false since item 2 added the scenario on 2026-08-09; a claim that nothing else in the suite would
 catch that bound's removal, false for the same reason; and a late-reporting threshold given as 30
 where the scenario uses 45. All four are corrected in the reason now on all 11 entries. This was the
@@ -340,56 +359,24 @@ third occasion that text would have carried forward unchanged — locator and di
 each time, so nothing in the harness could have flagged it. Recorded here because it is the concrete
 cost of the ledger having no per-mutant reason.
 
-## Open instructions
+**Item 4d is done and merged to `main`** (merge commit `36ae5b3`, 2026-08-15). `siu_indicators.feature`
+and `triage.feature` say "the continuous coverage date" (step text) and `coverage_start` (Examples
+column) everywhere they used to say "the policy inception date" / `inception_date`.
+`Candidate.policy_inception_date` is `continuous_coverage_date`; the reason code
+`NO_POLICY_INCEPTION_DATE` is `NO_CONTINUOUS_COVERAGE_DATE`, matching the locked
+`siu_indicators.feature` assertion exactly. The indicator name "recent policy inception" and the
+function `_evaluate_recent_inception` were deliberately left alone, per this item's own
+surgically-scoped-rename decision above — only the input date moved. Spec locked at `631f679`;
+implementation at `9f4b4ad` carried the rename into step definitions, the `tests/api/` wrappers, and
+`tests/unit/` (unit tests call the domain functions directly and never read feature files, the same
+gap items 4a and 4b found — `docs/harness-findings.md`). Ledger at `d7ab0bb`: exactly the 6 approvals
+measured stale before the lock — `siu_indicators.feature`'s three renamed scenario titles,
+`triage.feature`'s renamed `inception_date`-now-`coverage_start` column — pruned, and the same 6
+signatures re-approved under their new locators (confirmed by matching digest before commit, not
+assumed from the rename), plus 8 `loss_amount`-keyed `triage.feature` entries re-stamped by the
+unscoped approve. Project-wide reviewed-equivalent: **40 -> 34 -> 40**, exactly the predicted movement.
+Green on the reopening branch before merge: 166/166 tests, code mutation 100%/197 killed, acceptance 4
+specs / 0 surviving / 40 reviewed-equivalent / 0 stale.
 
-**Item 4d is in progress on branch `reopening/inception-vocabulary`, tip `99f74b5`.** Four commits
-over `main` (`4ee18ea` the `siu_indicators.feature` framing/vocabulary draft, `60943ea` the same
-vocabulary rename extended to `triage.feature`, `3133d7a` a merge of `main` forward, `99f74b5` the
-reason-code rename), plus `main` merged into the branch as needed to keep it a superset. **The spec
-is DRAFTED, NOT LOCKED.** `gauntlet spec approve` and, later, `lock` are the human's calls; nothing
-below is a pickup for the next session until those happen.
-
-**What the draft contains.** Both `triage.feature` and `siu_indicators.feature` now say "the
-continuous coverage date" (step text) and `coverage_start` (Examples column) where they used to say
-"the policy inception date" / `inception_date` — closing the gap where the two specs disagreed about
-what the same value is called (`ASSUMPTIONS.md`'s "Data we do not have at intake"). In
-`siu_indicators.feature` alone, beyond the shared vocabulary rename: the two comments claiming
-`policy_inception_date` has no source at intake are rewritten to cite the phase-2 adapter lookup; the
-Rule and Scenario both formerly named "Neither indicator is evaluated in the shipped configuration"
-are renamed (Rule: "Both indicators can be NOT_EVALUATED at once, for different reasons"; Scenario:
-"No late reporting threshold configured and no continuous coverage date known"), because that framing
-described a permanent limitation the lookup decision retires, not today's phase-1 gap; and the reason
-code `NO_POLICY_INCEPTION_DATE` is renamed `NO_CONTINUOUS_COVERAGE_DATE`, put in scope after the fact
-because it names the same date the rest of the item renamed and a spec value has to move before the
-lock or it costs a re-lock later (see `ASSUMPTIONS.md`). **The indicator name and threshold ("recent
-policy inception") were deliberately NOT renamed** — only the input date moved, everywhere it appears,
-including in Rule and Scenario titles.
-
-**Ledger impact, measured against each commit with `gauntlet.acceptance.mutation.mutants()`
-directly, not predicted.** `triage.feature`: 90 mutants before and after the rename, 3 of 11
-approvals dangling (the `inception_date`-, now `coverage_start`-column ones), 0 re-substituted, 8
-untouched. `siu_indicators.feature`: 38 mutants before and after both the vocabulary and reason-code
-renames, 3 of 7 approvals dangling (the three renamed scenario titles — the reason-code rename alone
-added none), 0 re-substituted, 4 untouched. Six dangling in total, project-wide, and all six reappear
-as same-signature mutants under new locators — same row, same substituted value, addressed by a new
-locator string only — so the expected post-implementation gate state is **6 stale approvals to prune
-and 6 unreviewed survivors to re-approve**, the project-wide reviewed-equivalent ledger moving
-**40 -> 34 -> 40**, the same shape items 4a and 4c already went through.
-
-**`gauntlet check` fails on this branch, as expected — not a defect to chase.** `tests`: step
-definitions in `tests/acceptance/test_triage_acceptance.py` and
-`tests/acceptance/test_siu_indicators_acceptance.py` still carry the old phrasing for both files, so
-scenarios using the renamed steps fail to bind (`StepDefinitionNotFoundError`), not a behavior
-mismatch. `acceptance`: `2 unapproved or modified spec(s)` (`triage.feature`, `siu_indicators.feature`).
-Both are guaranteed by the spec-lock-before-implementation rule (`CLAUDE.md`) and clear only when the
-human runs `gauntlet spec approve` and, later, `lock`.
-
-**What remains after the lock, not before.** Step definitions in `tests/acceptance/` for both files
-(the renamed Given-step phrasing and the renamed reason-code literal); the reason-code constant and
-field name in `src/claimgate/domain/siu.py`, still `NO_POLICY_INCEPTION_DATE` today, deliberately
-untouched — implementation, not spec; and the test API wrappers in `tests/api/` if they reference the
-old parameter or column names. None of this was started this session; no implementation, no step
-definitions, no `src/` change.
-
-Item 4e (close `validation.feature`'s loss-type vocabulary gap) is next after 4d closes, unchanged
-from before.
+Item 4f (delete the dead-symbol reference at `siu_indicators.feature:126`) is next, sequenced before
+4e because it is smaller — see its own entry above.
