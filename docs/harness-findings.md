@@ -55,6 +55,20 @@ Note that the spec-lock-before-implementation rule in `CLAUDE.md` *guarantees*
 this state on every reopening. It is normal, not a signal that something is
 wrong.
 
+**Measured cost on 2026-08-14, not the round figure it might sound like.**
+Three stop-check runs fired that day against conditions no agent action could
+clear: two (17:25:25, 17:28:32) against item 4c's post-implementation state —
+7 stale approvals, 5 unreviewed survivors — and one (22:14:13) against item
+4d's freshly-drafted, unapproved `siu_indicators.feature`. The two stale/
+unreviewed runs cost 172.8s and 158.4s of `acceptance` gate time each, because
+that condition does not trip the gate's early-return path (see "A green gate
+sometimes means nothing was checked" above) — mutation still runs in full.
+The unapproved-spec run cost 0.001s, because that condition does. Total
+`acceptance` time across all three: 331.2s, not the roughly-twelve-minutes a
+flat "~4 minutes × 3 runs" estimate would suggest — the retry cost of this
+finding is not uniform across its three qualifying conditions, and a modified
+spec is the cheap one to retry against, not the expensive one.
+
 ### Command ownership, and one remedy that names the wrong command
 
 Yours: `gauntlet check`, `verify`, `status`, `doctor`, `events`. The human's:
@@ -220,6 +234,24 @@ never findable by scanning for orphaned `run.started` events — it never
 emitted one to orphan. It is why the killed-run counts in the entry above and
 the entry below are five, not the four either would have reported on a
 `run.started`-only scan.
+
+**Caveat, verified against the log rather than assumed: "no `acceptance`
+`gate.finished`" only identifies a kill relative to the gate set configured
+at the time, not on its own.** Five of the 100 stop-check runs
+(`20260802T193624-77280`, `20260802T200600-79161`, `20260802T203202-80878`,
+`20260802T210444-84044`, `20260802T211146-84454`) end at `crap` with no
+`duplication`, `mutation`, or `acceptance` — the same shape as a kill, read
+naively. They are not: seven `command=check` runs that same evening
+(16:24:30 through 21:16:18 on 2026-08-02) share the identical seven-gate
+selected list (`protect`, `static`, `size`, `complexity`, `tests`,
+`coverage`, `crap`) and every one has a matching `run.finished` — `crap` was
+the last gate configured that day. `duplication`, `mutation`, and
+`acceptance` first appear together in a run's gate list at 22:10:12 the same
+evening; `boundary` follows on 2026-08-04. Applied without this caveat, the
+method that correctly found the 2026-08-11T11:17 kill above reports five
+more that are not — a stop-check run's completeness has to be checked
+against a `command=check` run.started/run.finished pair from the same era,
+not against today's gate list.
 
 ### Every killed run died inside the acceptance gate
 
