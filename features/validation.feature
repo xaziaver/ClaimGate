@@ -120,14 +120,29 @@ Feature: FNOL validation
     # MISSING_REQUIRED_FIELD blockers alongside a recognized loss type, not
     # instead of one.
     #
+    # liability sits in the same recognized set on the same interpretability
+    # basis, but its empty blockers cell below is a narrower claim than it
+    # looks: it asserts only that "liability" itself is interpretable and
+    # that nothing in today's check set fires, not that a bare liability
+    # notice is complete at intake. A liability claim is a Section II claim,
+    # and a notice with no claimant, no contact, and no description of what
+    # happened is as incomplete as the bare injury notice
+    # _check_injury_fields already refuses - nothing here checks for that
+    # yet. Whether liability should require claimant details the way injury
+    # does is the same Section II modelling gap ASSUMPTIONS.md already
+    # records for injury, now reaching a second value; it is not settled by
+    # this outline. See QUEUE.md's item on Section II completeness for
+    # liability losses.
+    #
     # Recognized, unrecognized, and absent share one outline deliberately,
     # unlike the notice-type enumeration below. When every row of an outline
     # asserts the same outcome, a mutation that swaps one recognized value
     # for another survives, proving nothing beyond the one approval it costs
     # to dismiss. That is measured, not assumed: all four of this file's
     # current acceptance-mutant approvals are exactly the notice-type rows
-    # this pattern warns against. A varying blockers column makes each swap
-    # discriminating instead.
+    # this pattern warns against (true as of 2026-08-16; nothing revalidates
+    # this if a future approval lands elsewhere in the file). A varying
+    # blockers column makes each swap discriminating instead.
     #
     # The compact "the blockers are <blockers>" form is used here rather
     # than "the reason codes are", even though both can assert a code,
@@ -137,6 +152,11 @@ Feature: FNOL validation
     # _parse_compact_blockers guards for it explicitly. Recorded here so the
     # next person reaching for "the reason codes are" in an outline finds
     # this out from the comment, not from a failing gate.
+    #
+    # Recognition is exact-match and case-sensitive - the WIND_HAIL row below
+    # is deliberately not folded into wind_hail. Normalizing case at intake
+    # is a feed-adapter concern that belongs where the feed is parsed, not in
+    # a pure domain check.
     Scenario Outline: A loss type is recognized, unrecognized, or absent
       Given the loss type is "<loss_type>"
       When the candidate FNOL record is validated
@@ -244,12 +264,14 @@ Feature: FNOL validation
     # nowhere left to come from. Four is the maximum reachable, and it is
     # reachable more than one way, not just the one example below:
     # exhaustively checked against a simulated closed loss-type set, four
-    # distinct four-code combinations exist. The scenarios below prove that a
-    # fixed emission sequence in the implementation cannot satisfy every case:
-    # a four-code combination, a subset that skips the earliest codes, and a
-    # subset that is non-contiguous in the canonical order.
+    # distinct four-code combinations exist (true as of 2026-08-16; nothing
+    # revalidates this if a sixth code or a sixth field-recognition check is
+    # added). The scenarios below prove that a fixed emission sequence in the
+    # implementation cannot satisfy every case: two different maximal
+    # combinations, a subset that skips the earliest codes, and a subset that
+    # is non-contiguous in the canonical order.
 
-    Scenario: Four of five canonical codes fire together, via a missing injury field
+    Scenario: Policy, notice, and date codes fire together with a missing injury field
       Given the policy number is "XX-1234567"
       And the notice type is "SUPPLEMENT"
       And the loss date is "2026-08-03"
@@ -266,7 +288,7 @@ Feature: FNOL validation
         | MISSING_REQUIRED_FIELD   | injured_party_name |
       And the reason codes are "POLICY_NUMBER_MALFORMED;NOTICE_TYPE_UNRECOGNIZED;LOSS_DATE_IN_FUTURE;MISSING_REQUIRED_FIELD"
 
-    Scenario: A different four of five canonical codes fire together, including the unrecognized loss type
+    Scenario: Policy, notice, and date codes fire together with an unrecognized loss type
       Given the policy number is "XX-1234567"
       And the notice type is "SUPPLEMENT"
       And the loss date is "2026-08-03"
