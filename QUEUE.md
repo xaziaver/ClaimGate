@@ -173,7 +173,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     The ledger is never hand-edited (`CLAUDE.md`), and rewriting an approval reason is
     a re-approval, not a documentation fix.
 4e. **Close the loss-type vocabulary in `validation.feature`: an unrecognized loss type should be a
-    blocker, not a silent `standard`.** Sequenced after 4f, not started. Motivation, as fact, not
+    blocker, not a silent `standard`.** *(Done — see below.)* Sequenced after 4f. Motivation, as fact, not
     conjecture: `validation.py`'s `_check_loss_type` tests only for non-empty (`.strip()`), with no
     closed-set check behind it; `triage.py`'s `assign_severity` falls through to `standard` for
     anything not in the high-severity set. `sinkhole` sat in exactly this gap until item 4c gave it
@@ -191,6 +191,14 @@ Ordered by domain severity, not by effort. One line each on why that position.
     records the underlying modelling defect. Needs a decision on whether required-field sets vary by
     coverage category before it can be specced, which is the same shape of question
     `PHASE2_DESIGN.md` raises for `notice_type`.
+4h. **The loss-type vocabulary lives in two files with no stated relation.**
+    `validation.RECOGNIZED_LOSS_TYPES` holds fourteen values; `triage._HIGH_SEVERITY_LOSS_TYPES` holds
+    three. Every high-severity value must be a recognized value or triage would route as severe a
+    notice validation blocks at intake. That constraint is true today, verified 2026-08-16, stated
+    nowhere and enforced by nothing — the same shape as the renamed-symbol problem items 4d and 4f
+    dealt with. Decide whether the fix is a scenario asserting the subset relation, a single shared
+    vocabulary the two modules import, or an `ASSUMPTIONS.md` entry with a revisit trigger. Not urgent:
+    no current value violates it.
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
@@ -407,5 +415,40 @@ check` passes on `main` post-merge (166/166 tests, mutation 100%/197 killed, 4 s
 it: the entry said the fix "costs one spec approve and lock," which conflates two unrelated gates —
 `gauntlet lock` approves config paths for the protect gate, not specs.
 
-Item 4e (close the loss-type vocabulary gap in `validation.feature`) is next — see its own entry
-above.
+**Item 4e is done and merged to `main`** (merge commit `423a78d`, 2026-08-16). `features/validation.feature`'s
+Rule becomes "The loss type must be stated and recognized": `RECOGNIZED_LOSS_TYPES` (fourteen values —
+fire, flood, hurricane, injury, liability, lightning, mold, roof_leak, sinkhole, smoke, theft,
+vandalism, water_damage, wind_hail) sits beside `RECOGNIZED_NOTICE_TYPES` in `validation.py`, and an
+unrecognized loss type now resolves `LOSS_TYPE_UNRECOGNIZED` — a distinct code from
+`MISSING_REQUIRED_FIELD`, so a typo is no longer indistinguishable from a blank field. The recognized
+set is drawn on what intake can interpret, not what the policy covers — flood, mold, and smoke are
+recognized and routinely excluded or sub-limited on a Florida HO book; whether a notice is covered is a
+downstream question. Mirrors `_check_notice_type`'s shape exactly, including where it deliberately
+doesn't: `LOSS_TYPE_UNRECOGNIZED` joins `_CANONICAL_CODE_ORDER` between `NOTICE_TYPE_UNRECOGNIZED` and
+`LOSS_DATE_IN_FUTURE`, while the check order in `validate()` stays as-is, per the existing comment on
+why the two orders differ. Spec locked at `3daaa77`; implementation at `6d79852`.
+
+**The outline shape was a measured choice, not a stylistic one — the reusable part of this item.** The
+16-row outline mixes recognized, unrecognized, and absent loss types in one table rather than following
+the notice-type scenario above it, which enumerates its four recognized values in their own
+same-outcome table. In a same-outcome table, a mutation that swaps one recognized value for another
+can't change the expected result, so it survives and costs a human approval to dismiss as equivalent —
+exactly what happened to all 4 of the notice-type scenario's approvals. Measured directly against
+gauntlet's real mutation engine, not assumed: isolating the 13 non-injury recognized loss-type values in
+a same-outcome table of their own (mirroring the notice-type scenario's exact pattern) produces 13 such
+survivors. Mixing outcomes in one table instead means every recognized-value swap lands on a row with a
+different `blockers` expectation and gets killed outright — confirmed both by construction (`9e74ad3`:
+"Zero recognized->recognized swaps in the new outline") and by the result (0 surviving, 40
+reviewed-equivalent post-merge, unchanged from pre-merge). 13 approvals avoided, prediction held at zero
+survivors.
+
+`gauntlet check` passes on `main` post-merge (197/197 tests, mutation 100%/204 killed, 4 specs / 0
+surviving / 40 reviewed-equivalent / 0 stale — the same 40 as before this reopening). Measured, not
+assumed: `features/validation.feature`'s mutant count moved 80 -> 116 (verified by running
+`gauntlet.acceptance.mutation.mutants()` directly against the feature file at both refs, not read off a
+gate summary). Cross-boundary note recorded while closing this item, not acted on: `triage.py`'s
+`_HIGH_SEVERITY_LOSS_TYPES` (`injury`, `fire`, `sinkhole`) are all members of the new
+`RECOGNIZED_LOSS_TYPES`, but nothing enforces that relationship — see item 4h, added below.
+
+Item 4h (the loss-type vocabulary's cross-file relationship) is next in sequence, but it sits behind
+4g and is not urgent — see its own entry above.
