@@ -6,7 +6,17 @@ from decimal import Decimal
 import pytest
 
 from claimgate.domain.models import Candidate
-from claimgate.domain.triage import assign_severity, route_queue, triage_and_route
+from claimgate.domain.triage import (
+    _HIGH_SEVERITY_LOSS_TYPES,
+    assign_severity,
+    route_queue,
+    triage_and_route,
+)
+from claimgate.domain.validation import RECOGNIZED_LOSS_TYPES
+
+
+def test_every_high_severity_loss_type_is_recognized_by_validation() -> None:
+    assert _HIGH_SEVERITY_LOSS_TYPES <= RECOGNIZED_LOSS_TYPES
 
 
 @pytest.mark.parametrize(
