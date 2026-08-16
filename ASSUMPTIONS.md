@@ -292,6 +292,21 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   late-reporting rule `QUEUE.md` item 2 already removed — a claimant's lawful exercise of a right,
   here the right to representation, is not grounds for suspicion, and coding it as a fraud signal
   reads exactly as badly in a market conduct exam as the late-notice indicator did.
+- **Why `test_triage.py::test_every_high_severity_loss_type_is_recognized_by_validation` exists,
+  recorded because the set comparison it makes is not self-explanatory (`QUEUE.md` item 4h).** It
+  is easy to read as redundant with `validation.feature`'s "Recognized loss types" outline, which
+  already carries `fire` and `sinkhole` as rows, and with the separate "Required fields for an
+  injury loss" rule that covers `injury` — and to delete it on that reading. It is not redundant.
+  Those rows and that rule establish that `validate()` recognizes `injury`, `fire`, and `sinkhole`;
+  they say nothing about `triage._HIGH_SEVERITY_LOSS_TYPES`, a separate frozenset in a different
+  module that neither one touches. The two sets are only related because nothing enforces that they
+  must be: if a future edit to `RECOGNIZED_LOSS_TYPES` ever dropped `injury`, `fire`, or `sinkhole`,
+  or if `injury`'s field-completeness coverage in the rule above stopped tracking it as recognized,
+  `validate()` would block every notice of that loss type into `PENDED` before `triage_and_route`
+  ever ran — the highest-severity category silently stops reaching a queue, and nothing in either
+  feature file would fail, because each only asserts facts about its own set. This test is the only
+  thing that would. Those `validation.feature` rows are load-bearing for triage's high-severity
+  routing too, not only for intake, even though nothing in `validation.feature` says so.
 
 ## Data we do not have at intake
 
