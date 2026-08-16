@@ -8,6 +8,7 @@ import pytest
 from claimgate.domain.models import Candidate, ValidationBlocker
 from claimgate.domain.validation import (
     LOSS_DATE_IN_FUTURE,
+    LOSS_TYPE_UNRECOGNIZED,
     MISSING_REQUIRED_FIELD,
     NOTICE_TYPE_UNRECOGNIZED,
     POLICY_NUMBER_MALFORMED,
@@ -79,6 +80,36 @@ def test_absent_loss_type_is_a_missing_field() -> None:
     result = validate(candidate, now=TODAY)
 
     assert result.blockers == (ValidationBlocker(MISSING_REQUIRED_FIELD, "loss_type"),)
+
+
+@pytest.mark.parametrize(
+    ("loss_type", "expected_blockers"),
+    [
+        ("fire", ()),
+        ("flood", ()),
+        ("hurricane", ()),
+        ("liability", ()),
+        ("lightning", ()),
+        ("mold", ()),
+        ("roof_leak", ()),
+        ("sinkhole", ()),
+        ("smoke", ()),
+        ("theft", ()),
+        ("vandalism", ()),
+        ("water_damage", ()),
+        ("wind_hail", ()),
+        ("watr_damage", (ValidationBlocker(LOSS_TYPE_UNRECOGNIZED, "loss_type"),)),
+        ("WIND_HAIL", (ValidationBlocker(LOSS_TYPE_UNRECOGNIZED, "loss_type"),)),
+    ],
+)
+def test_loss_type(
+    loss_type: str, expected_blockers: tuple[ValidationBlocker, ...]
+) -> None:
+    candidate = dataclasses.replace(BASE_CANDIDATE, loss_type=loss_type)
+
+    result = validate(candidate, now=TODAY)
+
+    assert result.blockers == expected_blockers
 
 
 @pytest.mark.parametrize(
