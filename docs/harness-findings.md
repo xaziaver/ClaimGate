@@ -561,3 +561,27 @@ this project no gate can validate, and they are prose; a check on them has to be
 read, not grepped. Where a mechanical check is wanted, test the ledger's structure —
 key churn, digest pairing, which scenarios were re-stamped — and leave the prose to a
 human.
+
+### The code-mutation score cannot value a test that guards a cross-module consistency invariant
+
+Item 4h (`QUEUE.md`) added a test asserting that triage's high-severity loss types are a subset of
+validation's recognized loss types — `_HIGH_SEVERITY_LOSS_TYPES <= RECOGNIZED_LOSS_TYPES`, two
+frozensets in two different modules with no prior relation enforced between them. Killed count was
+204 before the test and 204 after, measured by isolating the mutation gate and running it against
+both versions rather than reading the number off a gate summary.
+
+Two things cause that, and neither is specific to this test. Killed count counts killed mutants, not
+killers: it moves only when a mutant that used to survive gets killed by the new test, or a new
+mutant gets generated and killed. A test that duplicates coverage other tests already provide moves
+nothing, no matter how meaningful the assertion is on its own terms. And the state this particular
+test guards — `RECOGNIZED_LOSS_TYPES` and `_HIGH_SEVERITY_LOSS_TYPES` disagreeing while every
+scenario in both `validation.feature` and `triage.feature` keeps passing — is only reachable by a
+coordinated edit across two files: drop a value from one frozenset while leaving the other alone.
+Single-point mutation, which is what the mutation gate generates, never produces that; it mutates one
+site at a time, inside one file, against one spec.
+
+A zero delta on the mutation score is therefore not evidence a test was unnecessary. For a test that
+guards a cross-module invariant, it is the expected result, not a signal of anything — the gate
+cannot generate the coordinated mutant that would exercise it, so it can never register the test's
+value as a killed count. Judge such tests on the coordinated edit they would catch if someone made
+it, not on a score built to measure single-point mutants.
