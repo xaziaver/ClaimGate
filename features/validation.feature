@@ -126,9 +126,9 @@ Feature: FNOL validation
     # that nothing in today's check set fires, not that a bare liability
     # notice is complete at intake. A liability claim is a Section II claim,
     # and a notice with no claimant, no contact, and no description of what
-    # happened is as incomplete as the bare injury notice
-    # _check_injury_fields already refuses - nothing here checks for that
-    # yet. Whether liability should require claimant details the way injury
+    # happened is as incomplete as a bare injury notice, which the injury
+    # rule below already refuses - nothing here checks for that yet. Whether
+    # liability should require claimant details the way injury
     # does is the same Section II modelling gap ASSUMPTIONS.md already
     # records for injury, now reaching a second value; it is not settled by
     # this outline. See QUEUE.md's item on Section II completeness for
@@ -146,12 +146,13 @@ Feature: FNOL validation
     #
     # The compact "the blockers are <blockers>" form is used here rather
     # than "the reason codes are", even though both can assert a code,
-    # because the reason-codes step cannot express an empty expectation:
-    # value.split(";") on "" yields [''], not [], so an empty codes cell
-    # could never match a zero-blocker result. The compact form's
-    # _parse_compact_blockers guards for it explicitly. Recorded here so the
-    # next person reaching for "the reason codes are" in an outline finds
-    # this out from the comment, not from a failing gate.
+    # because the reason-codes step cannot express an empty expectation: it
+    # splits the expected string on semicolons, and an empty string does not
+    # split into an empty list, so an empty codes cell could never match a
+    # zero-blocker result. The compact "the blockers are" form handles an
+    # empty cell correctly. Recorded here so the next person reaching for
+    # "the reason codes are" in an outline finds this out from the comment,
+    # not from a failing gate.
     #
     # Recognition is exact-match and case-sensitive - the WIND_HAIL row below
     # is deliberately not folded into wind_hail. Normalizing case at intake
