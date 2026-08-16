@@ -7,9 +7,28 @@ from claimgate.domain.models import Candidate, ValidationBlocker, ValidationResu
 
 POLICY_NUMBER_PATTERN = re.compile(r"^HO-\d{7}$")
 RECOGNIZED_NOTICE_TYPES = frozenset({"INITIAL", "REOPENED", "SUPPLEMENTAL", "LOSS_ASSESSMENT"})
+RECOGNIZED_LOSS_TYPES = frozenset(
+    {
+        "fire",
+        "flood",
+        "hurricane",
+        "injury",
+        "liability",
+        "lightning",
+        "mold",
+        "roof_leak",
+        "sinkhole",
+        "smoke",
+        "theft",
+        "vandalism",
+        "water_damage",
+        "wind_hail",
+    }
+)
 
 POLICY_NUMBER_MALFORMED = "POLICY_NUMBER_MALFORMED"
 NOTICE_TYPE_UNRECOGNIZED = "NOTICE_TYPE_UNRECOGNIZED"
+LOSS_TYPE_UNRECOGNIZED = "LOSS_TYPE_UNRECOGNIZED"
 LOSS_DATE_IN_FUTURE = "LOSS_DATE_IN_FUTURE"
 MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
 
@@ -21,6 +40,7 @@ MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
 _CANONICAL_CODE_ORDER = (
     POLICY_NUMBER_MALFORMED,
     NOTICE_TYPE_UNRECOGNIZED,
+    LOSS_TYPE_UNRECOGNIZED,
     LOSS_DATE_IN_FUTURE,
     MISSING_REQUIRED_FIELD,
 )
@@ -58,6 +78,8 @@ def _check_policy_number(candidate: Candidate) -> list[ValidationBlocker]:
 def _check_loss_type(candidate: Candidate) -> list[ValidationBlocker]:
     if not candidate.loss_type.strip():
         return [ValidationBlocker(MISSING_REQUIRED_FIELD, "loss_type")]
+    if candidate.loss_type not in RECOGNIZED_LOSS_TYPES:
+        return [ValidationBlocker(LOSS_TYPE_UNRECOGNIZED, "loss_type")]
     return []
 
 
