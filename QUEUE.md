@@ -204,9 +204,25 @@ Ordered by domain severity, not by effort. One line each on why that position.
     before it could ever reach `TRIAGED` and be assigned a severity or a queue — the most urgent
     category becomes the one that silently never reaches a queue on its own. That every high-severity
     value is a recognized value is true today, stated nowhere, and enforced by nothing — the same
-    shape as the renamed-symbol problem items 4d and 4f dealt with. Decide whether the fix is a
-    scenario asserting the subset relation, a single shared vocabulary the two modules import, or an
-    `ASSUMPTIONS.md` entry with a revisit trigger. Not urgent: no current value violates it.
+    shape as the renamed-symbol problem items 4d and 4f dealt with. Not urgent: no current value
+    violates it. *(Done — see below.)*
+
+    **Decided, 2026-08-16: the fix is a unit test, not a scenario or a shared vocabulary module.**
+    `test_every_high_severity_loss_type_is_recognized_by_validation` asserts
+    `_HIGH_SEVERITY_LOSS_TYPES <= RECOGNIZED_LOSS_TYPES` directly. A Gherkin scenario would have to
+    name both frozensets to state the relation, which `CLAUDE.md`'s no-symbols-in-scenarios rule
+    forbids. A revisit trigger was rejected on this project's own evidence: `docs/harness-findings.md`
+    records that a trigger keyed on `_is_recent_inception` sat inert for six days across four queue
+    items before anyone caught the rename that broke it (item 4f) — the mechanism that would guard
+    this relation is the same one already shown not to. A shared vocabulary module was rejected as
+    disproportionate: the invariant is two lines, and a module refactor to enforce it would be sized
+    for a problem this isn't. The code-mutation score did not move — 204 killed before and after,
+    measured by isolating the mutation gate and running it against both versions — and that zero delta
+    is not evidence the test was unneeded. Killed count counts killed mutants, not killers, so a test
+    that only kills mutants other tests already kill can't move it; and the state this test guards —
+    the two sets disagreeing while each module's own tests still pass — is only reachable by a
+    coordinated edit across two files, which single-point mutation never produces. See
+    `docs/harness-findings.md`'s "Process and technique" section for the general form of this finding.
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
@@ -458,5 +474,14 @@ gate summary). Cross-boundary note recorded while closing this item, not acted o
 `_HIGH_SEVERITY_LOSS_TYPES` (`injury`, `fire`, `sinkhole`) are all members of the new
 `RECOGNIZED_LOSS_TYPES`, but nothing enforces that relationship — see item 4h, added below.
 
-Item 4h (the loss-type vocabulary's cross-file relationship) is next in sequence, but it sits behind
-4g and is not urgent — see its own entry above.
+**Item 4h is done and merged to `main`** (merge commit `62f9412`, 2026-08-16). See its own entry
+above for what the fix is and why the other two options were rejected. `ASSUMPTIONS.md`'s entry
+documenting the test also picked up a verified-on date on its five symbol references (a test
+function, two frozensets, `validate`, `triage_and_route`), so it doesn't strand the way item 4f's
+dead-symbol comment did. `gauntlet check` passes on `main` post-merge (198/198 tests, mutation
+100%/204 killed, 4 specs / 0 surviving / 40 reviewed-equivalent / 0 stale — mutation score unchanged
+from before this reopening, expected per the entry's own explanation above, not a sign of drift).
+
+Item 4g (Section II completeness for liability losses) is next in sequence — see its own entry
+above. It needs a decision on whether required-field sets vary by coverage category before it can be
+specced.
