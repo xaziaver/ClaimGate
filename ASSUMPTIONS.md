@@ -307,6 +307,10 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   feature file would fail, because each only asserts facts about its own set. This test is the only
   thing that would. Those `validation.feature` rows are load-bearing for triage's high-severity
   routing too, not only for intake, even though nothing in `validation.feature` says so.
+  Names verified 2026-08-16: `test_every_high_severity_loss_type_is_recognized_by_validation`,
+  `RECOGNIZED_LOSS_TYPES`, `_HIGH_SEVERITY_LOSS_TYPES`, `validate`, and `triage_and_route` are
+  current as of that date; the argument above is about the sets these symbols locate, not the
+  symbols themselves, and survives their renaming.
 
 ## Data we do not have at intake
 
