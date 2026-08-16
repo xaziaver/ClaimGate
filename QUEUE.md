@@ -193,12 +193,20 @@ Ordered by domain severity, not by effort. One line each on why that position.
     `PHASE2_DESIGN.md` raises for `notice_type`.
 4h. **The loss-type vocabulary lives in two files with no stated relation.**
     `validation.RECOGNIZED_LOSS_TYPES` holds fourteen values; `triage._HIGH_SEVERITY_LOSS_TYPES` holds
-    three. Every high-severity value must be a recognized value or triage would route as severe a
-    notice validation blocks at intake. That constraint is true today, verified 2026-08-16, stated
-    nowhere and enforced by nothing — the same shape as the renamed-symbol problem items 4d and 4f
-    dealt with. Decide whether the fix is a scenario asserting the subset relation, a single shared
-    vocabulary the two modules import, or an `ASSUMPTIONS.md` entry with a revisit trigger. Not urgent:
-    no current value violates it.
+    three. **Correction, 2026-08-16: this item's original failure mode was wrong and is replaced
+    below.** It claimed triage would route as severe a notice validation blocks — checked against the
+    code rather than assumed: there is no orchestrator in `src/`, `triage_and_route` never consults
+    `validate()`, and `PHASE2_DESIGN.md`'s state table (`RECEIVED -> TRIAGED` only "domain rules found
+    no blocker"; `RECEIVED -> PENDED` on any blocker) sends a blocked notice to `PENDED`, never
+    `TRIAGED` — so the stated failure cannot occur. The real risk runs the other way: if a
+    high-severity peril were ever missing from `RECOGNIZED_LOSS_TYPES`, every notice of that loss type
+    would resolve `LOSS_TYPE_UNRECOGNIZED` at intake and land `PENDED`, requiring a human resolution
+    before it could ever reach `TRIAGED` and be assigned a severity or a queue — the most urgent
+    category becomes the one that silently never reaches a queue on its own. That every high-severity
+    value is a recognized value is true today, stated nowhere, and enforced by nothing — the same
+    shape as the renamed-symbol problem items 4d and 4f dealt with. Decide whether the fix is a
+    scenario asserting the subset relation, a single shared vocabulary the two modules import, or an
+    `ASSUMPTIONS.md` entry with a revisit trigger. Not urgent: no current value violates it.
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
