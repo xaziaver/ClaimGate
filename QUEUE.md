@@ -185,6 +185,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
     because of. The fix belongs at intake validation, where an unrecognized value already becomes a
     blocker for every other required field, not inside severity assignment, which has no way to
     refuse a record at all.
+4g. **Section II completeness for liability losses.** `_check_injury_fields` keys on
+    `loss_type == "injury"` exactly, so a bare liability notice passes intake with no claimant
+    details. Item 4e recognized `liability` and deliberately did not close this; `ASSUMPTIONS.md`
+    records the underlying modelling defect. Needs a decision on whether required-field sets vary by
+    coverage category before it can be specced, which is the same shape of question
+    `PHASE2_DESIGN.md` raises for `notice_type`.
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
