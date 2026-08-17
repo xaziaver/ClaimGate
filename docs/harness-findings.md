@@ -620,3 +620,27 @@ was caught by the number's author re-reading their own figure — each was caugh
 the number against the spec's current state before acting on it. The number a source supplies is a
 floor to check against the artifact as it stands now, not a target to carry forward unchecked. Measure
 last, after every amendment, not first and once.
+
+### A failing test's parametrize id does not identify which cell a mutation injected
+
+An interrupted acceptance run on 2026-08-17 left `features/duplicates.feature` carrying
+`matching_claim_id: CLM-1001 -> ""` on the first row of "Matching against a single existing claim".
+The failure surfaced as `test_matching_against_a_single_existing_claim[HO-1234567-2026-06-01-fire-]`
+plus `assert ('CLM-1001',) == ()`.
+
+pytest-bdd builds that id from the example row as it stands *after* mutation, so it is not
+one-to-one with a mutant. Two distinct mutants in that scenario produce the identical id: the
+first row with its expectation blanked, and the last row (`HO-1234567|2026-06-01|water_damage|`)
+with its loss type substituted to `fire`. Reading the id alone, the advisor identified the second
+and stated it as a prediction; `git diff` showed the first. The mistake cost nothing here — the
+recovery is the same file either way — but the method would misdirect anyone trying to work out
+which approval or scenario was implicated before restoring.
+
+Identify an injection from `git diff`, or by matching the signature against
+`mutation.mutants()`'s output for that file — never from the test id. A cheap visual tell: the
+engine writes the substituted value without re-padding the cell, so an injected empty cell is
+narrower than the genuine empty cells in the same column.
+
+Also confirms two documented behaviours in one event: every killed run dies inside `acceptance`
+and leaves a corrupted spec, and `_discriminating_alternatives` drew the substitute (`""`) from
+other rows in the same column, as specified.

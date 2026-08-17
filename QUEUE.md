@@ -199,39 +199,53 @@ Ordered by domain severity, not by effort. One line each on why that position.
     model has no location or damage-description fields for any Section I peril to require, so this
     item is Section II only. Section I completeness is a separate, later item that has to add model
     fields before it can be specced at all, not a scope this item can absorb.
+    
+    **The three fields are renamed and two of them become carrier configuration.**
+    `injured_party_name`, `injured_party_contact`, and `injury_description` become `claimant_name`,
+    `claimant_contact`, and `incident_description` — a liability claim is frequently third-party
+    property damage with nobody injured at all, the same wrong-lookup trap `policy_inception_date`
+    was in item 4d. `incident_description` is required unconditionally. `claimant_name` and
+    `claimant_contact` are each required or not by caller-supplied configuration with no default
+    (`ASSUMPTIONS.md`, 2026-08-17, two entries). This supersedes the 2026-08-16 decision that
+    contact is non-blocking and name blocks: that fixed a carrier policy choice in the domain.
 
-    **`injured_party_name`, `injured_party_contact`, and `injury_description` are renamed
-    `claimant_name`, `claimant_contact`, and `incident_description`.** A liability claim is
-    frequently third-party property damage with nobody injured at all — the current names are the
-    same wrong-lookup trap `policy_inception_date` was in item 4d, a name that only reads correctly
-    for the narrower case it was first written for. The phase-2 adapter will be written against
-    whatever name ships here, so the rename happens now rather than being carried into that layer.
+    **Three things break that the earlier version of this entry did not name.** Measured against
+    `main`, not predicted:
 
-    **Name and description block; contact does not.** `claimant_name` and `incident_description`
-    stay required, mirroring the injury rule exactly. `claimant_contact` becoming non-blocking is a
-    relaxation of today's injury rule, not merely its extension to a new loss type: contact details
-    are frequently unavailable at first notice, and obtaining them is the adjuster's follow-up work,
-    not information the reporting insured necessarily has to hand. Against the blocking criterion
-    `ASSUMPTIONS.md` records for this item: contact is not actionable at intake in the way a name or
-    an incident description is, so it fails the test that currently makes it a blocker for `injury`.
+    - The `liability` row in "A loss type is recognized, unrecognized, or absent" asserts an empty
+      blockers cell, which goes false once a bare liability notice produces blockers. Delete the row:
+      `injury` already has none for exactly this reason and the comment above the outline gives the
+      argument. Costs 2 mutants, both currently killed, zero approvals, and nothing else in the file
+      moves — the other 30 mutants in that scenario keep locator and signature byte-identical.
+    - "Multiple missing injury fields all survive as blockers, deduplicated in reason codes" builds
+      its two blockers from name and contact. Under a configuration not requiring contact it yields
+      one and the scenario's purpose is gone. Its title stays true, so nothing flags it.
+    - "A later-canonical subset fires without any earlier code present" uses missing contact as its
+      only MISSING_REQUIRED_FIELD. Same problem, same invisibility.
 
-    **Scenario "Non-injury losses do not require injured-party details" goes false on
-    generalization and needs renaming as part of this item.** Its body uses `wind_hail` and stays
-    true under the new rule — `wind_hail` genuinely has no claimant fields. Its title asserts a
-    general rule that `liability` now contradicts, since `liability` is non-injury and does require
-    claimant details. The title, not the body, is what breaks.
+    Also: the comment on the "All blockers are reported together" rule states that the only other
+    source of MISSING_REQUIRED_FIELD is the injured-party fields and that those apply only when the
+    loss type is exactly "injury". False from this item. Its conclusion survives — `liability` is
+    recognized and so never a source of LOSS_TYPE_UNRECOGNIZED — but the wording must move with it.
+    And "Non-injury losses do not require injured-party details" needs retitling: its `wind_hail`
+    body stays true, its title asserts a rule `liability` now contradicts.
 
-    **Coverage E (personal liability) and Coverage F (medical payments) are not sub-divided.**
-    MedPay is no-fault where personal liability is fault-based, but both land in the same
-    required-field set here — a deliberate scope decision, not an oversight missed for want of
-    noticing the distinction, and the spec comment on the rule should say so explicitly so a later
-    reader doesn't read the merge as an omission.
+    **Blast radius, measured at `85ed863`.** Six scenarios carry this vocabulary and hold 40 of
+    `features/validation.feature`'s 116 mutants (16 / 8 / 5 / 5 / 5 / 1). **None carries an
+    approval** — all four of the file's approvals sit in "Recognized notice types are accepted,"
+    untouched. So zero stale approvals, and 40 currently-killed mutants re-exercised with no
+    guarantee of the same kill rate. Item 4a's shape: the restale is nil, the re-exercise is the
+    unbounded part. This figure is a floor to re-derive against the draft, not a target
+    (`docs/harness-findings.md`, "An advisor's measured number goes stale").
+
+    **Coverage E and Coverage F are not sub-divided,** and the spec comment should say so
+    explicitly. MedPay is no-fault where personal liability is fault-based; both land in the same
+    required-field set here, a deliberate scope decision rather than an omission.
 
     **Do not derive the category from a new `_SECTION_II_LOSS_TYPES` frozenset without enforcing its
-    relation to the recognized set.** A third loss-type frozenset repeats item 4h's exact shape — an
-    unstated invariant that it's a subset of `RECOGNIZED_LOSS_TYPES` — and item 4h's fix (a direct
-    unit-test assertion, not a scenario or a shared module) is the pattern to reuse here rather than
-    rediscover.
+    relation to the recognized set.** That repeats item 4h's exact shape; reuse 4h's fix — a direct
+    unit-test assertion, not a scenario or a shared module.
+
 4h. **The loss-type vocabulary lives in two files with no stated relation.**
     `validation.RECOGNIZED_LOSS_TYPES` holds fourteen values; `triage._HIGH_SEVERITY_LOSS_TYPES` holds
     three. **Correction, 2026-08-16: this item's original failure mode was wrong and is replaced
@@ -549,3 +563,10 @@ rather than add an unenforced third loss-type set. Item 4g is next in sequence a
 **Item 4i, the `the reason codes are` empty-string gap, is added — see its own entry above.** Found
 while drafting item 4e's spec, latent (nothing in the suite currently exercises it), not sequenced
 ahead of anything above it.
+
+**Decided 2026-08-17: the fix is the step definition, and it lands inside item 4g's
+    implementation commit.** The sibling step guards for the empty case before splitting; this one
+    is simply missing that guard, so the step is wrong and the spec is not. Item 4g's scenarios
+    assert notices that are not blocked, so they use `there are no blockers`, which already works —
+    4g is not blocked on this, but it is the item that makes the gap reachable, so it closes there
+    rather than staying latent. Spec draft commit stays spec-only per `CLAUDE.md`.
