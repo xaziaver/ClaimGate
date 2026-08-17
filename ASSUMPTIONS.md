@@ -1,11 +1,12 @@
-# Assumptions
+ # Assumptions
 
-ClaimGate is designed against a concrete three-carrier Florida residential property estate —
-Florida Peninsula Insurance Company, Edison Insurance Company, and Ovation Home Insurance
-Exchange — administered by Windward Risk Managers. This project has no access to Windward's or
-Duck Creek's internal systems or data. Every entry below states what was assumed, why, and what
-would correct it — this file is the difference between a gap that reads as identified and one
-that reads as missed.
+ClaimGate is a general FNOL intake product, configured per carrier: a managing agency running
+several carriers on several policy administration systems runs several configurations in
+parallel; a single carrier or MGA runs one. It ships configured for Florida residential property.
+This project has no access to any carrier's or policy administration vendor's internal systems or
+data, so every rule here rests on a public source or a stated assumption. Every entry below states
+what was assumed, why, and what would correct it — this file is the difference between a gap that
+reads as identified and one that reads as missed.
 
 **Provenance convention, proposed 2026-08-14.** A dated decision below should carry a provenance
 tag, not a bare "decided": **advisor-recommended, human-ratified** when it rests on an argued chain
@@ -40,9 +41,12 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   - *Recent policy inception threshold: 30 days* — "a standard fraud indicator." Asserts an
     industry basis with nothing behind it. This is the only entry in the file that *sounds*
     externally grounded, and it is not.
-  - *Policy number LOB prefixes: HO, AU, CP, CA, GL* — "the lines of business this carrier
-    actually intakes." A statement of fact about Windward, and it is false: Windward intakes
-    Florida residential property only, no auto, no commercial (see Finding 5 below).
+  - - *Policy number LOB prefixes: HO, AU, CP, CA, GL* — "the lines of business this carrier
+    actually intakes." A statement of fact about a specific carrier's book, and false for the book
+    it was written against: residential property only, no auto, no commercial (see Finding 5
+    below). Whose book it was is no longer recorded here and does not need to be — the defect is
+    asserting a carrier fact in the domain at all, which is what item 4b narrowed and what the
+    `POLICY_NUMBER_PATTERN` entry below still carries.
 - **Restates the rule (1):** *Theft low-severity threshold: $500* — restates what happens under
   and at $500 with no justification for the number itself.
 - **Orphaned (1):** *Duplicate detection window: 3 days* — "tight enough to avoid false positives
@@ -58,24 +62,21 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   tracked separately as a legal-exposure issue, not merely a stale citation); *LOB-vs-loss-type
   cross-validation: deferred*.
 
-## Windward / Duck Creek estate — all unverified, no internal access
+## Carrier estate — no internal access to any
 
-- **Carrier codes.** `FPIC` / `EDIS` / `OVTN` are our invention, not Windward's codes. Windward's
-  real codes substitute at integration.
-- **Policy number format.** Assumed, not known. It is a config value so a real format substitutes
-  without a code change.
-- **Ovation's NAIC group code.** Unverified, left null. Demotech groups it with Florida Peninsula,
-  but a member-owned reciprocal may be grouped by management rather than ownership.
-- **Ovation's policy number format.** May differ from Florida Peninsula's and Edison's. Not public;
-  needs an internal check.
-- **Book scope.** Assumed Florida-only, residential-only. Well-supported by public sources
-  (Windward's own materials describe exactly these three carriers, Florida homeowners only), but
-  not formally confirmed by Windward.
-- **NAIC company codes (10132, 12482, 17621) ARE verified**, against FLOIR primary sources —
-  Florida Peninsula's targeted market conduct exam report and Edison's financial examination
-  report, cross-checked against a second source. Stated explicitly so this entry is not read as
-  the same class of unverified claim as the rest of this section.
+ClaimGate has never had access to a carrier's or policy administration vendor's internal systems
+or data. Nothing below was confirmed against a live book.
 
+- **Carrier codes.** The 4-character `carrier_code` values in `PHASE2_DESIGN.md` are placeholders.
+  Real codes substitute at integration; they are configuration, not behaviour.
+- **Policy number format.** Assumed, not known, and it varies between real carriers. Currently a
+  domain-layer regex, which is the open defect the `POLICY_NUMBER_PATTERN` entry below records.
+- **NAIC group codes.** The schema must tolerate a null group code. A member-owned reciprocal may
+  be grouped by management rather than ownership, so group membership does not follow from a
+  shared administrator and cannot be inferred.
+- **Book scope.** The shipped configuration assumes Florida residential property only. A
+  configuration choice, not a finding about any carrier.
+  
 ## Carried requirements — decided, not yet built
 
 - **Timezone-correct "now."** The phase-2 API shell must receive a timezone-aware UTC instant and
@@ -171,61 +172,30 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   fields — location, damage description — before it can be scoped at all): a field blocks only if
   its absence leaves intake with nothing actionable, not because the carrier will eventually need
   the information.
-- **Carrier-varying rules are caller-supplied configuration with no domain default —
-  advisor-recommended, human-ratified, 2026-08-17.** ClaimGate is a product configured per carrier,
-  not a system built for one estate. A company running three carriers on three policy administration
-  systems runs three configurations in parallel; a single MGA runs one. Where a rule genuinely varies
-  by carrier, it becomes configuration rather than a domain constant.
+- **ClaimGate is a general product, not a build against one named estate — stated 2026-08-17.**
+  It was originally designed against a specific three-carrier Florida residential property estate.
+  That is no longer the target, and this file no longer names it: the references were removed
+  rather than marked historical, so that nothing here reads as a live carrier relationship.
+  Four consequences outlive the removal:
 
-  **Configuration is not a default.** `CLAUDE.md`'s first standing constraint — never default a
-  threshold, state name, status code, or retention behaviour — applies to configuration values
-  unchanged, and this project has applied it twice already: item 2 removed both SIU threshold
-  defaults so every call supplies them, and item 3 removed `DUPLICATE_WINDOW_DAYS` so `window_days`
-  is a required parameter with no fallback. A configurable value carrying a shipped default is a rule
-  nobody approved, reached by omission. The pattern is: required, caller-supplied, no fallback,
-  stated in the scenario's Given step the way `siu_indicators.feature` states its thresholds.
+  - Item 4b's `HO`-only prefix set was justified as "a carrier scope decision — `HO` is what's
+    confirmed today," and what confirmed it was that estate's public materials. The behaviour is
+    unchanged and still defensible as the shipped configuration's scope, but the justification is
+    now a configuration choice rather than a finding. `features/validation.feature`'s comment on
+    that rule was rewritten to say so, which is why its approval was renewed on this date.
+  - The `POLICY_NUMBER_PATTERN` open decision below is strengthened rather than changed: with no
+    named estate, a domain-layer regex asserting one carrier's number shape has nothing left
+    justifying it, and the structural fix that entry already prefers — the pattern belongs to the
+    adapter layer, not to a domain parameter — is now the only defensible one.
+  - The removed section held this project's only claim explicitly verified against a primary
+    source and flagged as a different confidence class from its neighbours: three NAIC company
+    codes checked against FLOIR filings. Deleting it costs the worked example of that discipline.
+    `STATUTORY_REGISTER.md` carries it instead, which is the better home for it anyway.
+  - Git history retains every removed name. This removal is presentational, not erasure, and no
+    history rewrite is planned — the ledger keys on file digests rather than commits, so a rewrite
+    would not break it, but the disruption buys nothing a disclaimer does not already cover.
 
-  An unsupplied configuration is a caller contract violation, not a business outcome. It has no
-  analogue to `siu_indicators.feature`'s "no threshold configured" scenarios: an indicator can
-  meaningfully resolve NOT_EVALUATED, while validation must return blockers or none.
-
-  **Not everything becomes configurable.** A rule is configuration only where carriers genuinely
-  differ. Where it follows from what a notice of loss is, it stays in the domain. Making everything
-  configurable moves the assertions out of the specification and leaves the gates exercising
-  plumbing. Each rule that becomes configurable gets its own item, spec lock, and measured blast
-  radius — not one sweeping pass.
-
-- **Item 4g's Section II required-field set is carrier configuration; `incident_description` is not —
-  advisor-recommended, human-ratified, 2026-08-17. Supersedes the 2026-08-16 decision that
-  `claimant_contact` is non-blocking while `claimant_name` blocks.** That decision fixed a carrier
-  policy choice in the domain. Under the entry above, `claimant_name` and `claimant_contact` each
-  become caller-supplied required-or-not configuration with no default, which dissolves the question
-  rather than answering it: a carrier holding claimant details at first notice and one that does not
-  are both expressible, and there is no shipped answer to be wrong about. `incident_description`
-  stays required unconditionally — without it the record is not a notice of loss, only an assertion
-  that one exists, and nothing downstream can be reserved, assigned, or investigated from it. Cost of
-  holding it in the domain: a carrier wanting to accept description-less liability notices needs a
-  spec change, not a configuration change. Accepted deliberately.
-
-  The case that produced this: a liability notice frequently arrives with the claimant unidentified
-  or unreachable — a guest hurt on the pool deck who left, a delivery driver who slipped and was
-  never named. FNOL proceeds; it does not finish. Blocking would PEND a real and not-rare notice for
-  information intake cannot act on, the same failure shape item 4h identified from the other
-  direction. Advisor's basis is FNOL practice, where claimant details are captured "if known" — not a
-  primary source, and no primary source of the kind `STATUTORY_REGISTER.md` requires exists for a
-  practice question.
-
-- **The Windward Risk / Duck Creek estate is no longer the target, stated 2026-08-17.** Everything in
-  the "Windward / Duck Creek estate" section above is historical from this date, not current.
-  Decisions elsewhere in this file cite it as live: item 4b's `HO`-only prefix set was justified as
-  "a carrier scope decision — `HO` is what's confirmed today," and that estate is what confirmed it.
-  The behaviour is unchanged and still defensible; the rationale has lost its referent, and a reader
-  will otherwise take it as current. The `POLICY_NUMBER_PATTERN` open decision below is strengthened
-  rather than changed: with no named estate, a domain-layer regex asserting one carrier's number
-  shape has nothing justifying it, and the structural fix that entry already prefers — the pattern
-  belongs to the adapter layer, not to a domain parameter — is now the only defensible one. Recorded,
-  not acted on. Revisiting 4b's prefix set is a new queue item, not a correction to a closed one.
-
+  Revisiting 4b's prefix set as configuration is a new queue item, not a correction to a closed one.
 
 ## Undocumented phase-1 thresholds
 
@@ -476,11 +446,12 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
 
 - **`POLICY_NUMBER_PATTERN` encodes a carrier fact in the domain layer, and item 4b narrows the
   prefix set without resolving that.** The regex asserts one numbering *shape* — two letters, a
-  hyphen, seven digits — for all three carriers in the target estate. 4b (`QUEUE.md`) narrows the
+  hyphen, seven digits — for every carrier a configuration might cover. 4b (`QUEUE.md`) narrows the
   recognized *prefix* to `HO` alone, but the shape itself stays a domain-layer assumption applied
-  uniformly across Florida Peninsula, Edison, and Ovation, and real carriers number policies
-  differently from one another — Ovation's own format is already recorded above as unverified and
-  possibly different from the other two. `README.md`'s core design commitment is that carrier
+  uniformly across every carrier a configuration might cover, and real carriers number policies
+  differently from one another — a difference this project never had the access to check against
+  any live book, and which the entry above now records as an open assumption rather than a
+  carrier-specific gap. `README.md`'s core design commitment is that carrier
   identity is data, never behavior, and `PHASE2_DESIGN.md`'s swappability tests exist specifically to
   prove that claim rather than argue it; a domain regex naming a specific number shape is in tension
   with both — the same shape of problem as the false "lines of business this carrier actually

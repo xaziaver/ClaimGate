@@ -48,14 +48,14 @@ Feature: FNOL validation
 
   Rule: The policy number must have a recognized line-of-business prefix and a 7-digit number
 
-    # HO is the only recognized prefix - a carrier scope decision, not a
-    # statutory one. Windward's book is Florida residential property only;
-    # AU (auto), CP (commercial property), CA (commercial auto), and GL
-    # (general liability) are lines this estate does not write. DP (dwelling
-    # fire, common on Florida residential books for landlord and
-    # non-owner-occupied risks) and MH (manufactured housing) were both
-    # considered and excluded for want of evidence the estate actually
-    # writes either - see QUEUE.md item 4b. An unrecognized prefix resolves
+    # HO is the only recognized prefix - a scope decision for the shipped
+    # configuration, not a statutory one. That configuration covers Florida
+    # residential property only; AU (auto), CP (commercial property), CA
+    # (commercial auto), and GL (general liability) are lines outside it.
+    # DP (dwelling fire, common on Florida residential books for landlord
+    # and non-owner-occupied risks) and MH (manufactured housing) were both
+    # considered and excluded for want of evidence a configured book writes
+    # either - see QUEUE.md item 4b. An unrecognized prefix resolves
     # POLICY_NUMBER_MALFORMED like any other malformed policy number: a
     # blocker, not a refusal. PHASE2_DESIGN.md's record state model has no
     # rejected or discarded state, so a notice carrying this blocker still
