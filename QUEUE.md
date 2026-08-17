@@ -188,9 +188,50 @@ Ordered by domain severity, not by effort. One line each on why that position.
 4g. **Section II completeness for liability losses.** `_check_injury_fields` keys on
     `loss_type == "injury"` exactly, so a bare liability notice passes intake with no claimant
     details. Item 4e recognized `liability` and deliberately did not close this; `ASSUMPTIONS.md`
-    records the underlying modelling defect. Needs a decision on whether required-field sets vary by
-    coverage category before it can be specced, which is the same shape of question
-    `PHASE2_DESIGN.md` raises for `notice_type`.
+    records the underlying modelling defect. Ready to spec — every decision this item needs is now
+    made, 2026-08-16.
+
+    **Required-field sets vary by coverage category.** The universal four — policy number, loss
+    date, loss type, notice type — are required regardless of category; everything else is
+    category-specific, and injured-party/claimant fields are the first category-specific set this
+    project specs. Of the fourteen recognized loss types, twelve are Section I property perils and
+    two — `injury` and `liability` — are Section II. Section I adds nothing this item can act on: the
+    model has no location or damage-description fields for any Section I peril to require, so this
+    item is Section II only. Section I completeness is a separate, later item that has to add model
+    fields before it can be specced at all, not a scope this item can absorb.
+
+    **`injured_party_name`, `injured_party_contact`, and `injury_description` are renamed
+    `claimant_name`, `claimant_contact`, and `incident_description`.** A liability claim is
+    frequently third-party property damage with nobody injured at all — the current names are the
+    same wrong-lookup trap `policy_inception_date` was in item 4d, a name that only reads correctly
+    for the narrower case it was first written for. The phase-2 adapter will be written against
+    whatever name ships here, so the rename happens now rather than being carried into that layer.
+
+    **Name and description block; contact does not.** `claimant_name` and `incident_description`
+    stay required, mirroring the injury rule exactly. `claimant_contact` becoming non-blocking is a
+    relaxation of today's injury rule, not merely its extension to a new loss type: contact details
+    are frequently unavailable at first notice, and obtaining them is the adjuster's follow-up work,
+    not information the reporting insured necessarily has to hand. Against the blocking criterion
+    `ASSUMPTIONS.md` records for this item: contact is not actionable at intake in the way a name or
+    an incident description is, so it fails the test that currently makes it a blocker for `injury`.
+
+    **Scenario "Non-injury losses do not require injured-party details" goes false on
+    generalization and needs renaming as part of this item.** Its body uses `wind_hail` and stays
+    true under the new rule — `wind_hail` genuinely has no claimant fields. Its title asserts a
+    general rule that `liability` now contradicts, since `liability` is non-injury and does require
+    claimant details. The title, not the body, is what breaks.
+
+    **Coverage E (personal liability) and Coverage F (medical payments) are not sub-divided.**
+    MedPay is no-fault where personal liability is fault-based, but both land in the same
+    required-field set here — a deliberate scope decision, not an oversight missed for want of
+    noticing the distinction, and the spec comment on the rule should say so explicitly so a later
+    reader doesn't read the merge as an omission.
+
+    **Do not derive the category from a new `_SECTION_II_LOSS_TYPES` frozenset without enforcing its
+    relation to the recognized set.** A third loss-type frozenset repeats item 4h's exact shape — an
+    unstated invariant that it's a subset of `RECOGNIZED_LOSS_TYPES` — and item 4h's fix (a direct
+    unit-test assertion, not a scenario or a shared module) is the pattern to reuse here rather than
+    rediscover.
 4h. **The loss-type vocabulary lives in two files with no stated relation.**
     `validation.RECOGNIZED_LOSS_TYPES` holds fourteen values; `triage._HIGH_SEVERITY_LOSS_TYPES` holds
     three. **Correction, 2026-08-16: this item's original failure mode was wrong and is replaced
@@ -223,6 +264,17 @@ Ordered by domain severity, not by effort. One line each on why that position.
     the two sets disagreeing while each module's own tests still pass — is only reachable by a
     coordinated edit across two files, which single-point mutation never produces. See
     `docs/harness-findings.md`'s "Process and technique" section for the general form of this finding.
+4i. **`the reason codes are "..."` cannot express an empty expectation.** The step splits its
+    expected string on `;`; an empty string does not split into an empty list — `"".split(";")` is
+    `[""]`, not `[]` — so a scenario asserting zero reason codes against this step would compare a
+    one-element list of empty string against the real, empty result and fail on a false mismatch.
+    The sibling step, `the blockers are <compact>`, guards for exactly this case: it checks for an
+    empty string before splitting and returns `[]` directly. Nothing in the suite currently exercises
+    the empty case on `the reason codes are` step — every scenario using it asserts a non-empty
+    string — so the gap is latent, not a live failure. Found while drafting item 4e's spec, when an
+    outline was drafted against the wrong step and the mismatch was caught only by reading the step
+    definition before writing the outline against it, not by any gate. Fix is either step definition
+    or spec — decide when this item is picked up.
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
    what phase 2 actually is: `PHASE2_DESIGN.md`.
@@ -240,6 +292,8 @@ later.
 | 4d | `ASSUMPTIONS.md` — "Data we do not have at intake" |
 | 4f | this item's own entry; no other document needed |
 | 4e | this item's own entry; no other document needed |
+| 4g | this item's own entry; no other document needed |
+| 4i | this item's own entry; no other document needed |
 | 5 (phase 2) | everything, `PHASE2_DESIGN.md` first |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
@@ -482,6 +536,16 @@ dead-symbol comment did. `gauntlet check` passes on `main` post-merge (198/198 t
 100%/204 killed, 4 specs / 0 surviving / 40 reviewed-equivalent / 0 stale — mutation score unchanged
 from before this reopening, expected per the entry's own explanation above, not a sign of drift).
 
-Item 4g (Section II completeness for liability losses) is next in sequence — see its own entry
-above. It needs a decision on whether required-field sets vary by coverage category before it can be
-specced.
+**Item 4g's blocking decisions are made, 2026-08-16, documentation-only session on `main` — no
+branch, no spec, no implementation yet.** See its own entry above for the full set: required-field
+sets vary by coverage category with the universal four as the overlap; this item is Section II only,
+since Section I has no model fields to require yet; the injured-party fields rename to
+`claimant_name`/`claimant_contact`/`incident_description`; contact stops blocking while name and
+description stay required, decided against the blocking criterion `ASSUMPTIONS.md` now records; the
+"Non-injury losses" scenario title needs renaming as part of the same spec; Coverage E/F are
+deliberately not sub-divided; and category derivation must reuse item 4h's enforcement pattern
+rather than add an unenforced third loss-type set. Item 4g is next in sequence and ready to spec.
+
+**Item 4i, the `the reason codes are` empty-string gap, is added — see its own entry above.** Found
+while drafting item 4e's spec, latent (nothing in the suite currently exercises it), not sequenced
+ahead of anything above it.
