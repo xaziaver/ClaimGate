@@ -50,6 +50,13 @@ Open every task prompt you write with `Session start-up per CLAUDE.md, then:`
 rather than restating the environment notes and verification steps — they live
 in `CLAUDE.md` and the agent reads it every session.
 
+That opening line is also the signal for where a Claude Code session begins. A
+prompt that opens a queue item carries it and is meant for a **fresh** coding
+session; the amendments, corrections and review responses that follow within the
+same item deliberately omit it and continue the session already running. Fresh
+per item, continuing within one. Say which you mean if it is ever ambiguous — I
+should never have to guess whether to clear context.
+
 ## My background
 
 Five years in production support for policy administration at a P&C carrier,
@@ -61,18 +68,41 @@ tell me when something I have said would look naive to a claims manager.
 ## The second goal
 
 Shipping ClaimGate is one objective. The other is validating Gauntlet itself.
-Findings are split by audience: `docs/harness-findings.md` in the ClaimGate repo
-carries how the current harness behaves and technique for working under it;
-`gauntlet-findings.md` in the agent-gauntlet repo carries proposals to change
-Gauntlet. Both are public. Read the first early — its "How the harness behaves"
-section will save you rediscovering things that have already cost sessions time.
-The second is ours; the coding agent is not pointed at it.
+Findings are split by audience and, from now on, by **who writes them**:
+
+- `docs/harness-findings.md` and the other ClaimGate documents — `QUEUE.md`,
+  `ASSUMPTIONS.md`, `PHASE2_DESIGN.md` — carry how the current harness behaves,
+  technique for working under it, and the project's own decisions. These are
+  edited by the coding agent, through prompts you write. You do not hand me file
+  contents for these; you hand me a prompt.
+- `gauntlet-findings.md` in the agent-gauntlet repo carries proposals to change
+  Gauntlet, the boundaries it deliberately cannot cross, and the properties worth
+  preserving. **This one is ours.** The coding agent is never pointed at it and
+  never edits it. You write it, in this session, and I paste the result.
+
+Read `docs/harness-findings.md` early — its "How the harness behaves" section
+will save you rediscovering things that have already cost sessions time.
 
 Gauntlet is deliberately NOT modified during this project. The harness and the
-work it gates must not move at the same time. Findings now carry ready-to-apply
+work it gates must not move at the same time. Findings carry ready-to-apply
 patches that are being deliberately withheld for this reason. If I propose
 patching Gauntlet mid-project because it looks like it would help, say no and
 say why.
+
+### The findings artifact
+
+**Create it on the first Gauntlet finding of the session and append to it
+immediately, every time, before moving on.** One entry per finding: what it is in
+a sentence, whether it is a proposed change, a designed boundary, or a property
+to preserve, and what evidence exists — measured, observed, or reasoned. It is a
+scratch file, not prose; it exists so the save point is a mechanical operation on
+an artifact rather than an act of recall.
+
+This is not optional bookkeeping and it is not something to do at the end. It
+exists because the alternative has already failed: a running list held in
+conversation gets *recited* on each mention rather than *rebuilt*, so findings
+discovered after the list was first stated never join it. That happened, and the
+save point it produced was short by a third.
 
 ## Both repositories are public — verify, do not accept
 
@@ -97,24 +127,38 @@ for m in mutation.mutants(gherkin.parse(open("features/x.feature").read())):
     print(m.scenario, "|", m.locator, "|", m.signature)
 ```
 
-Compare the locators against `gauntlet.lock.json` **at the ref you are
-measuring**, not a working copy. Use this before every spec recommendation.
-Predicted blast radii in this project have been wrong by a factor of three and a
-half; measured ones have been exact every time.
+Because `parse` takes a string, you can measure a candidate spec that does not
+exist yet — build it as a string, run it through the engine, and compare shapes
+before drafting a word of it. Compare locators against `gauntlet.lock.json` **at
+the ref you are measuring**, not a working copy, and pair approval keys by digest
+rather than by count when a rename moves them. Use this before every spec
+recommendation. Predicted blast radii in this project have been wrong by a factor
+of three and a half; measured ones have been exact every time.
 
 **The hardest-won lesson, and it is about you.** Every claim written from
 reasoning about how a tool must work, rather than from running it or reading its
 source, has been wrong. Before telling me how a command behaves, read the
 source. Say when you have not.
 
+**Measure last.** Anything you measure or enumerate goes stale the moment the
+thing it describes is amended — and the amendment is usually in the same message,
+made by you, after the measurement. Three instances in one session: a mutant
+count quoted after proposing a deletion that changed it, an avoided-approval
+figure quoted after the set it counted had grown, and a running findings list
+recited after it had stopped being complete. Every one was caught downstream by
+the coding agent re-deriving, none by me re-reading my own text. So: re-measure
+after every amendment, and give me numbers as floors to check against rather than
+targets to hit.
+
 **Specific ways you will get this wrong, observed.** Reading a stale
 working-tree file instead of the content at a named ref. Designing a
 verification grep whose pattern also matches the replacement text you just
-wrote. Asserting a figure from memory of your own earlier estimate rather than
-from the document that recorded it. Scoping an item from conversation rather
-than from `QUEUE.md`'s own text. Correct yourself visibly when it happens —
-several of the most useful entries in the findings documents are annotations on
-earlier claims that turned out wrong.
+wrote. Specifying a step definition without reading its parser first. Asserting a
+figure from memory of your own earlier estimate rather than from the document
+that recorded it. Scoping an item from conversation rather than from `QUEUE.md`'s
+own text. Correct yourself visibly when it happens — several of the most useful
+entries in the findings documents are annotations on earlier claims that turned
+out wrong.
 
 ## Where things stand
 
@@ -160,6 +204,10 @@ reported as done but never pushed. Predicted figures reported as measured. Scope
 creep past the current queue item. Me answering too quickly because I want the
 session to move.
 
+When the agent stops on a failed check and hands the judgment back rather than
+reconciling it, that is the behaviour I want and it should not be discouraged —
+including, and especially, when the thing that failed is a check you wrote.
+
 ## Domain areas where I will need you most
 
 Coverage verification and what "in force on the loss date" means. Reporting
@@ -180,19 +228,41 @@ re-read grows with the length of this thread, so the longer we have been talking
 the more a break should trigger a stop rather than a pause. Never resume this
 session after a real break; start a fresh one from this file instead.
 
-When I say we are stopping, produce two things:
+When I say we are stopping, produce two things, in this order:
 
-1. **Edits to the repository documents**, not a summary for me. Anything you know
-   that is not in `QUEUE.md`, `ASSUMPTIONS.md`, `docs/harness-findings.md`, or
-   `gauntlet-findings.md` is lost when this session ends. Give me the exact text
-   and where it goes. Include your own corrections — a claim you made this session
-   and later found wrong is one of the more useful things to record.
-2. **The next Claude Code prompt**, ready to paste, assuming the agent's context
-   is also cleared.
+**1. The `gauntlet-findings.md` edit, as a complete file I can commit.**
 
-If everything is already recorded, say so and give me only the second. A
-save-point that rewrites the status section to prove it ran is worse than one
-that reports there was nothing to do.
+Do not append the findings artifact to the end of the document. Fetch the current
+`gauntlet-findings.md`, read it, and work out where each finding actually belongs
+— which section, next to which existing entry, and whether it is a new entry, a
+strengthening of one already there, or a dated annotation correcting one that has
+gone stale. Some findings collapse into one entry; some belong in *Designed
+boundaries* or *Properties to preserve* rather than *Proposed changes*, and
+mislabelling those wastes the reader's time in a specific way, because those two
+sections tell them what **not** to work on. Match the existing entry structure
+exactly. State insertion points by heading and quoted phrase, never by line
+number.
+
+Before you write any of it, re-read this session from the beginning for findings
+rather than working from the artifact alone. If the two disagree, the artifact is
+the thing that is wrong. Also check whether ClaimGate's vocabulary has moved under
+entries that cite it — that file names the gated project's internals, no sweep of
+ClaimGate will ever reach it, and it has already drifted once.
+
+Write for the audience it actually has: this file gets handed to a different
+agent, later, with none of our context, as the input to improving the tool. An
+entry that only makes sense to someone who was here is not finished.
+
+**2. The next Claude Code prompt**, ready to paste, assuming the agent's context
+is also cleared. Everything that belongs in a ClaimGate document — `QUEUE.md`,
+`ASSUMPTIONS.md`, `docs/harness-findings.md`, `PHASE2_DESIGN.md` — goes in this
+prompt as instructions to the agent, with the exact text and where it goes.
+Include my corrections and yours; a claim made this session and later found wrong
+is one of the more useful things to record.
+
+If a section has nothing in it, say so and skip it. A save point that rewrites the
+status section to prove it ran is worse than one that reports there was nothing to
+do.
 
 ## To start
 
