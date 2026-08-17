@@ -172,6 +172,49 @@ or data. Nothing below was confirmed against a live book.
   fields — location, damage description — before it can be scoped at all): a field blocks only if
   its absence leaves intake with nothing actionable, not because the carrier will eventually need
   the information.
+- **Carrier-varying rules are caller-supplied configuration with no domain default —
+  advisor-recommended, human-ratified, 2026-08-17.** ClaimGate is a product configured per carrier,
+  not a system built for one estate. A company running three carriers on three policy administration
+  systems runs three configurations in parallel; a single MGA runs one. Where a rule genuinely varies
+  by carrier, it becomes configuration rather than a domain constant.
+
+  **Configuration is not a default.** `CLAUDE.md`'s first standing constraint — never default a
+  threshold, state name, status code, or retention behaviour — applies to configuration values
+  unchanged, and this project has applied it twice already: item 2 removed both SIU threshold
+  defaults so every call supplies them, and item 3 removed `DUPLICATE_WINDOW_DAYS` so `window_days`
+  is a required parameter with no fallback. A configurable value carrying a shipped default is a rule
+  nobody approved, reached by omission. The pattern is: required, caller-supplied, no fallback,
+  stated in the scenario's Given step the way `siu_indicators.feature` states its thresholds.
+
+  An unsupplied configuration is a caller contract violation, not a business outcome. It has no
+  analogue to `siu_indicators.feature`'s "no threshold configured" scenarios: an indicator can
+  meaningfully resolve NOT_EVALUATED, while validation must return blockers or none.
+
+  **Not everything becomes configurable.** A rule is configuration only where carriers genuinely
+  differ. Where it follows from what a notice of loss is, it stays in the domain. Making everything
+  configurable moves the assertions out of the specification and leaves the gates exercising
+  plumbing. Each rule that becomes configurable gets its own item, spec lock, and measured blast
+  radius — not one sweeping pass.
+
+- **Item 4g's Section II required-field set is carrier configuration; `incident_description` is not —
+  advisor-recommended, human-ratified, 2026-08-17. Supersedes the 2026-08-16 decision that
+  `claimant_contact` is non-blocking while `claimant_name` blocks.** That decision fixed a carrier
+  policy choice in the domain. Under the entry above, `claimant_name` and `claimant_contact` each
+  become caller-supplied required-or-not configuration with no default, which dissolves the question
+  rather than answering it: a carrier holding claimant details at first notice and one that does not
+  are both expressible, and there is no shipped answer to be wrong about. `incident_description`
+  stays required unconditionally — without it the record is not a notice of loss, only an assertion
+  that one exists, and nothing downstream can be reserved, assigned, or investigated from it. Cost of
+  holding it in the domain: a carrier wanting to accept description-less liability notices needs a
+  spec change, not a configuration change. Accepted deliberately.
+
+  The case that produced this: a liability notice frequently arrives with the claimant unidentified
+  or unreachable — a guest hurt on the pool deck who left, a delivery driver who slipped and was
+  never named. FNOL proceeds; it does not finish. Blocking would PEND a real and not-rare notice for
+  information intake cannot act on, the same failure shape item 4h identified from the other
+  direction. Advisor's basis is FNOL practice, where claimant details are captured "if known" — not a
+  primary source, and no primary source of the kind `STATUTORY_REGISTER.md` requires exists for a
+  practice question.
 - **ClaimGate is a general product, not a build against one named estate — stated 2026-08-17.**
   It was originally designed against a specific three-carrier Florida residential property estate.
   That is no longer the target, and this file no longer names it: the references were removed
