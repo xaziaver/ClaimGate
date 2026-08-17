@@ -84,7 +84,7 @@ requests, inspections, detailed loss estimates, the start and end of any tolling
 audit log is the system of record for that specific statutory entry** — not merely "good audit
 practice," but the actual recordkeeping duty. 627.70131(5)(b) defines "insurer" for this section as
 any residential property insurer; (9) extends it to surplus lines insurers writing residential
-coverage. Windward's book is squarely inside that scope.
+coverage. A Florida residential property book is squarely inside that scope.
 
 ## HTTP surface
 
@@ -182,7 +182,7 @@ transport-layer, not part of the notice.
 ## Jurisdiction axis
 
 **Statutory rules vary by jurisdiction, not by carrier — this is the single most important
-structural decision in phase 2 planning.** All three Windward carriers are subject to identical
+structural decision in phase 2 planning.** Several carriers under one administrator are subject to identical
 Florida statute; a shared carrier does not imply shared law, and a shared jurisdiction is not
 carrier-specific. `carrier_code` and jurisdiction are independent axes: a carrier can write in
 several states, and a state governs several carriers.
@@ -209,15 +209,15 @@ from the phase-3 carrier-rules TOML that will eventually hold the real per-carri
 
 | Code | Carrier | NAIC | NAIC group |
 |---|---|---|---|
-| `FPIC` | Florida Peninsula Insurance Company | 10132 | 4769 |
-| `EDIS` | Edison Insurance Company | 12482 | 4769 |
-| `OVTN` | Ovation Home Insurance Exchange | 17621 | unverified, left null |
+| `AAAA` | Placeholder Carrier A | 10001 | 4001 |
+| `BBBB` | Placeholder Carrier B | 10002 | 4001 |
+| `CCCC` | Placeholder Carrier C | 10003 | null |
 
-`carrier_code` is exactly 4 uppercase A–Z characters. **`FPIC`/`EDIS`/`OVTN` are this project's
-invention, not Windward's real codes** — labeled provisional in the file itself, substituted for
-Windward's actual codes at integration. The NAIC codes themselves are independently verified
-against FLOIR primary sources (see `ASSUMPTIONS.md`), which is a different confidence class from the
-carrier codes and must not be read as the same kind of claim.
+`carrier_code` is exactly 4 uppercase A–Z characters. **Every value in this table is synthetic** —
+codes, NAIC numbers, and group numbers alike — and a real deployment substitutes its own at
+integration. The third row's null group code is deliberate and must survive substitution: a
+member-owned reciprocal may be grouped by management rather than ownership, so a shared
+administrator does not imply a shared group, and the schema has to tolerate the absence.
 
 `carrier_code` is **envelope, not notice content.** It's required on every request, validated
 against this reference list, and persisted on every notice and every audit entry — for

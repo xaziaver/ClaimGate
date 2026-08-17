@@ -253,8 +253,8 @@
       "reviewer": "xaziaver"
     },
     "spec:features/duplicates.feature": {
-      "approved_at": "2026-08-13T09:01:27+00:00",
-      "digest": "sha256:55e6cc5b8bc5492e8e580cca70d0bff9f5dabb9473e93d426ccff548b23c0bbb"
+      "approved_at": "2026-08-17T13:09:14+00:00",
+      "digest": "sha256:29adb2bebdd52819d37979feff2755d3b0ad5d6441d4cc1166ae66e0e690d434"
     },
     "spec:features/siu_indicators.feature": {
       "approved_at": "2026-08-15T23:36:38+00:00",
@@ -265,8 +265,8 @@
       "digest": "sha256:269a12ba9c697f6d83b1d6b6a4881259fba603eb89a92d9dbf65c8b01661ca37"
     },
     "spec:features/validation.feature": {
-      "approved_at": "2026-08-16T20:20:17+00:00",
-      "digest": "sha256:3717f5584a8bee64baa14693f92ea67334f37e7cae8eb295cd3aa74776db8847"
+      "approved_at": "2026-08-17T13:09:14+00:00",
+      "digest": "sha256:762331c3ea1ae59a167faa811fb7f35ae82fbd6ed1b56c4acf6ac78f7990cd9a"
     }
   },
   "version": 1

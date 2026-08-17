@@ -32,8 +32,7 @@ Feature: Duplicate candidate detection
     # costs a reviewer one glance; a false negative opens a second claim
     # carrying its own pay-or-deny clock. What would correct this value:
     # the distribution of reported-loss-date deltas across confirmed
-    # duplicate pairs on Windward's book - data this project does not
-    # have.
+    # duplicate pairs on a real book - data this project does not have.
 
     # In the Scenario Outline below, an empty matching_claim_id cell
     # asserts that no candidate match was produced - the same convention
