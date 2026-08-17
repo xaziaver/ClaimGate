@@ -585,3 +585,38 @@ guards a cross-module invariant, it is the expected result, not a signal of anyt
 cannot generate the coordinated mutant that would exercise it, so it can never register the test's
 value as a killed count. Judge such tests on the coordinated edit they would catch if someone made
 it, not on a score built to measure single-point mutants.
+
+### Digest pairing distinguishes a moved mutant from a replaced one
+
+A rename can leave a mutant's count unchanged while every locator under it changes — item 4d's
+vocabulary rename moved six approvals to new locators without adding or removing a mutant. Equal
+counts before and after cannot show that: six removed and six unrelated ones added would print the
+same delta as six moved. What showed it was matching each removed approval's key to an added one by
+identical digest (the mutant's `original->mutated` signature, unaffected by the locator's rename),
+confirmed before the ledger commit rather than assumed from the rename. Six matched pairs meant six
+mutants moved, not six replaced by six different ones. Reusable whenever a rename moves locators:
+count parity is consistent with either story, and only digest pairing tells them apart.
+
+### Comment inertness is confirmed by locator identity, not count parity
+
+Item 4f's comment-only edit was scheduled on `d344ab3`'s count match — before and after, the same
+number of mutants. Count parity is the weaker claim: it's consistent with the comment edit having
+swapped one mutant for a different one at the same total. Measuring the full locator list instead
+showed it byte-identical across the edit, not just equal in size — the stronger claim, and the one
+actually relied on to schedule the item as comment-only, spec-only, zero ledger churn. Where a count
+match is the only thing checked, "unchanged" is an inference; where the locator list matches
+element-for-element, it's a fact.
+
+### An advisor's measured number goes stale the moment the thing measured is amended
+
+Three times in one session, a number supplied to this project was correct against an earlier version
+of a spec and wrong by the time it was used, because the spec had already moved: 112 quoted where the
+current draft had 111, after a scenario deletion proposed in the same message that carried the count;
+ten avoided approvals quoted where the number was thirteen, after the recognized loss-type set the
+estimate was built on grew from ten values to fourteen before the estimate was finalized; and a step
+chosen for a new assertion without first reading the guard already written into its sibling step,
+producing a plan built on what the step was assumed to do rather than what it did. None of the three
+was caught by the number's author re-reading their own figure — each was caught here, by re-deriving
+the number against the spec's current state before acting on it. The number a source supplies is a
+floor to check against the artifact as it stands now, not a target to carry forward unchecked. Measure
+last, after every amendment, not first and once.
