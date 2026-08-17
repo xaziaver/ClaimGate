@@ -152,6 +152,25 @@ the rule — 1; orphaned — 1; rationale contradicts its own rule — 1.
   captured-not-used; `assign_severity` loses the parameter entirely. Recording the distinction
   explicitly so a later reader doesn't mistake the unused field for dead code and delete it — it
   earns its place by what the spec demonstrates with it, not by being read anywhere in `triage.py`.
+- **The blocking criterion: a missing field blocks intake only if the information is actionable and
+  crucial to the FNOL process or to the carrier's exposure — decided 2026-08-16, documentation-only
+  session on `main`, no branch/spec/implementation yet (`QUEUE.md` item 4g).** Stated as a general
+  test because it already explains two decisions this project made separately, without ever writing
+  the test itself down. Late notice does not block intake: whether a loss was reported inside the
+  statutory window is a coverage determination made downstream on the facts of prejudice and
+  tolling, not something intake can act on (`QUEUE.md` item 2; the same line is drawn in
+  `validation.feature`'s comment on the point). `flood` is a recognized loss type, not a blocked
+  one, even on a book that routinely excludes or sub-limits flood — the notice is fully intelligible
+  and actionable for intake and adjuster assignment regardless of what eventually pays; whether it's
+  covered is answered later, on policy language, not at intake (item 4e's merge; `validation.feature`'s
+  comment that the recognized set is what intake can interpret, not what the policy covers). Both
+  facts — timing of notice, eventual coverage — are crucial to the *claim* and immaterial to whether
+  *FNOL can proceed*, which is the distinction the test is drawing: information the carrier will
+  want eventually is not, by itself, a reason to block today. This is the test to apply when
+  Section I's own required fields are specced (`QUEUE.md` item 4g's note that Section I needs model
+  fields — location, damage description — before it can be scoped at all): a field blocks only if
+  its absence leaves intake with nothing actionable, not because the carrier will eventually need
+  the information.
 
 ## Undocumented phase-1 thresholds
 
