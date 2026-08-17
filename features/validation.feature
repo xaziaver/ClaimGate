@@ -190,10 +190,18 @@ Feature: FNOL validation
     # required-field set, a deliberate scope decision rather than an
     # omission.
 
-    Scenario Outline: Required fields for an injury loss, claimant details required by configuration
-      Given claimant name is required by configuration
-      And claimant contact is required by configuration
-      And the loss type is "injury"
+    # loss_type, name_required, and contact_required are all Examples columns,
+    # not fixed Given lines, so every one of them is a mutable literal
+    # (gauntlet.acceptance.mutation only mutates quoted/numeric text in a step,
+    # or an Outline's Examples cells - a bare word in a fixed Given above the
+    # table is neither). Each required/not-required pair below holds loss type
+    # and every other field constant and varies only the one configuration
+    # flag under test, so a mutation swapping that flag is the only thing that
+    # can change the row's blockers.
+    Scenario Outline: Required fields for a Section II loss, by configuration and loss type
+      Given the loss type is "<loss_type>"
+      And claimant name is "<name_required>" by configuration
+      And claimant contact is "<contact_required>" by configuration
       And the claimant name is "<name>"
       And the claimant contact is "<contact>"
       And the incident description is "<description>"
@@ -201,31 +209,18 @@ Feature: FNOL validation
       Then the blockers are <blockers>
 
       Examples:
-        | name       | contact  | description                                           | blockers                                     |
-        | Pat Rivera | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
-        |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_name         |
-        | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_contact      |
-        | Pat Rivera | 555-0101 |                                                        | MISSING_REQUIRED_FIELD:incident_description  |
-
-    Scenario: Claimant name is not required by configuration and its absence does not block
-      Given the loss type is "liability"
-      And claimant name is not required by configuration
-      And claimant contact is required by configuration
-      And the claimant name is ""
-      And the claimant contact is "555-0101"
-      And the incident description is "Delivery driver slipped on the wet lobby floor and left before being identified"
-      When the candidate FNOL record is validated
-      Then there are no blockers
-
-    Scenario: Claimant contact is not required by configuration and its absence does not block
-      Given the loss type is "liability"
-      And claimant contact is not required by configuration
-      And claimant name is required by configuration
-      And the claimant name is "Pat Rivera"
-      And the claimant contact is ""
-      And the incident description is "Delivery driver slipped on the wet lobby floor and left before being identified"
-      When the candidate FNOL record is validated
-      Then there are no blockers
+        | loss_type | name_required | contact_required | name       | contact  | description                                           | blockers                                     |
+        | injury    | required      | required          | Pat Rivera | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        | liability | required      | required          | Pat Rivera | 555-0101 | Delivery driver slipped on the wet lobby floor        |                                               |
+        | liability | required      | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_name         |
+        | liability | not required  | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        | liability | required      | required          | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_contact      |
+        | liability | required      | not required      | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        | injury    | required      | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_name         |
+        | injury    | not required  | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        | injury    | required      | required          | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_contact      |
+        | injury    | required      | not required      | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        | liability | not required  | not required      | Pat Rivera | 555-0101 |                                                        | MISSING_REQUIRED_FIELD:incident_description  |
 
     Scenario: Section I losses do not require claimant details
       Given the loss type is "wind_hail"
