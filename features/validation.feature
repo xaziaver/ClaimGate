@@ -183,23 +183,26 @@ Feature: FNOL validation
     # that does not are both expressible. There is no "not configured"
     # scenario: an unsupplied configuration is a caller contract violation,
     # not a business outcome, and validation has no NOT_EVALUATED to
-    # resolve to, unlike siu_indicators.feature's thresholds.
+    # resolve to, unlike siu_indicators.feature's thresholds. The
+    # configuration reaches the domain as a boolean, so an unrecognized
+    # configuration value cannot occur below the step definition and no
+    # scenario specifies one - the same shape as the missing "not
+    # configured" scenario above.
     #
     # Coverage E (personal liability, fault-based) and Coverage F (MedPay,
     # no-fault) are not sub-divided here - both land in the same
     # required-field set, a deliberate scope decision rather than an
     # omission.
 
-    # loss_type, name_required, and contact_required are all Examples columns,
-    # not fixed Given lines, so every one of them is a mutable literal
-    # (gauntlet.acceptance.mutation only mutates quoted/numeric text in a step,
-    # or an Outline's Examples cells - a bare word in a fixed Given above the
-    # table is neither). Each required/not-required pair below holds loss type
-    # and every other field constant and varies only the one configuration
-    # flag under test, so a mutation swapping that flag is the only thing that
-    # can change the row's blockers.
-    Scenario Outline: Required fields for a Section II loss, by configuration and loss type
-      Given the loss type is "<loss_type>"
+    # Mutation only reaches quoted or numeric text in a plain scenario's
+    # step, or an Outline's Examples cells - _literal_mutants returns []
+    # for every outline, so a fixed Given above a table is never mutated
+    # regardless of quoting. Anything this spec intends mutation to
+    # protect has to be a quoted Examples cell, which is why
+    # name_required and contact_required are columns below rather than
+    # fixed Given lines.
+    Scenario Outline: Required fields for an injury loss, by configuration
+      Given the loss type is "injury"
       And claimant name is "<name_required>" by configuration
       And claimant contact is "<contact_required>" by configuration
       And the claimant name is "<name>"
@@ -209,18 +212,32 @@ Feature: FNOL validation
       Then the blockers are <blockers>
 
       Examples:
-        | loss_type | name_required | contact_required | name       | contact  | description                                           | blockers                                     |
-        | injury    | required      | required          | Pat Rivera | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
-        | liability | required      | required          | Pat Rivera | 555-0101 | Delivery driver slipped on the wet lobby floor        |                                               |
-        | liability | required      | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_name         |
-        | liability | not required  | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
-        | liability | required      | required          | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_contact      |
-        | liability | required      | not required      | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  |                                               |
-        | injury    | required      | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_name         |
-        | injury    | not required  | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
-        | injury    | required      | required          | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_contact      |
-        | injury    | required      | not required      | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  |                                               |
-        | liability | not required  | not required      | Pat Rivera | 555-0101 |                                                        | MISSING_REQUIRED_FIELD:incident_description  |
+        | name_required | contact_required | name       | contact  | description                                           | blockers                                     |
+        | required      | required          | Pat Rivera | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        | required      | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_name         |
+        | not required  | required          |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        | required      | required          | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_contact      |
+        | required      | not required      | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        | not required  | not required      | Pat Rivera | 555-0101 |                                                        | MISSING_REQUIRED_FIELD:incident_description  |
+
+    Scenario Outline: Required fields for a liability loss, by configuration
+      Given the loss type is "liability"
+      And claimant name is "<name_required>" by configuration
+      And claimant contact is "<contact_required>" by configuration
+      And the claimant name is "<name>"
+      And the claimant contact is "<contact>"
+      And the incident description is "<description>"
+      When the candidate FNOL record is validated
+      Then the blockers are <blockers>
+
+      Examples:
+        | name_required | contact_required | name       | contact  | description                                                                     | blockers                                     |
+        | required      | required          | Pat Rivera | 555-0101 | Delivery driver slipped on the wet lobby floor and left before being identified |                                               |
+        | required      | required          |            | 555-0101 | Delivery driver slipped on the wet lobby floor and left before being identified | MISSING_REQUIRED_FIELD:claimant_name         |
+        | not required  | required          |            | 555-0101 | Delivery driver slipped on the wet lobby floor and left before being identified |                                               |
+        | required      | required          | Pat Rivera |          | Delivery driver slipped on the wet lobby floor and left before being identified | MISSING_REQUIRED_FIELD:claimant_contact      |
+        | required      | not required      | Pat Rivera |          | Delivery driver slipped on the wet lobby floor and left before being identified |                                               |
+        | not required  | not required      | Pat Rivera | 555-0101 |                                                                                  | MISSING_REQUIRED_FIELD:incident_description  |
 
     Scenario: Section I losses do not require claimant details
       Given the loss type is "wind_hail"
@@ -230,8 +247,8 @@ Feature: FNOL validation
 
     Scenario: Multiple missing claimant fields all survive as blockers, deduplicated in reason codes
       Given the loss type is "injury"
-      And claimant name is required by configuration
-      And claimant contact is required by configuration
+      And claimant name is "required" by configuration
+      And claimant contact is "required" by configuration
       And the claimant name is ""
       And the claimant contact is ""
       And the incident description is "Dog bit a visitor on the front porch"
@@ -303,8 +320,8 @@ Feature: FNOL validation
       And the notice type is "SUPPLEMENT"
       And the loss date is "2026-08-03"
       And the loss type is "injury"
-      And claimant name is required by configuration
-      And claimant contact is required by configuration
+      And claimant name is "required" by configuration
+      And claimant contact is "required" by configuration
       And the claimant name is ""
       And the claimant contact is "555-0101"
       And the incident description is "Guest slipped on the pool deck and fractured a wrist"
@@ -334,8 +351,8 @@ Feature: FNOL validation
     Scenario: A later-canonical subset fires without any earlier code present
       Given the loss date is "2026-08-03"
       And the loss type is "injury"
-      And claimant name is required by configuration
-      And claimant contact is required by configuration
+      And claimant name is "required" by configuration
+      And claimant contact is "required" by configuration
       And the claimant name is "Pat Rivera"
       And the claimant contact is ""
       And the incident description is "Dog bit a visitor on the front porch"
@@ -348,8 +365,8 @@ Feature: FNOL validation
     Scenario: A non-contiguous subset of canonical order still sorts correctly
       Given the policy number is "XX-1234567"
       And the loss type is "injury"
-      And claimant name is required by configuration
-      And claimant contact is required by configuration
+      And claimant name is "required" by configuration
+      And claimant contact is "required" by configuration
       And the claimant name is "Pat Rivera"
       And the claimant contact is "555-0101"
       And the incident description is ""
