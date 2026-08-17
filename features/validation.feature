@@ -111,28 +111,15 @@ Feature: FNOL validation
     # coverage categories. It states what intake can interpret today, not a
     # settled taxonomy.
     #
-    # injury is one of the fourteen recognized values but has no row here:
-    # it requires injured-party fields, so a bare injury row could not
-    # assert an empty blockers cell the way the other thirteen recognized
-    # values do. Its recognized-value coverage lives in the injury rule
-    # below, whose "all fields present" row already asserts zero blockers
-    # for injury; supplying only some of those fields there adds
-    # MISSING_REQUIRED_FIELD blockers alongside a recognized loss type, not
-    # instead of one.
-    #
-    # liability sits in the same recognized set on the same interpretability
-    # basis, but its empty blockers cell below is a narrower claim than it
-    # looks: it asserts only that "liability" itself is interpretable and
-    # that nothing in today's check set fires, not that a bare liability
-    # notice is complete at intake. A liability claim is a Section II claim,
-    # and a notice with no claimant, no contact, and no description of what
-    # happened is as incomplete as a bare injury notice, which the injury
-    # rule below already refuses - nothing here checks for that yet. Whether
-    # liability should require claimant details the way injury
-    # does is the same Section II modelling gap ASSUMPTIONS.md already
-    # records for injury, now reaching a second value; it is not settled by
-    # this outline. See QUEUE.md's item on Section II completeness for
-    # liability losses.
+    # injury and liability are two of the fourteen recognized values but
+    # have no row here: both are Section II loss types that require
+    # claimant details (see the Section II rule below), so a bare row for
+    # either could not assert an empty blockers cell the way the other
+    # twelve recognized values do. Their recognized-value coverage lives in
+    # the Section II rule below, whose complete-information rows already
+    # assert zero blockers for a fully supplied injury or liability notice;
+    # supplying only some of those fields there adds MISSING_REQUIRED_FIELD
+    # blockers alongside a recognized loss type, not instead of one.
     #
     # Recognized, unrecognized, and absent share one outline deliberately,
     # unlike the notice-type enumeration below. When every row of an outline
@@ -168,7 +155,6 @@ Feature: FNOL validation
         | fire         |                                  |
         | flood        |                                  |
         | hurricane    |                                  |
-        | liability    |                                  |
         | lightning    |                                  |
         | mold         |                                  |
         | roof_leak    |                                  |
@@ -182,39 +168,83 @@ Feature: FNOL validation
         | WIND_HAIL    | LOSS_TYPE_UNRECOGNIZED:loss_type |
         |              | MISSING_REQUIRED_FIELD:loss_type |
 
-  Rule: Injury losses require injured-party details
+  Rule: Section II losses require claimant details
 
-    Scenario Outline: Required fields for an injury loss
-      Given the loss type is "injury"
-      And the injured party name is "<name>"
-      And the injured party contact is "<contact>"
-      And the injury description is "<description>"
+    # Of the fourteen recognized loss types, injury and liability are the
+    # two Section II categories; the other twelve are Section I property
+    # perils with no claimant fields to require. incident_description is
+    # required unconditionally for either Section II type: without it the
+    # record is not a notice of loss, only an assertion that one exists,
+    # and nothing downstream can be reserved, assigned, or investigated
+    # from it. claimant_name and claimant_contact are each required or not
+    # by caller-supplied configuration, with no default - a liability claim
+    # is frequently third-party property damage with nobody injured at all,
+    # and a carrier that captures claimant details at first notice and one
+    # that does not are both expressible. There is no "not configured"
+    # scenario: an unsupplied configuration is a caller contract violation,
+    # not a business outcome, and validation has no NOT_EVALUATED to
+    # resolve to, unlike siu_indicators.feature's thresholds.
+    #
+    # Coverage E (personal liability, fault-based) and Coverage F (MedPay,
+    # no-fault) are not sub-divided here - both land in the same
+    # required-field set, a deliberate scope decision rather than an
+    # omission.
+
+    Scenario Outline: Required fields for an injury loss, claimant details required by configuration
+      Given claimant name is required by configuration
+      And claimant contact is required by configuration
+      And the loss type is "injury"
+      And the claimant name is "<name>"
+      And the claimant contact is "<contact>"
+      And the incident description is "<description>"
       When the candidate FNOL record is validated
       Then the blockers are <blockers>
 
       Examples:
-        | name       | contact  | description                                            | blockers                                     |
-        | Pat Rivera | 555-0101 | Guest slipped on the pool deck and fractured a wrist   |                                               |
-        |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist   | MISSING_REQUIRED_FIELD:injured_party_name    |
-        | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist   | MISSING_REQUIRED_FIELD:injured_party_contact |
-        | Pat Rivera | 555-0101 |                                                         | MISSING_REQUIRED_FIELD:injury_description    |
+        | name       | contact  | description                                           | blockers                                     |
+        | Pat Rivera | 555-0101 | Guest slipped on the pool deck and fractured a wrist  |                                               |
+        |            | 555-0101 | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_name         |
+        | Pat Rivera |          | Guest slipped on the pool deck and fractured a wrist  | MISSING_REQUIRED_FIELD:claimant_contact      |
+        | Pat Rivera | 555-0101 |                                                        | MISSING_REQUIRED_FIELD:incident_description  |
 
-    Scenario: Non-injury losses do not require injured-party details
-      Given the loss type is "wind_hail"
-      And no injured-party details are provided
+    Scenario: Claimant name is not required by configuration and its absence does not block
+      Given the loss type is "liability"
+      And claimant name is not required by configuration
+      And claimant contact is required by configuration
+      And the claimant name is ""
+      And the claimant contact is "555-0101"
+      And the incident description is "Delivery driver slipped on the wet lobby floor and left before being identified"
       When the candidate FNOL record is validated
       Then there are no blockers
 
-    Scenario: Multiple missing injury fields all survive as blockers, deduplicated in reason codes
+    Scenario: Claimant contact is not required by configuration and its absence does not block
+      Given the loss type is "liability"
+      And claimant contact is not required by configuration
+      And claimant name is required by configuration
+      And the claimant name is "Pat Rivera"
+      And the claimant contact is ""
+      And the incident description is "Delivery driver slipped on the wet lobby floor and left before being identified"
+      When the candidate FNOL record is validated
+      Then there are no blockers
+
+    Scenario: Section I losses do not require claimant details
+      Given the loss type is "wind_hail"
+      And no claimant details are provided
+      When the candidate FNOL record is validated
+      Then there are no blockers
+
+    Scenario: Multiple missing claimant fields all survive as blockers, deduplicated in reason codes
       Given the loss type is "injury"
-      And the injured party name is ""
-      And the injured party contact is ""
-      And the injury description is "Dog bit a visitor on the front porch"
+      And claimant name is required by configuration
+      And claimant contact is required by configuration
+      And the claimant name is ""
+      And the claimant contact is ""
+      And the incident description is "Dog bit a visitor on the front porch"
       When the candidate FNOL record is validated
       Then the blockers are:
-        | code                   | field                 |
-        | MISSING_REQUIRED_FIELD | injured_party_contact |
-        | MISSING_REQUIRED_FIELD | injured_party_name    |
+        | code                   | field             |
+        | MISSING_REQUIRED_FIELD | claimant_contact  |
+        | MISSING_REQUIRED_FIELD | claimant_name     |
       And the reason codes are "MISSING_REQUIRED_FIELD"
 
   Rule: Every notice states which kind of notice it is
@@ -256,9 +286,10 @@ Feature: FNOL validation
     # NOTICE_TYPE_UNRECOGNIZED, and LOSS_TYPE_UNRECOGNIZED each require their
     # own field to be non-empty - a field that's empty produces
     # MISSING_REQUIRED_FIELD instead, never both from the same field. The
-    # only other source of MISSING_REQUIRED_FIELD is the injured-party
-    # fields, and those only apply when the loss type is exactly "injury",
-    # which is itself recognized and so never the source of
+    # only other source of MISSING_REQUIRED_FIELD is the Section II claimant
+    # fields (claimant_name, claimant_contact, incident_description), and
+    # those only apply when the loss type is injury or liability, both of
+    # which are recognized and so never the source of
     # LOSS_TYPE_UNRECOGNIZED. So whenever all three of those field-recognition
     # codes fire together, every field that could still supply
     # MISSING_REQUIRED_FIELD is already accounted for, and a fifth code has
@@ -272,21 +303,23 @@ Feature: FNOL validation
     # combinations, a subset that skips the earliest codes, and a subset that
     # is non-contiguous in the canonical order.
 
-    Scenario: Policy, notice, and date codes fire together with a missing injury field
+    Scenario: Policy, notice, and date codes fire together with a missing claimant field
       Given the policy number is "XX-1234567"
       And the notice type is "SUPPLEMENT"
       And the loss date is "2026-08-03"
       And the loss type is "injury"
-      And the injured party name is ""
-      And the injured party contact is "555-0101"
-      And the injury description is "Guest slipped on the pool deck and fractured a wrist"
+      And claimant name is required by configuration
+      And claimant contact is required by configuration
+      And the claimant name is ""
+      And the claimant contact is "555-0101"
+      And the incident description is "Guest slipped on the pool deck and fractured a wrist"
       When the candidate FNOL record is validated
       Then the blockers are:
-        | code                     | field              |
-        | POLICY_NUMBER_MALFORMED  | policy_number      |
-        | NOTICE_TYPE_UNRECOGNIZED | notice_type        |
-        | LOSS_DATE_IN_FUTURE      | loss_date          |
-        | MISSING_REQUIRED_FIELD   | injured_party_name |
+        | code                     | field         |
+        | POLICY_NUMBER_MALFORMED  | policy_number |
+        | NOTICE_TYPE_UNRECOGNIZED | notice_type   |
+        | LOSS_DATE_IN_FUTURE      | loss_date     |
+        | MISSING_REQUIRED_FIELD   | claimant_name |
       And the reason codes are "POLICY_NUMBER_MALFORMED;NOTICE_TYPE_UNRECOGNIZED;LOSS_DATE_IN_FUTURE;MISSING_REQUIRED_FIELD"
 
     Scenario: Policy, notice, and date codes fire together with an unrecognized loss type
@@ -306,23 +339,27 @@ Feature: FNOL validation
     Scenario: A later-canonical subset fires without any earlier code present
       Given the loss date is "2026-08-03"
       And the loss type is "injury"
-      And the injured party name is "Pat Rivera"
-      And the injured party contact is ""
-      And the injury description is "Dog bit a visitor on the front porch"
+      And claimant name is required by configuration
+      And claimant contact is required by configuration
+      And the claimant name is "Pat Rivera"
+      And the claimant contact is ""
+      And the incident description is "Dog bit a visitor on the front porch"
       When the candidate FNOL record is validated
       Then the blockers are:
-        | code                      | field                 |
-        | LOSS_DATE_IN_FUTURE       | loss_date             |
-        | MISSING_REQUIRED_FIELD    | injured_party_contact |
+        | code                   | field            |
+        | LOSS_DATE_IN_FUTURE    | loss_date        |
+        | MISSING_REQUIRED_FIELD | claimant_contact |
 
     Scenario: A non-contiguous subset of canonical order still sorts correctly
       Given the policy number is "XX-1234567"
       And the loss type is "injury"
-      And the injured party name is "Pat Rivera"
-      And the injured party contact is "555-0101"
-      And the injury description is ""
+      And claimant name is required by configuration
+      And claimant contact is required by configuration
+      And the claimant name is "Pat Rivera"
+      And the claimant contact is "555-0101"
+      And the incident description is ""
       When the candidate FNOL record is validated
       Then the blockers are:
-        | code                     | field              |
-        | POLICY_NUMBER_MALFORMED  | policy_number      |
-        | MISSING_REQUIRED_FIELD   | injury_description |
+        | code                     | field                 |
+        | POLICY_NUMBER_MALFORMED  | policy_number         |
+        | MISSING_REQUIRED_FIELD   | incident_description  |
