@@ -24,6 +24,12 @@ Feature: FNOL validation
     And the policy number is "HO-1234567"
     And the loss date is "2026-07-01"
     And the loss type is "wind_hail"
+    # Scenarios where the configuration matters restate it in their own
+    # Examples cells, which are what mutation reaches - a Background step is
+    # not mutated. This pair governs only scenarios where the value has no
+    # effect.
+    Given claimant name is "required" by configuration
+    And claimant contact is "required" by configuration
 
   Rule: The loss date must not be in the future
 

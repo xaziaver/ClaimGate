@@ -9,16 +9,6 @@ from tests.api.validation import reason_codes, validate_record
 
 scenarios("../../features/validation.feature")
 
-# claimant_name_required/claimant_contact_required are required parameters
-# with no default (ASSUMPTIONS.md, "A carrier configuration crosses into the
-# domain already resolved") - validate_record has no fallback of its own, so
-# every call needs a value. features/validation.feature only states the
-# configuration in scenarios that are testing it; every other scenario's loss
-# type is Section I, where the value is never read. This baseline supplies it
-# regardless, the same shape as duplicates.feature's DUPLICATE_MATCH_WINDOW_DAYS.
-DEFAULT_CLAIMANT_NAME_REQUIRED = True
-DEFAULT_CLAIMANT_CONTACT_REQUIRED = True
-
 # The configuration reaches the domain as a boolean (ASSUMPTIONS.md, "A
 # carrier configuration crosses into the domain already resolved") - parsing
 # the Gherkin text into that boolean is exactly the caller's job the entry
@@ -87,12 +77,8 @@ def run_validation(context: dict[str, Any]) -> None:
     today: date = context["today"]
     context["result"] = validate_record(
         now=today,
-        claimant_name_required=context.get(
-            "claimant_name_required", DEFAULT_CLAIMANT_NAME_REQUIRED
-        ),
-        claimant_contact_required=context.get(
-            "claimant_contact_required", DEFAULT_CLAIMANT_CONTACT_REQUIRED
-        ),
+        claimant_name_required=context["claimant_name_required"],
+        claimant_contact_required=context["claimant_contact_required"],
         **context["fields"],
     )
 
