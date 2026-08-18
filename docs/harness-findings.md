@@ -343,6 +343,60 @@ commit — so a run issued straight after a commit, with a clean tree, would
 find no changed files and the gate would report passed, vacuously, with
 nothing actually mutated.
 
+### Mutation cannot see a fixed Given, so a spec can state a rule it never protects
+
+`_literal_mutants` returns `[]` for any scenario where `is_outline` is true, and `LITERAL_PATTERN`
+matches only quoted text, single-quoted text, or a bare number. Two consequences that are not
+obvious from the outside:
+
+- In a **Scenario Outline**, only Examples cells are mutated. A fixed `Given` line above the table
+  is never mutated no matter how it is written — quoting does not help, because the outline branch
+  returns before any step is examined.
+- In a **plain Scenario**, an unquoted word is invisible. `Given claimant name is required by
+  configuration` yields nothing; `Given claimant name is "required" by configuration` yields one
+  mutant.
+
+Item 4g's first draft hit both at once. It stated the configuration under test — the entire subject
+of the item — as unquoted fixed `Given` lines above an outline. The scenarios read as full coverage
+of both configuration states and the engine generated zero mutants against either, so no gate could
+ever have reported the gap. The count went up (116 -> 122), which made it look like coverage had
+grown.
+
+**Anything a spec intends mutation to protect has to be a quoted Examples cell.** When reviewing a
+draft, check the mutants that exist against the values the scenario is *about*, rather than reading
+the count. A rising total says nothing about which values moved.
+
+This is the "a green gate sometimes means nothing was checked" failure reached from a new
+direction: not a gate skipped, but a gate that ran fully against a target it could not perceive.
+
+### A same-outcome column is sometimes the point of the rule, not a table defect
+
+Item 4e's fix for surviving mutants was to mix outcomes across an outline's rows. That does not
+help when the *rule itself* is symmetric across a column's values. Item 4g's combined outline
+carried a `loss_type` column holding only `injury` and `liability`, which the rule treats
+identically by design, so every mutation in that column was an `injury <-> liability` swap that no
+outcome could distinguish — 11 rows, 11 survivors, unavoidable inside that shape.
+
+Two things were measured before choosing:
+
+- **Adding discriminating rows makes it worse.** Adding a Section I row took the outline from 77
+  mutants / ~31 survivors to 84 / ~36; adding an unrecognized row as well took it to 91 / ~41. The
+  engine kept selecting a Section II value as the substitute, so the extra rows added survivors in
+  the other columns without touching the eleven.
+- **Splitting the outline removes the column.** Two six-row outlines, one per loss type, with the
+  loss type fixed in a `Given`: 72 mutants, ~24 survivors, and the symmetry becomes a visible fact
+  of the spec instead of eleven ledger entries.
+
+The deciding argument was not the count. `gauntlet mutant approve` scopes only by feature file and
+`--scenario`, so every survivor in one scenario shares one reason and every re-approval overwrites
+all of them — item 4c's recorded failure, where one inherited reason carried four inaccuracies
+forward invisibly. Thirty-one survivors in one scenario would have needed a single reason spanning
+three unrelated equivalence arguments. **When choosing an outline's shape, count the argument types
+a shared approval reason would have to cover, not just the survivors.**
+
+Survivor counts in this entry are simulated against the rule, not measured — survivors cannot be
+measured until the implementation exists.
+
 ## Process and technique
 
 Lessons about working with the harness rather than about the harness itself.

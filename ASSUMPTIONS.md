@@ -239,6 +239,26 @@ or data. Nothing below was confirmed against a live book.
     would not break it, but the disruption buys nothing a disclaimer does not already cover.
 
   Revisiting 4b's prefix set as configuration is a new queue item, not a correction to a closed one.
+- **A carrier configuration crosses into the domain already resolved, so the domain has no
+  unrecognized-configuration case — advisor-recommended, human-ratified, 2026-08-17.** Item 4g's
+  `claimant_name` and `claimant_contact` requirements reach the domain as booleans, not as strings
+  the domain interprets. Parsing, validating, and rejecting a malformed configuration value is the
+  caller's job, above the domain boundary; by the time the rule runs, the question is already
+  settled. So no scenario specifies what an unrecognized configuration value does, and none should
+  — there is nothing there to specify.
+
+  This is not the same as `loss_type` or `notice_type`, which are field values arriving from a
+  reporter and therefore have genuine unrecognized cases with their own reason codes. A
+  configuration is supplied by the integrator, not the reporter. Item 3's precedent applies to the
+  boundary rather than to the domain: an unreachable caller-supplied value is a caller contract
+  violation, not a business outcome, and it does not earn a reason code.
+
+  **Consequence to hold when this reaches phase 2.** The adapter layer becomes the only thing
+  standing between a mistyped configuration file and a silently wrong required-field set, and no
+  gate in this project currently watches that boundary — mutation cannot reach it, because the
+  engine only swaps between values a column already contains. Whatever loads a carrier
+  configuration needs its own rejection of unrecognized values, specified where that loading
+  happens. Recorded here so it is a known gap rather than a discovered one.
 
 ## Undocumented phase-1 thresholds
 
