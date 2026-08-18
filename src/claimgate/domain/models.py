@@ -14,9 +14,9 @@ class Candidate:
     notice_type: str = ""
     loss_amount: Decimal | None = None
     continuous_coverage_date: date | None = None
-    injured_party_name: str | None = None
-    injured_party_contact: str | None = None
-    injury_description: str | None = None
+    claimant_name: str | None = None
+    claimant_contact: str | None = None
+    incident_description: str | None = None
 
 
 @dataclass(frozen=True)
