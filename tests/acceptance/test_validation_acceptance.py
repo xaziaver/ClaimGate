@@ -9,6 +9,14 @@ from tests.api.validation import reason_codes, validate_record
 
 scenarios("../../features/validation.feature")
 
+# The configuration reaches the domain as a boolean (ASSUMPTIONS.md, "A
+# carrier configuration crosses into the domain already resolved") - parsing
+# the Gherkin text into that boolean is exactly the caller's job the entry
+# describes, so it happens here, above the boundary. "required"/"not
+# required" is the spec's complete, closed vocabulary for this step; any
+# other value is a caller contract violation and raises KeyError.
+_REQUIRED_BY_TEXT = {"required": True, "not required": False}
+
 
 @given(parsers.parse('the loss date is "{value}"'))
 def set_loss_date(context: dict[str, Any], value: str) -> None:
@@ -30,34 +38,49 @@ def set_notice_type(context: dict[str, Any], value: str) -> None:
     context["fields"]["notice_type"] = value
 
 
-@given(parsers.re(r'the injured party name is "(?P<value>.*)"'))
-def set_injured_party_name(context: dict[str, Any], value: str) -> None:
-    context["fields"]["injured_party_name"] = value
+@given(parsers.re(r'the claimant name is "(?P<value>.*)"'))
+def set_claimant_name(context: dict[str, Any], value: str) -> None:
+    context["fields"]["claimant_name"] = value
 
 
-@given(parsers.re(r'the injured party contact is "(?P<value>.*)"'))
-def set_injured_party_contact(context: dict[str, Any], value: str) -> None:
-    context["fields"]["injured_party_contact"] = value
+@given(parsers.re(r'the claimant contact is "(?P<value>.*)"'))
+def set_claimant_contact(context: dict[str, Any], value: str) -> None:
+    context["fields"]["claimant_contact"] = value
 
 
-@given(parsers.re(r'the injury description is "(?P<value>.*)"'))
-def set_injury_description(context: dict[str, Any], value: str) -> None:
-    context["fields"]["injury_description"] = value
+@given(parsers.re(r'the incident description is "(?P<value>.*)"'))
+def set_incident_description(context: dict[str, Any], value: str) -> None:
+    context["fields"]["incident_description"] = value
 
 
-@given("no injured-party details are provided")
-def clear_injured_party_details(context: dict[str, Any]) -> None:
+@given("no claimant details are provided")
+def clear_claimant_details(context: dict[str, Any]) -> None:
     context["fields"].update(
-        injured_party_name=None,
-        injured_party_contact=None,
-        injury_description=None,
+        claimant_name=None,
+        claimant_contact=None,
+        incident_description=None,
     )
+
+
+@given(parsers.parse('claimant name is "{value}" by configuration'))
+def set_claimant_name_required(context: dict[str, Any], value: str) -> None:
+    context["claimant_name_required"] = _REQUIRED_BY_TEXT[value]
+
+
+@given(parsers.parse('claimant contact is "{value}" by configuration'))
+def set_claimant_contact_required(context: dict[str, Any], value: str) -> None:
+    context["claimant_contact_required"] = _REQUIRED_BY_TEXT[value]
 
 
 @when("the candidate FNOL record is validated")
 def run_validation(context: dict[str, Any]) -> None:
     today: date = context["today"]
-    context["result"] = validate_record(now=today, **context["fields"])
+    context["result"] = validate_record(
+        now=today,
+        claimant_name_required=context["claimant_name_required"],
+        claimant_contact_required=context["claimant_contact_required"],
+        **context["fields"],
+    )
 
 
 @then("there are no blockers")
@@ -82,7 +105,8 @@ def check_blockers_compact(context: dict[str, Any], value: str) -> None:
 
 @then(parsers.parse('the reason codes are "{value}"'))
 def check_reason_codes(context: dict[str, Any], value: str) -> None:
-    assert reason_codes(context["result"]) == value.split(";")
+    expected = value.split(";") if value else []
+    assert reason_codes(context["result"]) == expected
 
 
 def _parse_compact_blockers(value: str) -> list[tuple[str, str]]:

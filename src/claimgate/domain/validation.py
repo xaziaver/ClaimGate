@@ -25,6 +25,12 @@ RECOGNIZED_LOSS_TYPES = frozenset(
         "wind_hail",
     }
 )
+# Membership in RECOGNIZED_LOSS_TYPES is enforced by
+# test_section_ii_loss_types_are_recognized (tests/unit/test_validation.py),
+# the same shape as _HIGH_SEVERITY_LOSS_TYPES <= RECOGNIZED_LOSS_TYPES in
+# triage.py - a direct unit-test assertion, not a scenario or a shared
+# module (QUEUE.md item 4h).
+_SECTION_II_LOSS_TYPES = frozenset({"injury", "liability"})
 
 POLICY_NUMBER_MALFORMED = "POLICY_NUMBER_MALFORMED"
 NOTICE_TYPE_UNRECOGNIZED = "NOTICE_TYPE_UNRECOGNIZED"
@@ -46,10 +52,20 @@ _CANONICAL_CODE_ORDER = (
 )
 
 
-def validate(candidate: Candidate, now: date) -> ValidationResult:
+def validate(
+    candidate: Candidate,
+    now: date,
+    *,
+    claimant_name_required: bool,
+    claimant_contact_required: bool,
+) -> ValidationResult:
     blockers = (
         _check_loss_date(candidate, now)
-        + _check_injury_fields(candidate)
+        + _check_claimant_fields(
+            candidate,
+            claimant_name_required=claimant_name_required,
+            claimant_contact_required=claimant_contact_required,
+        )
         + _check_notice_type(candidate)
         + _check_loss_type(candidate)
         + _check_policy_number(candidate)
@@ -91,16 +107,21 @@ def _check_notice_type(candidate: Candidate) -> list[ValidationBlocker]:
     return []
 
 
-def _check_injury_fields(candidate: Candidate) -> list[ValidationBlocker]:
-    if candidate.loss_type != "injury":
+def _check_claimant_fields(
+    candidate: Candidate,
+    *,
+    claimant_name_required: bool,
+    claimant_contact_required: bool,
+) -> list[ValidationBlocker]:
+    if candidate.loss_type not in _SECTION_II_LOSS_TYPES:
         return []
     fields = (
-        ("injured_party_name", candidate.injured_party_name),
-        ("injured_party_contact", candidate.injured_party_contact),
-        ("injury_description", candidate.injury_description),
+        (True, "incident_description", candidate.incident_description),
+        (claimant_name_required, "claimant_name", candidate.claimant_name),
+        (claimant_contact_required, "claimant_contact", candidate.claimant_contact),
     )
     return [
         ValidationBlocker(MISSING_REQUIRED_FIELD, field_name)
-        for field_name, value in fields
-        if not value
+        for required, field_name, value in fields
+        if required and not value
     ]

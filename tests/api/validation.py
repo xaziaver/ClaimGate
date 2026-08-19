@@ -9,24 +9,31 @@ from claimgate.domain.validation import validate as _validate
 def validate_record(
     *,
     now: date,
+    claimant_name_required: bool,
+    claimant_contact_required: bool,
     policy_number: str = "",
     loss_date: date = date.min,
     loss_type: str = "",
     notice_type: str = "",
-    injured_party_name: str | None = None,
-    injured_party_contact: str | None = None,
-    injury_description: str | None = None,
+    claimant_name: str | None = None,
+    claimant_contact: str | None = None,
+    incident_description: str | None = None,
 ) -> ValidationResult:
     candidate = Candidate(
         policy_number=policy_number,
         loss_date=loss_date,
         loss_type=loss_type,
         notice_type=notice_type,
-        injured_party_name=injured_party_name,
-        injured_party_contact=injured_party_contact,
-        injury_description=injury_description,
+        claimant_name=claimant_name,
+        claimant_contact=claimant_contact,
+        incident_description=incident_description,
     )
-    return _validate(candidate, now=now)
+    return _validate(
+        candidate,
+        now=now,
+        claimant_name_required=claimant_name_required,
+        claimant_contact_required=claimant_contact_required,
+    )
 
 
 def reason_codes(result: ValidationResult) -> list[str]:

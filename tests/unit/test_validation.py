@@ -12,6 +12,8 @@ from claimgate.domain.validation import (
     MISSING_REQUIRED_FIELD,
     NOTICE_TYPE_UNRECOGNIZED,
     POLICY_NUMBER_MALFORMED,
+    RECOGNIZED_LOSS_TYPES,
+    _SECTION_II_LOSS_TYPES,
     validate,
 )
 
@@ -23,6 +25,10 @@ BASE_CANDIDATE = Candidate(
     loss_type="wind_hail",
     notice_type="INITIAL",
 )
+
+
+def test_section_ii_loss_types_are_recognized() -> None:
+    assert _SECTION_II_LOSS_TYPES <= RECOGNIZED_LOSS_TYPES
 
 
 @pytest.mark.parametrize(
@@ -40,7 +46,9 @@ def test_loss_date_must_not_be_in_the_future(
 ) -> None:
     candidate = dataclasses.replace(BASE_CANDIDATE, loss_date=loss_date)
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == expected_blockers
     assert result.valid is (not expected_blockers)
@@ -69,7 +77,9 @@ def test_policy_number_format(
 ) -> None:
     candidate = dataclasses.replace(BASE_CANDIDATE, policy_number=policy_number)
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == expected_blockers
 
@@ -77,7 +87,9 @@ def test_policy_number_format(
 def test_absent_loss_type_is_a_missing_field() -> None:
     candidate = dataclasses.replace(BASE_CANDIDATE, loss_type="")
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == (ValidationBlocker(MISSING_REQUIRED_FIELD, "loss_type"),)
 
@@ -88,7 +100,6 @@ def test_absent_loss_type_is_a_missing_field() -> None:
         ("fire", ()),
         ("flood", ()),
         ("hurricane", ()),
-        ("liability", ()),
         ("lightning", ()),
         ("mold", ()),
         ("roof_leak", ()),
@@ -105,9 +116,14 @@ def test_absent_loss_type_is_a_missing_field() -> None:
 def test_loss_type(
     loss_type: str, expected_blockers: tuple[ValidationBlocker, ...]
 ) -> None:
+    # injury and liability are excluded here - both are Section II and
+    # require claimant details, so a bare row for either could not assert
+    # an empty blockers cell. See test_section_ii_required_fields below.
     candidate = dataclasses.replace(BASE_CANDIDATE, loss_type=loss_type)
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == expected_blockers
 
@@ -128,76 +144,147 @@ def test_notice_type(
 ) -> None:
     candidate = dataclasses.replace(BASE_CANDIDATE, notice_type=notice_type)
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == expected_blockers
 
 
+_INJURY_DESCRIPTION = "Guest slipped on the pool deck and fractured a wrist"
+_LIABILITY_DESCRIPTION = "Delivery driver slipped on the wet lobby floor and left before being identified"
+
+
 @pytest.mark.parametrize(
-    ("name", "contact", "description", "expected_blockers"),
+    (
+        "loss_type",
+        "description",
+        "claimant_name_required",
+        "claimant_contact_required",
+        "name",
+        "contact",
+        "expected_blockers",
+    ),
     [
-        ("Pat Rivera", "555-0101", "Guest slipped on the pool deck and fractured a wrist", ()),
+        # All fields present, both required: no blockers.
+        ("injury", _INJURY_DESCRIPTION, True, True, "Pat Rivera", "555-0101", ()),
+        ("liability", _LIABILITY_DESCRIPTION, True, True, "Pat Rivera", "555-0101", ()),
+        # name required and absent: blocks. name not required and absent:
+        # does not block. Contact held constant (required, present).
         (
+            "injury",
+            _INJURY_DESCRIPTION,
+            True,
+            True,
             "",
             "555-0101",
-            "Guest slipped on the pool deck and fractured a wrist",
-            (ValidationBlocker(MISSING_REQUIRED_FIELD, "injured_party_name"),),
+            (ValidationBlocker(MISSING_REQUIRED_FIELD, "claimant_name"),),
         ),
+        ("injury", _INJURY_DESCRIPTION, False, True, "", "555-0101", ()),
         (
-            "Pat Rivera",
+            "liability",
+            _LIABILITY_DESCRIPTION,
+            True,
+            True,
             "",
-            "Guest slipped on the pool deck and fractured a wrist",
-            (ValidationBlocker(MISSING_REQUIRED_FIELD, "injured_party_contact"),),
-        ),
-        (
-            "Pat Rivera",
             "555-0101",
-            "",
-            (ValidationBlocker(MISSING_REQUIRED_FIELD, "injury_description"),),
+            (ValidationBlocker(MISSING_REQUIRED_FIELD, "claimant_name"),),
         ),
+        ("liability", _LIABILITY_DESCRIPTION, False, True, "", "555-0101", ()),
+        # contact required and absent: blocks. contact not required and
+        # absent: does not block. Name held constant (required, present).
+        (
+            "injury",
+            _INJURY_DESCRIPTION,
+            True,
+            True,
+            "Pat Rivera",
+            "",
+            (ValidationBlocker(MISSING_REQUIRED_FIELD, "claimant_contact"),),
+        ),
+        ("injury", _INJURY_DESCRIPTION, True, False, "Pat Rivera", "", ()),
+        (
+            "liability",
+            _LIABILITY_DESCRIPTION,
+            True,
+            True,
+            "Pat Rivera",
+            "",
+            (ValidationBlocker(MISSING_REQUIRED_FIELD, "claimant_contact"),),
+        ),
+        ("liability", _LIABILITY_DESCRIPTION, True, False, "Pat Rivera", "", ()),
     ],
 )
-def test_injury_required_fields(
+def test_section_ii_required_fields(
+    loss_type: str,
+    description: str,
+    claimant_name_required: bool,
+    claimant_contact_required: bool,
     name: str,
     contact: str,
-    description: str,
     expected_blockers: tuple[ValidationBlocker, ...],
 ) -> None:
     candidate = dataclasses.replace(
         BASE_CANDIDATE,
-        loss_type="injury",
-        injured_party_name=name,
-        injured_party_contact=contact,
-        injury_description=description,
+        loss_type=loss_type,
+        claimant_name=name,
+        claimant_contact=contact,
+        incident_description=description,
     )
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate,
+        now=TODAY,
+        claimant_name_required=claimant_name_required,
+        claimant_contact_required=claimant_contact_required,
+    )
 
     assert result.blockers == expected_blockers
 
 
-def test_non_injury_loss_does_not_require_injured_party_details() -> None:
+@pytest.mark.parametrize("loss_type", ["injury", "liability"])
+def test_incident_description_is_required_unconditionally(loss_type: str) -> None:
+    candidate = dataclasses.replace(
+        BASE_CANDIDATE,
+        loss_type=loss_type,
+        claimant_name="Pat Rivera",
+        claimant_contact="555-0101",
+        incident_description="",
+    )
+
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=False, claimant_contact_required=False
+    )
+
+    assert result.blockers == (ValidationBlocker(MISSING_REQUIRED_FIELD, "incident_description"),)
+
+
+def test_section_i_loss_does_not_require_claimant_details() -> None:
     candidate = dataclasses.replace(BASE_CANDIDATE, loss_type="wind_hail")
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == ()
 
 
-def test_multiple_missing_injury_fields_survive_ordered_by_field_name() -> None:
+def test_multiple_missing_claimant_fields_survive_ordered_by_field_name() -> None:
     candidate = dataclasses.replace(
         BASE_CANDIDATE,
         loss_type="injury",
-        injured_party_name="",
-        injured_party_contact="",
-        injury_description="Dog bit a visitor on the front porch",
+        claimant_name="",
+        claimant_contact="",
+        incident_description="Dog bit a visitor on the front porch",
     )
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == (
-        ValidationBlocker(MISSING_REQUIRED_FIELD, "injured_party_contact"),
-        ValidationBlocker(MISSING_REQUIRED_FIELD, "injured_party_name"),
+        ValidationBlocker(MISSING_REQUIRED_FIELD, "claimant_contact"),
+        ValidationBlocker(MISSING_REQUIRED_FIELD, "claimant_name"),
     )
 
 
@@ -208,18 +295,20 @@ def test_all_four_canonical_codes_fire_in_canonical_order() -> None:
         notice_type="SUPPLEMENT",
         loss_date=date(2026, 8, 3),
         loss_type="injury",
-        injured_party_name="",
-        injured_party_contact="555-0101",
-        injury_description="Guest slipped on the pool deck and fractured a wrist",
+        claimant_name="",
+        claimant_contact="555-0101",
+        incident_description="Guest slipped on the pool deck and fractured a wrist",
     )
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == (
         ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),
         ValidationBlocker(NOTICE_TYPE_UNRECOGNIZED, "notice_type"),
         ValidationBlocker(LOSS_DATE_IN_FUTURE, "loss_date"),
-        ValidationBlocker(MISSING_REQUIRED_FIELD, "injured_party_name"),
+        ValidationBlocker(MISSING_REQUIRED_FIELD, "claimant_name"),
     )
 
 
@@ -228,14 +317,16 @@ def test_non_contiguous_canonical_subset_still_sorts_correctly() -> None:
         BASE_CANDIDATE,
         policy_number="XX-1234567",
         loss_type="injury",
-        injured_party_name="Pat Rivera",
-        injured_party_contact="555-0101",
-        injury_description="",
+        claimant_name="Pat Rivera",
+        claimant_contact="555-0101",
+        incident_description="",
     )
 
-    result = validate(candidate, now=TODAY)
+    result = validate(
+        candidate, now=TODAY, claimant_name_required=True, claimant_contact_required=True
+    )
 
     assert result.blockers == (
         ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),
-        ValidationBlocker(MISSING_REQUIRED_FIELD, "injury_description"),
+        ValidationBlocker(MISSING_REQUIRED_FIELD, "incident_description"),
     )
