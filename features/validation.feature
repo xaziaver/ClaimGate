@@ -26,8 +26,9 @@ Feature: FNOL validation
     And the loss type is "wind_hail"
     # Scenarios where a configuration value matters restate it in their own
     # Examples cells or their own fixed Given, which are what mutation
-    # reaches - a Background step is not mutated. These three configuration
-    # defaults govern only scenarios where the value has no effect.
+    # reaches - a Background step is not mutated. These three file-wide
+    # configuration values govern only scenarios where the value has no
+    # effect.
     Given claimant name is "required" by configuration
     And claimant contact is "required" by configuration
     And the recognized policy-number prefixes are "HO" by configuration
@@ -255,12 +256,11 @@ Feature: FNOL validation
     # omission.
 
     # Mutation only reaches quoted or numeric text in a plain scenario's
-    # step, or an Outline's Examples cells - _literal_mutants returns []
-    # for every outline, so a fixed Given above a table is never mutated
-    # regardless of quoting. Anything this spec intends mutation to
-    # protect has to be a quoted Examples cell, which is why
-    # name_required and contact_required are columns below rather than
-    # fixed Given lines.
+    # step, or an Outline's Examples cells - gauntlet's acceptance mutation
+    # module never mutates a fixed Given above a table, regardless of
+    # quoting. Anything this spec intends mutation to protect has to be a
+    # quoted Examples cell, which is why name_required and contact_required
+    # are columns below rather than fixed Given lines.
     Scenario Outline: Required fields for an injury loss, by configuration
       Given the loss type is "injury"
       And claimant name is "<name_required>" by configuration
