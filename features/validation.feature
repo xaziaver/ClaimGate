@@ -24,12 +24,14 @@ Feature: FNOL validation
     And the policy number is "HO-1234567"
     And the loss date is "2026-07-01"
     And the loss type is "wind_hail"
-    # Scenarios where the configuration matters restate it in their own
-    # Examples cells, which are what mutation reaches - a Background step is
-    # not mutated. This pair governs only scenarios where the value has no
+    # Scenarios where a configuration value matters restate it in their own
+    # Examples cells or their own fixed Given, which are what mutation
+    # reaches - a Background step is not mutated. These three file-wide
+    # configuration values govern only scenarios where the value has no
     # effect.
     Given claimant name is "required" by configuration
     And claimant contact is "required" by configuration
+    And the recognized policy-number prefixes are "HO" by configuration
 
   Rule: The loss date must not be in the future
 
@@ -54,35 +56,89 @@ Feature: FNOL validation
 
   Rule: The policy number must have a recognized line-of-business prefix and a 7-digit number
 
-    # HO is the only recognized prefix - a scope decision for the shipped
-    # configuration, not a statutory one. That configuration covers Florida
-    # residential property only; AU (auto), CP (commercial property), CA
-    # (commercial auto), and GL (general liability) are lines outside it.
-    # DP (dwelling fire, common on Florida residential books for landlord
-    # and non-owner-occupied risks) and MH (manufactured housing) were both
-    # considered and excluded for want of evidence a configured book writes
-    # either - see QUEUE.md item 4b. An unrecognized prefix resolves
-    # POLICY_NUMBER_MALFORMED like any other malformed policy number: a
-    # blocker, not a refusal. PHASE2_DESIGN.md's record state model has no
-    # rejected or discarded state, so a notice carrying this blocker still
-    # lands PENDED, not refused, and a reviewer can still act on it.
+    # The recognized prefix SET is carrier configuration, not a domain
+    # constant - QUEUE.md item 4j, ASSUMPTIONS.md's "Carrier-varying rules
+    # are caller-supplied configuration with no domain default." Policy
+    # numbering is carrier-specific with no industry standard, so which
+    # prefixes are recognized is a fact about the configured book, not
+    # about a notice of loss; HO is what the shipped configuration
+    # recognizes today, not a fact every carrier shares. Required,
+    # caller-supplied, no default - the same shape as claimant_name_required
+    # and claimant_contact_required above. The configuration reaches the
+    # domain already resolved, as a collection of prefixes rather than a
+    # string the domain parses (ASSUMPTIONS.md, "A carrier configuration
+    # crosses into the domain already resolved"), so there is no
+    # unrecognized-configuration-value case and no new reason code to
+    # specify: a malformed or unsupplied configuration is a caller contract
+    # violation above this boundary, not a business outcome. An unrecognized
+    # prefix in a well-formed number still resolves POLICY_NUMBER_MALFORMED
+    # like any other malformed policy number - a blocker, not a refusal;
+    # PHASE2_DESIGN.md's record state model has no rejected or discarded
+    # state, so a notice carrying this blocker still lands PENDED, not
+    # refused, and a reviewer can still act on it.
     #
-    # The AU/CP/CA/GL rows stay even though their outcome is now identical
-    # to the XX row's - they document which lines of business this book
-    # does not write, which is worth more than the four extra rows cost.
-    Scenario Outline: Policy number format
-      Given the policy number is "<policy_number>"
+    # The number SHAPE - two letters, a hyphen, seven digits - is not
+    # configurable. ASSUMPTIONS.md's open POLICY_NUMBER_PATTERN decision
+    # concludes the shape is structural, a fact about phase 2's adapter
+    # layer rather than a scalar a parameter could resolve, so it stays a
+    # domain-layer constant; that decision is unchanged and out of scope
+    # here.
+    #
+    # Prefix recognition and number shape get separate outlines below rather
+    # than one, because they vary independently and mixing them cost more
+    # than it proved: every row pairing a rejected prefix with a rejected
+    # shape resolves the identical POLICY_NUMBER_MALFORMED outcome, so a
+    # mutation swapping one such row's value for another's survives without
+    # exercising anything the other row didn't already - proving nothing
+    # beyond the approval it costs to dismiss, the same shape the loss-type
+    # rule below explains and avoids. Splitting keeps each outline narrow
+    # enough that its rows discriminate.
+    #
+    # AU, CP, CA, and GL previously stayed as four separate rows because
+    # they "document which lines of business this book does not write" - a
+    # fact about one shipped configuration, not about this rule. That
+    # framing doesn't survive the configuration split: which lines a book
+    # excludes is now a property of the configured set, stated once via the
+    # prefix column below, not a fact worth four same-outcome rows in the
+    # spec. One prefix outside the configured set proves the rule; which
+    # specific lines a shipped configuration happens to exclude belongs in
+    # the configuration, not repeated here.
+    #
+    # The configured set is a column below rather than a fixed Given,
+    # because mutation reaches quoted Examples-cell text and plain-scenario
+    # steps, not a fixed Given above a table - anything this outline intends
+    # mutation to protect, including the set-widens-and-narrows-back
+    # boundary, has to be a quoted cell.
+    Scenario Outline: Policy number prefix recognition, by configuration
+      Given the recognized policy-number prefixes are "<prefixes>" by configuration
+      And the policy number is "<policy_number>"
+      When the candidate FNOL record is validated
+      Then the blockers are <blockers>
+
+      Examples:
+        | prefixes | policy_number | blockers                              |
+        | HO       | HO-1234567    |                                       |
+        | HO       | AU-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+        | HO;AU    | AU-1234567    |                                       |
+        | HO;AU    | CP-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
+
+    # The shape-violation rows stay together in their own outline, with the
+    # configured prefix set fixed above the table rather than a column. The
+    # set is inert on every row here - each row's malformed outcome comes
+    # from digit count, case, or the separator, never from the prefix - and
+    # a fixed Given is never reached by mutation, which is correct for a
+    # value this outline doesn't intend to exercise: making it a column
+    # would generate mutants that swap an already-irrelevant value and
+    # assert nothing new.
+    Scenario Outline: Policy number shape
+      Given the recognized policy-number prefixes are "HO" by configuration
+      And the policy number is "<policy_number>"
       When the candidate FNOL record is validated
       Then the blockers are <blockers>
 
       Examples:
         | policy_number | blockers                              |
         | HO-1234567    |                                       |
-        | AU-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
-        | CP-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
-        | CA-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
-        | GL-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
-        | XX-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
         | HO-123456     | POLICY_NUMBER_MALFORMED:policy_number |
         | HO-12345678   | POLICY_NUMBER_MALFORMED:policy_number |
         | ho-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
@@ -131,21 +187,20 @@ Feature: FNOL validation
     # unlike the notice-type enumeration below. When every row of an outline
     # asserts the same outcome, a mutation that swaps one recognized value
     # for another survives, proving nothing beyond the one approval it costs
-    # to dismiss. That is measured, not assumed: all four of this file's
-    # current acceptance-mutant approvals are exactly the notice-type rows
-    # this pattern warns against (true as of 2026-08-16; nothing revalidates
-    # this if a future approval lands elsewhere in the file). A varying
-    # blockers column makes each swap discriminating instead.
+    # to dismiss. That is measured, not assumed: this outline carries no
+    # acceptance-mutant approvals, while the same-outcome notice-type
+    # outline below does - exactly the contrast this comment predicts. A
+    # varying blockers column makes each swap discriminating instead.
     #
     # The compact "the blockers are <blockers>" form is used here rather
-    # than "the reason codes are", even though both can assert a code,
-    # because the reason-codes step cannot express an empty expectation: it
-    # splits the expected string on semicolons, and an empty string does not
-    # split into an empty list, so an empty codes cell could never match a
-    # zero-blocker result. The compact "the blockers are" form handles an
-    # empty cell correctly. Recorded here so the next person reaching for
-    # "the reason codes are" in an outline finds this out from the comment,
-    # not from a failing gate.
+    # than "the reason codes are". Both now handle an empty cell correctly -
+    # item 4i added the same empty-string guard to "the reason codes are"
+    # that "the blockers are" already had, so neither form is broken. The
+    # compact form is still the better fit for this outline: it asserts
+    # field alongside code in one cell (LOSS_TYPE_UNRECOGNIZED:loss_type),
+    # which an outline built around a single field can use directly; "the
+    # reason codes are" only asserts the code list and drops which field
+    # each code belongs to.
     #
     # Recognition is exact-match and case-sensitive - the WIND_HAIL row below
     # is deliberately not folded into wind_hail. Normalizing case at intake
@@ -201,12 +256,11 @@ Feature: FNOL validation
     # omission.
 
     # Mutation only reaches quoted or numeric text in a plain scenario's
-    # step, or an Outline's Examples cells - _literal_mutants returns []
-    # for every outline, so a fixed Given above a table is never mutated
-    # regardless of quoting. Anything this spec intends mutation to
-    # protect has to be a quoted Examples cell, which is why
-    # name_required and contact_required are columns below rather than
-    # fixed Given lines.
+    # step, or an Outline's Examples cells - gauntlet's acceptance mutation
+    # module never mutates a fixed Given above a table, regardless of
+    # quoting. Anything this spec intends mutation to protect has to be a
+    # quoted Examples cell, which is why name_required and contact_required
+    # are columns below rather than fixed Given lines.
     Scenario Outline: Required fields for an injury loss, by configuration
       Given the loss type is "injury"
       And claimant name is "<name_required>" by configuration

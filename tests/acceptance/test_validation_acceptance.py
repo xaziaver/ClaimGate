@@ -72,6 +72,11 @@ def set_claimant_contact_required(context: dict[str, Any], value: str) -> None:
     context["claimant_contact_required"] = _REQUIRED_BY_TEXT[value]
 
 
+@given(parsers.parse('the recognized policy-number prefixes are "{value}" by configuration'))
+def set_recognized_policy_number_prefixes(context: dict[str, Any], value: str) -> None:
+    context["recognized_policy_number_prefixes"] = frozenset(value.split(";"))
+
+
 @when("the candidate FNOL record is validated")
 def run_validation(context: dict[str, Any]) -> None:
     today: date = context["today"]
@@ -79,6 +84,7 @@ def run_validation(context: dict[str, Any]) -> None:
         now=today,
         claimant_name_required=context["claimant_name_required"],
         claimant_contact_required=context["claimant_contact_required"],
+        recognized_policy_number_prefixes=context["recognized_policy_number_prefixes"],
         **context["fields"],
     )
 

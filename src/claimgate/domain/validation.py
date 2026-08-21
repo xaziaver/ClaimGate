@@ -1,11 +1,12 @@
 """Pure validation rules for a candidate FNOL record."""
 
 import re
+from collections.abc import Collection
 from datetime import date
 
 from claimgate.domain.models import Candidate, ValidationBlocker, ValidationResult
 
-POLICY_NUMBER_PATTERN = re.compile(r"^HO-\d{7}$")
+POLICY_NUMBER_PATTERN = re.compile(r"^([A-Z]{2})-\d{7}$")
 RECOGNIZED_NOTICE_TYPES = frozenset({"INITIAL", "REOPENED", "SUPPLEMENTAL", "LOSS_ASSESSMENT"})
 RECOGNIZED_LOSS_TYPES = frozenset(
     {
@@ -58,6 +59,7 @@ def validate(
     *,
     claimant_name_required: bool,
     claimant_contact_required: bool,
+    recognized_policy_number_prefixes: Collection[str],
 ) -> ValidationResult:
     blockers = (
         _check_loss_date(candidate, now)
@@ -68,7 +70,7 @@ def validate(
         )
         + _check_notice_type(candidate)
         + _check_loss_type(candidate)
-        + _check_policy_number(candidate)
+        + _check_policy_number(candidate, recognized_policy_number_prefixes)
     )
     return ValidationResult(blockers=tuple(_canonical_order(blockers)))
 
@@ -83,10 +85,13 @@ def _check_loss_date(candidate: Candidate, now: date) -> list[ValidationBlocker]
     return []
 
 
-def _check_policy_number(candidate: Candidate) -> list[ValidationBlocker]:
+def _check_policy_number(
+    candidate: Candidate, recognized_policy_number_prefixes: Collection[str]
+) -> list[ValidationBlocker]:
     if not candidate.policy_number.strip():
         return [ValidationBlocker(MISSING_REQUIRED_FIELD, "policy_number")]
-    if not POLICY_NUMBER_PATTERN.match(candidate.policy_number):
+    match = POLICY_NUMBER_PATTERN.match(candidate.policy_number)
+    if not match or match.group(1) not in recognized_policy_number_prefixes:
         return [ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number")]
     return []
 
