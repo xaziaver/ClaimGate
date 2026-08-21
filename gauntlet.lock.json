@@ -409,8 +409,8 @@
       "digest": "sha256:269a12ba9c697f6d83b1d6b6a4881259fba603eb89a92d9dbf65c8b01661ca37"
     },
     "spec:features/validation.feature": {
-      "approved_at": "2026-08-18T13:51:00+00:00",
-      "digest": "sha256:e68871c9986e215c3e8dd650121429768be676ed79a22ce3342e6f879674c476"
+      "approved_at": "2026-08-21T16:13:06+00:00",
+      "digest": "sha256:cd571b5dd9761aeb00dd67cb17edecb45ab7e2bb3a6f15594a0b2e8c68734b8b"
     }
   },
   "version": 1
