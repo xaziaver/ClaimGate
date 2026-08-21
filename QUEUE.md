@@ -323,7 +323,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     whether the outline stays mixed-outcome, which is what keeps its mutants killed (item 4e).
 
 4k. **The SIU reason-code precedence when both recent-inception inputs are absent is reachable,
-    unasserted, and invisible to every gate.** `_evaluate_recent_inception` checks the continuous
+    unasserted, and invisible to every gate.** *(Done — see below.)* `_evaluate_recent_inception` checks the continuous
     coverage date before the threshold, so when both are missing the result is
     `NO_CONTINUOUS_COVERAGE_DATE` rather than `NO_THRESHOLD_CONFIGURED` — the missing input outranks
     the missing rule, because a threshold cannot help without a date. `siu.py` carries a comment
@@ -351,9 +351,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
     the omitted-threshold case in volume. Inheriting an unasserted precedence rule into the phase
     that begins exercising it is the wrong order. Blocked on nothing.
 
-    *Blast radius, not yet measured.* One added scenario to `siu_indicators.feature`, which holds
-    four of the ledger's 67 approvals across three scenarios. A new scenario adds locators rather
-    than moving existing ones, so no restale is expected — confirm rather than assume.
+    *Blast radius, measured.* One added scenario to `siu_indicators.feature`, which holds **seven**
+    of the ledger's 67 approvals across **five** scenarios — the advisor's unmeasured estimate of
+    "four across three" was taken from `validation.feature`'s count rather than from the ledger and
+    was wrong, which is what labelling it unmeasured was for. A new scenario adds locators rather
+    than moving existing ones, so no restale: 38 -> 39 mutants, one new, all seven approvals
+    byte-identical.
 
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
@@ -739,13 +742,52 @@ symbol names in the paragraph arguing that SIU vocabulary must never harden into
 `siu_flags.feature`, renamed at item 2, and `SiuFlags(late_reporting, recent_policy_inception)`,
 replaced by `SiuIndicatorResult`. Item 4f's defect, in the document least able to afford it.
 
-**Current state, `main` at `0114b45`.** `gauntlet check` passes: 212/212 tests, code mutation
+**Current state, `main` at `6e8364c`.** `gauntlet check` passes: 213/213 tests, code mutation
 100%/217 killed, acceptance 4 specs / 0 surviving / 67 reviewed-equivalent / 0 stale. The ledger
 holds 67 mutant approvals across 4 specs plus 3 config paths. `features/validation.feature` yields
-180 mutants, `features/duplicates.feature` 57. No reopening branch is open and no spec is
-unapproved.
+180 mutants, `features/siu_indicators.feature` 39, `features/duplicates.feature` 57. No reopening
+branch is open and no spec is unapproved.
 
-**Phase 1's domain core is complete.** Items 1 through 4j are merged. Item 4k is the only phase-1
-domain item outstanding and is sequenced before phase 2; the remaining documentation work is
-`ASSUMPTIONS.md`'s open-decision pass and `docs/harness-findings.md`'s banked entries. Item 5, the
-phase-2 build, follows.
+**Item 4k is done and merged to `main`** (merge commit `7da0bd1`, 2026-08-18), and it needed no
+implementation. The behaviour was already correct; what was missing was any assertion of it. Every
+step the scenario needs already existed, so the item is a spec commit and an approval, with no code
+change and no new step definition — the first item in this queue with that shape.
+
+"Neither recent policy inception input is present" completes a 2x2 over date known/unknown and
+threshold configured/absent. The corner that matters is the pair against "No recent policy inception
+threshold configured": same threshold state, coverage date present in one and absent in the other,
+and the reason code changes between them. That pair is what proves the ordering rather than
+restating it, and the scenario comment says so, because a later reader pruning either row as
+redundant would remove the proof with it.
+
+**The gap existed because a deferral outlived its premise.** Both this file and `PHASE2_DESIGN.md`
+recorded the combination as unreachable, on the grounds that the recent-inception threshold was
+always a supplied value of 30. Item 2 falsified that on 2026-08-10 by removing the SIU threshold
+defaults, and neither document moved for eight days. Nothing could have caught it: a reordering of
+the two checks fails no test, and mutation testing substitutes values rather than reordering
+statements, so the precedence was protected by a source comment and by nothing else. **A deferral
+whose stated reason is a fact about the code needs the same revisit discipline as an approval
+reason** — that is the reusable lesson, and it is why the entry now carries its history.
+
+`features/siu_indicators.feature` 38 -> 39 mutants, one new and killed; 67 reviewed-equivalent
+unchanged. `gauntlet check` passes on `main` post-merge.
+
+**The toolchain that produced every gate result in this project was undeclared until 2026-08-18**
+(commit `6e8364c`). `pyproject.toml` carried no `dependencies` and no `optional-dependencies`: every
+tool the gates shell out to had been installed into one venv by hand and recorded nowhere. A fresh
+clone could not run `gauntlet check`, which means none of the figures in this file were checkable by
+anyone, including their author. It surfaced only by accident, when the project venv went missing and
+the mutation gate reported `No module named mutmut` from Gauntlet's own interpreter — the message
+names the module, the cause was the venv, and `gauntlet doctor` does not cover it because it checks
+that tooling is present rather than that the environment is reconstructible.
+
+**Rebuilding from scratch with current tool versions reproduced 213/213, 100% / 217 killed, and 67
+reviewed-equivalent exactly**, which is the strongest form this project's evidence has taken: those
+numbers are now reproduced rather than merely recorded. Direct tools are declared as a `dev` extra
+and the exact versions are pinned in `requirements-dev.txt`. The package itself is never installed —
+the root `conftest.py` puts `src/` on `sys.path` — so the install path matching how this project runs
+is `uv pip install -r requirements-dev.txt`, not an editable install.
+
+**Phase 1 is complete.** Items 1 through 4k are merged, and the documentation pass across
+`README.md`, `PHASE2_DESIGN.md`, `QUEUE.md`, `ASSUMPTIONS.md`, and `docs/harness-findings.md` is
+done. Item 5, the phase-2 build, is next, and `PHASE2_DESIGN.md` is where it starts.

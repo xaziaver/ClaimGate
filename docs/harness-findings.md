@@ -433,6 +433,52 @@ the expected count, at the expected line numbers, naming the expected scenario, 
 that `--scenario` matched what was meant. A short count is a mismatch and a long one is
 over-approval.
 
+### A missing project venv reports as a missing module, from an interpreter you did not choose
+
+Gauntlet's `interpreter()` resolves in order: an explicit `python` in `gauntlet.toml`, then the
+project's local `.venv`, then `$VIRTUAL_ENV`, then Gauntlet's own interpreter. Every tool the gates
+shell out to — `pytest`, `coverage`, `mutmut`, `mypy`, `ruff` — is invoked as `<that interpreter> -m
+<tool>`, so all of them must live in whichever one wins.
+
+When ClaimGate's `.venv` went missing on 2026-08-18, resolution fell through to the last entry and
+the mutation gate reported:
+
+    ERROR: /home/.../uv/tools/agent-gauntlet/bin/python3: No module named mutmut
+
+The message names the module. The cause is the venv. Nothing in the output says an interpreter
+fallback occurred, and the path is only a clue if you already know the resolution order — so the
+obvious reading, "mutmut got uninstalled," sends you to fix the wrong environment. Installing mutmut
+into Gauntlet's tool venv would even have made the error go away while leaving every other gate
+running against the wrong interpreter.
+
+**Diagnose it from the path, not the module.** If the interpreter in the error is Gauntlet's own,
+the project venv is the problem regardless of which module is named. `ls .venv/bin/python` settles
+it in one command.
+
+The gate failed correctly and that is worth noting separately: it reported `actual=None` and
+surfaced the error, rather than scoring zero or skipping. A mutation gate that passed quietly when
+its tool was missing would be the "green gate that checked nothing" failure in its purest form.
+
+### The toolchain that produces every gate result was undeclared until 2026-08-18
+
+`pyproject.toml` declared no dependencies at all — not `dependencies`, not
+`optional-dependencies`. Every tool the gates need had been installed into one venv by hand and
+recorded nowhere, so a fresh clone could not run `gauntlet check` and none of this project's
+recorded gate results were checkable by anyone, including their author. `gauntlet doctor` does not
+cover this: it verifies tooling is present in the current environment, not that the environment can
+be rebuilt.
+
+That matters here more than in an ordinary project, because the gate numbers *are* the evidence.
+Every figure in `QUEUE.md` — 213/213, 100% / 217 killed, 67 reviewed-equivalent — is a claim about
+the domain, and a claim nobody can reproduce is a weaker thing than it looks.
+
+Rebuilding the venv from scratch with current tool versions reproduced all three exactly, which
+turned those numbers from recorded into reproduced. Direct tools are now a `dev` extra in
+`pyproject.toml` and the exact versions are pinned in `requirements-dev.txt`. **Note that the
+package itself is never installed** — the root `conftest.py` puts `src/` on `sys.path` — so the
+install path that matches how this project actually runs is `uv pip install -r
+requirements-dev.txt`, not an editable install of `claimgate`.
+
 ## Process and technique
 
 Lessons about working with the harness rather than about the harness itself.
