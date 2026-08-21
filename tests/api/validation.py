@@ -1,5 +1,6 @@
 """Thin, stable test API over the validation domain area."""
 
+from collections.abc import Collection
 from datetime import date
 
 from claimgate.domain.models import Candidate, ValidationResult
@@ -11,6 +12,7 @@ def validate_record(
     now: date,
     claimant_name_required: bool,
     claimant_contact_required: bool,
+    recognized_policy_number_prefixes: Collection[str],
     policy_number: str = "",
     loss_date: date = date.min,
     loss_type: str = "",
@@ -33,6 +35,7 @@ def validate_record(
         now=now,
         claimant_name_required=claimant_name_required,
         claimant_contact_required=claimant_contact_required,
+        recognized_policy_number_prefixes=recognized_policy_number_prefixes,
     )
 
 
