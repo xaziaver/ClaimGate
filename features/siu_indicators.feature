@@ -121,6 +121,32 @@ Feature: SIU indicators
       When SIU indicators are computed for the candidate FNOL record
       Then the recent policy inception indicator is NOT_EVALUATED with reason NO_THRESHOLD_CONFIGURED
 
+    # The missing input outranks the missing rule: a threshold cannot help
+    # without a date to apply it to, so when neither is present the reason
+    # names the date, not the threshold. Deferred as unreachable while the
+    # recent-inception threshold was a fixed, always-supplied value; item 2
+    # removed that default, making the threshold caller-supplied and
+    # reachable in this state. Nothing else protects the ordering - a
+    # reordering of the two checks would fail no test, because mutation
+    # testing generates value substitutions, not statement reorderings.
+    #
+    # This scenario is the fourth corner of a 2x2 (date known/unknown x
+    # threshold configured/absent) and, paired against the scenario just
+    # above, is what proves the ordering rather than merely restating it:
+    # same threshold state (absent) in both, coverage date present above and
+    # absent here, and the reason code changes - NO_THRESHOLD_CONFIGURED
+    # there, NO_CONTINUOUS_COVERAGE_DATE here. A later reader pruning either
+    # row would remove the proof along with it.
+    Scenario: Neither recent policy inception input is present
+      Given the loss date is "2026-06-15"
+      And no late reporting threshold is configured
+      And no recent policy inception threshold is configured
+      And no continuous coverage date is known
+      When SIU indicators are computed for the candidate FNOL record
+      Then the late reporting indicator is NOT_EVALUATED with reason NO_THRESHOLD_CONFIGURED
+      And the recent policy inception indicator is NOT_EVALUATED with reason NO_CONTINUOUS_COVERAGE_DATE
+      And no other SIU indicator is present
+
   Rule: A continuous coverage date after the loss date does not indicate recent policy inception
 
     # Specifies a lower-bound guard the implementation already had and no
