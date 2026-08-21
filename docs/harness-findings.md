@@ -397,6 +397,42 @@ a shared approval reason would have to cover, not just the survivors.**
 Survivor counts in this entry are simulated against the rule, not measured — survivors cannot be
 measured until the implementation exists.
 
+### An expensive file-rewriting gate inside an automatic retry loop is the highest-risk state here
+
+The acceptance gate mutates spec files in place and takes ~230s. On a reopening it is *guaranteed*
+red between the spec draft and its implementation. The stop hook retries a failing run — observed at
+2, 5, and 7 attempts across item 4g and 4j sessions, against states that could not go green.
+
+Whether that is harmful depends entirely on which stage fails. An unapproved-spec failure
+short-circuits at the approval check in ~0.001s, before any mutation runs, so retrying it is merely
+slow. A failure that reaches the mutation pass rewrites the file once per attempt, and each attempt
+is an opportunity to be interrupted mid-mutation — which is exactly how the corrupted spec of
+2026-08-17 was produced.
+
+So the hazard is not "the loop retries," it is **"the loop retries something that rewrites files."**
+Instructing an agent to run the gate once does not prevent it; the loop is the harness's, not the
+agent's. If the attempt limit is configurable, set it to 1 for reopening work. Otherwise, sequence
+so the guaranteed-red state fails at the approval stage rather than the mutation stage — draft the
+spec, leave it unapproved, and let the cheap failure be the one the loop repeats.
+
+### `registry.save` is not atomic, and the ledger is the one artifact no gate can rebuild
+
+`registry.save` ends in `path.write_text(...)` — no temp file, no atomic rename. An interrupt during
+`gauntlet spec approve` or `gauntlet mutant approve` can leave `gauntlet.lock.json` truncated, and
+every other artifact in this project can be regenerated while that one cannot: it is the record of
+human judgment.
+
+Procedural mitigation, since the write is not ours to fix: commit the ledger immediately before and
+immediately after an approval run, and never invoke an approval from a pasted multi-command block —
+a stray interrupt landing between two pasted commands is what makes this reachable at all. If
+`json.load` on the ledger raises, `git restore gauntlet.lock.json` recovers to the last commit and
+the approvals since then must be re-run.
+
+`mutant approve` prints one line per stamped mutant as it goes. That output is a usable scope check:
+the expected count, at the expected line numbers, naming the expected scenario, is the confirmation
+that `--scenario` matched what was meant. A short count is a mismatch and a long one is
+over-approval.
+
 ## Process and technique
 
 Lessons about working with the harness rather than about the harness itself.
@@ -698,3 +734,41 @@ narrower than the genuine empty cells in the same column.
 Also confirms two documented behaviours in one event: every killed run dies inside `acceptance`
 and leaves a corrupted spec, and `_discriminating_alternatives` drew the substitute (`""`) from
 other rows in the same column, as specified.
+
+### A long `--reason` belongs in a file, and a smart quote will eat the command silently
+
+Three consecutive `gauntlet mutant approve` invocations failed before anyone noticed why: the
+`--scenario` argument had a straight opening quote and a curly closing one (U+201D), so the shell
+never saw the string terminate, dropped to its `>` continuation prompt, and swallowed `--reason`
+along with everything after it. Nothing was approved and nothing errored — the only symptom was a
+prompt that looked like it was waiting for more input.
+
+Two habits remove the whole class:
+
+- **Put the reason in a file** and pass `--reason "$(cat /tmp/reason.txt)"`. This project's approval
+  reasons run to a paragraph or more and contain apostrophes, commas, and hyphens; inlining them
+  makes quoting the dominant failure mode of an operation that should be routine.
+- **Type the quotes around a scenario name by hand.** Anything routed through a document, a chat
+  client, or an editor with smart-quote substitution can silently convert them, and the resulting
+  failure does not name quoting as the cause.
+
+Verify by outcome rather than by absence of error: `mutant approve` prints one line per stamped
+mutant, so a silent command is a command that did not run.
+
+### Predicting a survivor count is a different act from measuring one, and both are useful
+
+Survivors cannot be measured until the implementation exists — the gate has to run the mutated spec
+against real code. But they can be *simulated* beforehand by enumerating `mutation.mutants()` and
+evaluating each mutated row against a model of the rule the spec describes. Done before a draft is
+approved, that turns "how many equivalence judgments will this cost the human" into a number
+available while the shape can still change.
+
+Used three times on item 4g and once on 4j, it changed the design each time: a combined outline at
+~31 survivors became two outlines at ~24, and a combined policy-number outline at ~13 became a split
+at 3 and 0. On implementation the gate reported exactly 24 and exactly 3.
+
+**Label which one a number is.** A simulation and a measurement are equally useful and not
+interchangeable: a simulation encodes a model of the rule, so a large gap between prediction and
+gate output means the implementation and the specification's intent have diverged — which is
+information, but only if the prediction was recorded as a prediction. A guess reported as a
+measurement destroys that signal.

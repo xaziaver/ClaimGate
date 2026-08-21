@@ -96,7 +96,9 @@ or data. Nothing below was confirmed against a live book.
 - **Recent-inception reason-code precedence when both required inputs are absent.** When
   `compute_siu_indicators` is called with no recent-inception threshold configured *and* no policy
   inception date known, the recent policy inception indicator resolves `NOT_EVALUATED` with reason
-  `NO_POLICY_INCEPTION_DATE`, not `NO_THRESHOLD_CONFIGURED`. Principle: the reason code names the gap
+  `NO_CONTINUOUS_COVERAGE_DATE`, not `NO_THRESHOLD_CONFIGURED`. (The code was
+  `NO_POLICY_INCEPTION_DATE` when this entry was written; item 4d renamed both the field and the
+  code — see the ratified entry below.) Principle: the reason code names the gap
   that would still block evaluation if the other were closed. With no inception date known,
   configuring a threshold changes nothing — reporting `NO_THRESHOLD_CONFIGURED` would name a gap
   whose closure would not help, and would imply a fix that is not one. The missing input outranks
@@ -105,10 +107,18 @@ or data. Nothing below was confirmed against a live book.
   this reopening; the new `threshold_days is None` check was appended after it to satisfy mypy's
   type narrowing, with no thought given at the time to which reason code should win. Reviewed and
   confirmed correct against the principle above on a later pass, not left as the accident that
-  produced it. No scenario specifies this in `siu_indicators.feature` — the combination is
-  unreachable in the shipped configuration, where the recent-inception threshold is always a real,
-  kept value of 30. Reachable in phase 2 once thresholds come from jurisdiction config rather than a
-  fixed value — see PHASE2_DESIGN.md's SIU handling section.
+  produced it.
+
+  **Corrected 2026-08-18: it is reachable now, and the scenario is owed.** This entry and
+  `PHASE2_DESIGN.md`'s SIU handling section both deferred the scenario on the premise that the
+  recent-inception threshold is "always a real, kept value of 30" in the shipped configuration. Item
+  2 removed both SIU threshold defaults, so the threshold is caller-supplied and may be absent —
+  `siu_indicators.feature`'s "No recent policy inception threshold configured" scenario proves it —
+  and a caller omitting it for a candidate with no coverage date reaches the both-absent state
+  today. No scenario exercises it: every one of the nine supplies at least one of the two inputs. A
+  reordering of the two checks would fail no test, and mutation testing does not generate statement
+  reorderings, so the precedence is protected by `siu.py`'s "Do not reorder these checks" comment
+  and by nothing else. Sequenced as `QUEUE.md` item 4k, before phase 2.
 - **Severity assignments for the new perils (`hurricane`, `sinkhole`, `roof_leak`) — decided
   2026-08-13, documentation-only session on `main`, no branch/spec/implementation yet (`QUEUE.md`'s
   merged item 4c).** `sinkhole` is `HIGH`: Florida prescribes an investigation process for sinkhole
@@ -287,14 +297,31 @@ or data. Nothing below was confirmed against a live book.
   627.70131(7)(a) gives 60 days from notice to pay or deny, and that clock does not pause for an
   indicator — a claim parked in an SIU queue is a claim running out of statutory time. Routing to
   a queue literally named `siu_review` also makes SIU status visible in ordinary routing data.
+  **Resolved by the item 1 merge (`7f985e7`, 2026-08-09):** queue routing derives from severity
+  alone, `SIU_QUEUE` and the `siu_review` string are gone from `src/`, and SIU indicators are not a
+  field on `TriageOutcome`. The name survives in one place only — a comment in `triage.feature`
+  recording why routing to a queue so named would leak SIU status — which is the argument, not the
+  behaviour.
 - **Late reporting fires at 30 days against a one-year statutory notice window** (627.70132(2)).
   Flags a large share of a legitimate Florida property book — roof damage surfaces when a ceiling
   stains, hurricane claims arrive over months. Legally sensitive: treating a claimant's exercise of
   a statutory right as grounds for suspicion reads badly in a FLOIR market conduct exam.
   Consequence noted below: this indicator is currently unusable.
+  **Partly resolved by the item 2 merge (`9d3fc2d`, 2026-08-10):** the 30-day value is no longer a
+  domain default — the late-reporting threshold is caller-supplied with no fallback, and
+  `siu_indicators.feature` states it as an explicitly illustrative value rather than a rule. The
+  *legal* question the entry raises is untouched by that and stays open below, under "Replacement
+  for the 30-day late-reporting threshold." Removing the default made the threshold nobody's
+  silent inheritance; it did not decide what a defensible value is.
 - **`siu_flags.feature` framing** characterizes system output as a fraud conclusion — in the title
   ("SIU fraud indicators"), the narrative ("I need to flag fraud-prone patterns"), and the
   "regardless of whether the claim is otherwise valid" line.
+  **Resolved by the item 2 merge (`9d3fc2d`, 2026-08-10):** the file is now
+  `features/siu_indicators.feature`, retitled and renarrated, and the domain type is
+  `SiuIndicatorResult`, carrying a value and a reason code rather than a pair of booleans named for
+  a conclusion. The filename `siu_flags.feature` is retained in this entry deliberately — it is what
+  the defect was found in, and renaming it here would make the record unsearchable against its own
+  history. Nothing outside this file's historical entries should still refer to it.
 - **`duplicates.feature` framing and gaps.** States a preventive purpose ("the same loss is not
   opened twice"), but duplicates are non-blocking evidence, and a second claimant on one loss is
   not a duplicate at all. The matcher does not know about `notice_type`, so a declared
@@ -329,7 +356,9 @@ or data. Nothing below was confirmed against a live book.
   currently limits this direction in practice, not a rule that guarantees it — the same missing
   phase-3 input the `NO_EXISTING_CLAIM_NOTICE_TYPE` reason code names (the existing claim's own
   coverage/notice type, unavailable at intake) appearing on the other side of the comparison.
-  Recording only, not fixing in this item.
+  Recording only, not fixing in this item. **Still open as of 2026-08-18** — item 3 merged the
+  candidate-side guard and this reverse direction was explicitly out of its scope; it needs the
+  phase-3 input, so it is not schedulable before then.
 - **Loss type vocabulary, policy number prefixes, and example data across all four feature files
   reflect a multi-line liability book**, not this one: `AU`/`CP`/`CA`/`GL` prefixes,
   `auto_collision` and `auto_comprehensive` loss types, auto policy numbers throughout the
@@ -345,11 +374,15 @@ or data. Nothing below was confirmed against a live book.
   `CA-1234567`, and `GL-1234567` as `POLICY_NUMBER_MALFORMED` rather than passing — kept as explicit
   rows rather than folded into the outline's existing malformed-prefix catch-all, because they
   document which lines this book does not write. Nothing else in `validation.feature`'s own example
-  data still reflects a multi-line book. What genuinely remains open: what the recognized set grows
-  to next (`DP`, then `MH`) is still an open question recorded at `QUEUE.md` item 4b, not decided by
-  this merge; and the number *shape* — two letters, a hyphen, seven digits — is untouched by either
-  merge and stays open below, under "`POLICY_NUMBER_PATTERN` encodes a carrier fact in the domain
-  layer."
+  data still reflects a multi-line book.
+
+  **Amended by the item 4j merge (`22d672e`, 2026-08-18):** the recognized prefix set is now
+  caller-supplied configuration rather than a narrowed constant, so "which lines this book does not
+  write" stopped being a fact the specification states — it is one configured set among others. The
+  four explicit rows were reduced to a single representative excluded prefix, and the question of
+  what the set grows to next dissolved with them: a deployment configures whatever it writes. The
+  number *shape* — two letters, a hyphen, seven digits — is untouched by any of these merges and
+  stays open below, under "`POLICY_NUMBER_PATTERN` encodes a carrier fact in the domain layer.""
 - **"injury" is modelled as a peril rather than a Section II liability coverage.** `loss_type` is
   also single-valued, so a hurricane loss where someone was hurt cannot be represented.
 - **Loss amount affects severity only for theft.** A $50,000 water loss and a $500 water loss
@@ -467,7 +500,9 @@ or data. Nothing below was confirmed against a live book.
   source.** The gates are correct and the input is fictional; that distinction belongs on the
   record, not just in this file.
 - **Advisor-recommended, human-ratified, 2026-08-15: the SIU reason code `NO_POLICY_INCEPTION_DATE`
-  is renamed `NO_CONTINUOUS_COVERAGE_DATE`, in the spec draft so far, not yet implemented.** It names
+  is renamed `NO_CONTINUOUS_COVERAGE_DATE` — implemented and merged at item 4d (`36ae5b3`,
+  2026-08-15); this entry read "in the spec draft so far, not yet implemented" until 2026-08-18.**
+  It names
   the same date the rest of item 4d's vocabulary rename retitled everywhere else in
   `siu_indicators.feature` and `triage.feature`; leaving it would have the record assert a value
   named for exactly the artifact the rename exists to stop naming. Nothing consumes this value as
@@ -476,8 +511,8 @@ or data. Nothing below was confirmed against a live book.
   it: before any consumer, human or system, comes to depend on the old spelling. The reason-code
   enumeration stays closed and unchanged in membership: `NO_THRESHOLD_CONFIGURED` and (now)
   `NO_CONTINUOUS_COVERAGE_DATE` are still the complete set, per `CLAUDE.md`'s reason-code-enumeration
-  constraint — this is a rename, not an addition. `src/claimgate/domain/siu.py`'s constant is
-  unchanged until implementation follows the lock.
+  constraint — this is a rename, not an addition. `src/claimgate/domain/siu.py`'s constant followed
+  the lock and now reads `NO_CONTINUOUS_COVERAGE_DATE`.
 
 ## Open decisions
 
@@ -496,8 +531,9 @@ or data. Nothing below was confirmed against a live book.
   hurricane claim where someone was also hurt has nowhere to go today (see the related defect
   already recorded above, "'injury' is modelled as a peril rather than a Section II liability
   coverage"). Two real behaviors are keyed on this single field carrying both kinds of fact at
-  once: `validation.py`'s `_check_injury_fields` branches on `loss_type != "injury"` to decide
-  whether injured-party fields are required, and `triage.py`'s high-severity set is
+  once: `validation.py`'s `_check_claimant_fields` branches on membership in
+  `_SECTION_II_LOSS_TYPES` to decide whether claimant fields are required, and `triage.py`'s
+  high-severity set is
   `{"injury", "fire"}` — a peril and a coverage category in the same frozenset because `loss_type`
   has nowhere else to put either one. Real carriers capture cause of loss and claim/coverage type
   as separate fields. This is the same shape of question `PHASE2_DESIGN.md` already raises for
@@ -506,6 +542,31 @@ or data. Nothing below was confirmed against a live book.
   a defect: nothing here is wrong today, and `QUEUE.md` item 4c (missing perils) should not assume
   an answer to whether `loss_type` eventually splits into separate peril and coverage-type fields —
   adding perils is orthogonal to, and shouldn't presume the outcome of, that split.
+
+  **Item 4g sharpened this rather than resolving it, 2026-08-17.** The branch it names was
+  `_check_injury_fields` testing `loss_type != "injury"`; it is now `_check_claimant_fields` testing
+  membership in `_SECTION_II_LOSS_TYPES`, which is `{"injury", "liability"}`. The specification now
+  *names* the Section I / Section II division explicitly and the code enforces it, so the conflation
+  is no longer implicit — but the field is still single-valued and still carries both kinds of fact,
+  so a hurricane loss with an injury still has nowhere to go. What changed is that the split now has
+  a name and one enforced consumer, which makes it cheaper to act on later and easier to mistake for
+  having been dealt with.
+
+  **The intended direction, stated 2026-08-17 and deliberately not built.** Under the
+  general-product framing, the recognized loss-type set is no longer a fact about one book: the
+  shape is a full catalogue shipped with the product from which a carrier selects in its
+  configuration, the same pattern items 4g and 4j establish. Not queued, and that is a judgment
+  rather than an oversight — a narrow set that works end to end is worth more than a configurable
+  one that does not run, and the mechanism should be designed once against phase 2's adapter shape
+  rather than twice.
+
+  **Two things to settle when it is built, both of which a single flat catalogue would hide.**
+  First, this entry's own point: a carrier selecting from one list would be answering "which perils
+  do we accept" and "do we write Section II at all" with the same mechanism, and those are different
+  questions that probably want different configuration surfaces. Second, loss type is not coverage —
+  a coverage is what the policy insures, a loss type is what happened — and a configuration
+  described as "coverages" that actually selects loss types would be the same wrong-lookup defect
+  items 4d and 4g each cost a session to remove.
 
 - **`POLICY_NUMBER_PATTERN` encodes a carrier fact in the domain layer, and item 4b narrows the
   prefix set without resolving that.** The regex asserts one numbering *shape* — two letters, a
@@ -528,6 +589,19 @@ or data. Nothing below was confirmed against a live book.
   well-formed is a fact about the carrier's own numbering scheme, which belongs to phase 2's adapter
   layer, where carrier differences are designed to live — not to a single domain-wide pattern.
   Recording only: not fixed in item 4b, and not part of 4b's spec change.
+
+  **Half-resolved by the item 4j merge (`22d672e`, 2026-08-18), and the split was deliberate.** The
+  prefix *list* is now caller-supplied configuration with no default — the paragraph above argued
+  that parameterizing it alone "would not" resolve the concern, and that is exactly right and
+  exactly why it was done anyway: the list is a scalar set that a parameter genuinely resolves,
+  while the shape is not, and conflating them would have produced something reading as configurable
+  without being so. `POLICY_NUMBER_PATTERN` is now shape-only (`^([A-Z]{2})-\d{7}$`) with the
+  captured prefix checked against the configured set. **What remains open is exactly the harder
+  half:** two letters, a hyphen, seven digits is still a domain-wide assumption about how every
+  carrier numbers policies, and it is still structural rather than parametric. The generalization
+  away from a named estate strengthened this rather than changing it — with no estate, the shape has
+  nothing left justifying it, and phase 2's adapter layer is now the only defensible home. Do not
+  read 4j as having closed this entry.
 
 ## Synthetic data
 
