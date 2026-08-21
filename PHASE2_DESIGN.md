@@ -2,10 +2,15 @@
 
 Decided in conversation before any phase-2 code existed. Written as decisions with reasons, not a
 task list — the reasons are what stop a future maintainer reversing them without understanding
-what they'd be giving up. Nothing in this file is built yet; `features/validation.feature` and its
-implementation are the only piece of phase 1/2 work that exists as code and gates today. Where a
-decision was never pinned down precisely enough to state with confidence, that's marked rather than
-guessed at.
+what they'd be giving up. Nothing in this file is built yet. Phase 1's domain core is: all four
+specifications under `features/` — validation, triage, SIU indicators, and duplicate detection — are
+hash-locked, implemented, and gated. Where a decision was never pinned down precisely enough to
+state with confidence, that's marked rather than guessed at.
+
+**This file predates phase 1's design-review corrections and was reviewed against them on
+2026-08-18.** Where a passage described phase-1 code, it now describes what is actually there.
+Where a passage's *reasoning* was affected, that is called out inline rather than silently
+rewritten, so a reader can see which decisions were re-examined and which were merely restated.
 
 ## Record state model
 
@@ -45,7 +50,10 @@ recomputed on any later transition.
 **Queue, severity, SIU indicators, and duplicate candidates are attributes, not states.** They are
 data carried by a `TRIAGED` notice; none of them is itself a place in the state machine. This
 directly reverses the phase-1 defect found in `triage.feature`, where an SIU indicator was a queue
-override rather than a parallel attribute — see the triage reopening in `QUEUE.md`.
+override rather than a parallel attribute. That reopening has since merged: `triage.feature`'s
+end-to-end scenario is now titled for the property it asserts — SIU indicators recorded separately
+and never affecting routing — so phase 2 inherits the corrected shape rather than having to impose
+it (`QUEUE.md` item 1).
 
 ## Audit log
 
@@ -222,8 +230,8 @@ administrator does not imply a shared group, and the schema has to tolerate the 
 `carrier_code` is **envelope, not notice content.** It's required on every request, validated
 against this reference list, and persisted on every notice and every audit entry — for
 attribution only. **It is never branched on.** An unknown or malformed `carrier_code` returns
-`400` and persists nothing: a notice for a carrier this estate doesn't administer creates no
-statutory duty here, so the always-accept rule doesn't extend to it. There's no notice to attribute
+`400` and persists nothing: a notice for a carrier this deployment isn't configured to administer
+creates no statutory duty here, so the always-accept rule doesn't extend to it. There's no notice to attribute
 an audit entry to in that case; the rejection is logged operationally, not in the notice audit
 trail. This is the concrete form of "carrier identity is data, carrier behavior is configuration" —
 if any phase-2 code path reads `carrier_code` to make a decision, that's carrier logic leaking into
@@ -264,6 +272,12 @@ fields vary by notice type**, and `LOSS_ASSESSMENT` — needing the assessment-v
 the assessment amount that no other type requires — is the likely first case that voids it. When
 that lands, re-run those mutants rather than carrying the approval forward.
 
+**Checked 2026-08-18 and not voided.** `QUEUE.md` item 4g made required fields vary — by *loss
+type* and by carrier configuration, not by notice type — so the trigger as written has not fired
+and the four approvals stand. Recorded here because the next reader to meet item 4g and then this
+trigger would otherwise have to re-derive that, and the axis distinction is the whole of the
+answer: notice type still has no effect on validation outcome.
+
 ## Swappability proofs
 
 The design's central claim is easy integration across policy administration systems and
@@ -279,6 +293,16 @@ artifacts proving the *absence* of hardcoding, not new features:
 
 If either test turns out to be hard to write, that difficulty is itself the finding to report — the
 test must not be bent to make it pass.
+
+**What phase 1 already settled, and what these tests therefore still have to prove.** When this
+section was written, "carrier identity is data, never behavior" was a claim the domain had not been
+made to honor. It now does: the SIU thresholds, the duplicate-detection window, the Section II
+claimant-field requirements, and the recognized policy-number prefix set are each caller-supplied
+with no default and no fallback, so a carrier difference cannot reach a domain conditional because
+there is nothing in the domain left to condition on. These two tests are consequently no longer the
+whole argument — they are the *adapter-layer* half of it. What remains genuinely unproven, and what
+they exist to establish, is that the shell can carry a second carrier set and a second jurisdiction
+ruleset through to those parameters without a branch of its own.
 
 ## Pending resolution and tolling
 
@@ -350,13 +374,19 @@ transition history).
    `NO_CONTINUOUS_COVERAGE_DATE` over `NO_THRESHOLD_CONFIGURED` when both the recent-inception
    threshold and the continuous coverage date are missing — the missing input outranks the missing
    rule; see ASSUMPTIONS.md's carried-requirements entry for the full principle. Unreachable and
-   unspecified today because the recent-inception threshold is a fixed, always-supplied value of 30
-   in the shipped phase-1 configuration. It becomes reachable once thresholds are sourced from the
-   jurisdiction config described under "Jurisdiction axis" above: a jurisdiction whose config omits
-   the recent-inception threshold, combined with a notice carrying no inception date, reaches this
-   exact state for real. A `siu_indicators.feature` scenario specifying the precedence is required
-   when that lands — not before, since a scenario for a combination the shipped system cannot
-   produce would assert behavior nothing can exercise.
+   unspecified today.
+
+   **Corrected 2026-08-18: it is no longer unreachable, and the scenario is now owed.** The original
+   deferral rested on the recent-inception threshold being a fixed, always-supplied value of 30.
+   `QUEUE.md` item 2 removed both SIU threshold defaults, so the threshold is caller-supplied and
+   may be absent — `siu_indicators.feature`'s "No recent policy inception threshold configured"
+   scenario proves it. The both-absent combination is therefore producible by the shipped system
+   today, and no scenario exercises it: every existing scenario supplies one of the two inputs.
+   The precedence is currently protected by a comment in `siu.py` reading "Do not reorder these
+   checks" and by nothing else — a reordering would not fail any test, and mutation testing does not
+   generate reorderings, so no gate can see it. This is the same shape as the unasserted lower-bound
+   guard that mutation testing caught during the triage reopening, arriving where mutation cannot
+   help. Sequenced in `QUEUE.md`, not here.
 
 A Gherkin scenario asserting SIU indicators are absent from both response bodies is required — a
 cheap negative assertion that catches a regression the moment someone adds a field carelessly.
@@ -364,8 +394,10 @@ cheap negative assertion that catches a regression the moment someone adds a fie
 **Indicators are factual observations with codes only. Never a conclusion, and never the literal
 word "fraud" as a system-generated value** — a system-generated fraud characterization reaching a
 reporter is a defamation and bad-faith exposure, not just a design inelegance. This is a live defect
-today: `siu_flags.feature`'s own title and narrative violate it (see `QUEUE.md`), and the domain's
-`SiuFlags(late_reporting, recent_policy_inception)` type — as it exists right now inside
-`triage.feature`'s in-progress reopening — is a step toward this design but is not yet the separate
-persisted table and allow-list serializer described above; those are phase-2-shell work that hasn't
-started.
+today. **Both halves of that sentence have since been corrected and it is recorded here as history,
+not as an open defect:** the specification was renamed to `siu_indicators.feature` and its narrative
+rewritten, and the domain type is now `SiuIndicatorResult`, which carries a value and a reason code
+rather than a pair of booleans named for a conclusion (`QUEUE.md` items 1 and 2, both merged). What
+remains outstanding is unchanged and is phase-2-shell work that hasn't started: the separate
+persisted table and the allow-list serializer described above. The vocabulary discipline itself
+still binds — an indicator is a factual observation with a code, never a conclusion.
