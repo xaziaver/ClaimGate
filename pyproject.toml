@@ -3,6 +3,21 @@ name = "claimgate"
 version = "0.1.0"
 requires-python = ">=3.12"
 
+[project.optional-dependencies]
+# The toolchain every Gauntlet gate shells out to, all invoked as `python -m`
+# against this project's .venv — see gauntlet/adapters/python.py's interpreter()
+# resolution order. jscpd is the one exception: the duplication gate calls it
+# directly, so it comes from Node and is not listed here.
+dev = [
+    "pytest",
+    "pytest-bdd",
+    "pytest-cov",
+    "coverage",
+    "mutmut",
+    "mypy",
+    "ruff",
+]
+
 [tool.pytest.ini_options]
 addopts = "--ignore=mutants"
 
