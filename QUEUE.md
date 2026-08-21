@@ -74,7 +74,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     not only examples. *Open question for that item, not to be answered now: what the recognized set
     becomes. Policy numbering is carrier-specific with no industry standard. Candidates are `HO`
     plus `DP` (dwelling fire, common on Florida residential books for landlord and
-    non-owner-occupied risks), possibly `MH` if the estate writes manufactured housing. Note that
+    non-owner-occupied risks), possibly `MH` where a configured book writes manufactured housing. Note that
     `LOSS_ASSESSMENT` notices already imply condo risks are in this book whether or not a prefix
     distinguishes them.*
 4c. **Missing perils (`hurricane`, `sinkhole`, `roof_leak`) merged with the severity-rule thresholds
@@ -185,7 +185,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     because of. The fix belongs at intake validation, where an unrecognized value already becomes a
     blocker for every other required field, not inside severity assignment, which has no way to
     refuse a record at all.
-4g. **Section II completeness for liability losses.** `_check_injury_fields` keys on
+4g. **Section II completeness for liability losses.** *(Done — see below.)* `_check_injury_fields` keys on
     `loss_type == "injury"` exactly, so a bare liability notice passes intake with no claimant
     details. Item 4e recognized `liability` and deliberately did not close this; `ASSUMPTIONS.md`
     records the underlying modelling defect. Ready to spec — every decision this item needs is now
@@ -282,7 +282,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     the two sets disagreeing while each module's own tests still pass — is only reachable by a
     coordinated edit across two files, which single-point mutation never produces. See
     `docs/harness-findings.md`'s "Process and technique" section for the general form of this finding.
-4i. **`the reason codes are "..."` cannot express an empty expectation.** The step splits its
+4i. **`the reason codes are "..."` cannot express an empty expectation.** *(Done — see below.)* The step splits its
     expected string on `;`; an empty string does not split into an empty list — `"".split(";")` is
     `[""]`, not `[]` — so a scenario asserting zero reason codes against this step would compare a
     one-element list of empty string against the real, empty result and fail on a false mismatch.
@@ -301,7 +301,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     rather than staying latent. The spec draft commit stays spec-only per `CLAUDE.md`; the step fix
     belongs with the implementation.
 4j. **The recognized policy-number prefix set is carrier configuration, not a domain constant.**
-    Item 4b narrowed `POLICY_NUMBER_PATTERN` to `HO` alone, justified as "a carrier scope decision —
+    *(Done — see below.)* Item 4b narrowed `POLICY_NUMBER_PATTERN` to `HO` alone, justified as "a carrier scope decision —
     `HO` is what's confirmed today," where what confirmed it was a named carrier estate that is no
     longer this project's target (`ASSUMPTIONS.md`, "ClaimGate is a general product"). The behaviour
     stands as the shipped configuration's scope; the justification does not, and a reader will take
@@ -321,6 +321,39 @@ Ordered by domain severity, not by effort. One line each on why that position.
     configured book does not write. Whether those rows survive as example data or become
     configuration-dependent is the first question this item's spec has to answer, and it decides
     whether the outline stays mixed-outcome, which is what keeps its mutants killed (item 4e).
+
+4k. **The SIU reason-code precedence when both recent-inception inputs are absent is reachable,
+    unasserted, and invisible to every gate.** `_evaluate_recent_inception` checks the continuous
+    coverage date before the threshold, so when both are missing the result is
+    `NO_CONTINUOUS_COVERAGE_DATE` rather than `NO_THRESHOLD_CONFIGURED` — the missing input outranks
+    the missing rule, because a threshold cannot help without a date. `siu.py` carries a comment
+    saying so and ending "Do not reorder these checks." That comment is the only thing protecting
+    the ordering.
+
+    **Nothing asserts it.** All nine scenarios in `siu_indicators.feature` supply at least one of
+    the two inputs: "No continuous coverage date known" supplies the threshold, "No recent policy
+    inception threshold configured" supplies the date, and "No late reporting threshold configured
+    and no continuous coverage date known" supplies the recent-inception threshold explicitly. A
+    reordering of those two checks would fail no test, and mutation testing does not generate
+    statement reorderings, so no gate can see it. Mutation is what caught the comparable unasserted
+    lower-bound guard during item 2's reopening; here it cannot help, which is why this needs a
+    scenario rather than a stronger threshold.
+
+    **`PHASE2_DESIGN.md` deferred this on a premise that has since expired,** and the entry there is
+    corrected as of 2026-08-18. It reasoned that the combination was unreachable because the
+    recent-inception threshold was "a fixed, always-supplied value of 30." Item 2 removed both SIU
+    threshold defaults, so the threshold is caller-supplied and may be absent — the "No recent
+    policy inception threshold configured" scenario proves it — and a caller omitting the threshold
+    for a candidate carrying no coverage date reaches this state today.
+
+    **Sequenced before phase 2, not during.** It is a phase-1 domain gap, the specification work is
+    one scenario, and phase 2's jurisdiction-config work is specifically what will start producing
+    the omitted-threshold case in volume. Inheriting an unasserted precedence rule into the phase
+    that begins exercising it is the wrong order. Blocked on nothing.
+
+    *Blast radius, not yet measured.* One added scenario to `siu_indicators.feature`, which holds
+    four of the ledger's 67 approvals across three scenarios. A new scenario adds locators rather
+    than moving existing ones, so no restale is expected — confirm rather than assume.
 
 5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
    been swept for the defects above, not on top of ones still waiting to be found. Full design for
@@ -342,6 +375,7 @@ later.
 | 4g | `ASSUMPTIONS.md` — "Carrier-varying rules are caller-supplied configuration", "Item 4g's Section II required-field set", "ClaimGate is a general product" |
 | 4i | this item's own entry; no other document needed |
 | 4j | `ASSUMPTIONS.md` — the same three entries as 4g, plus the `POLICY_NUMBER_PATTERN` open decision |
+| 4k | `ASSUMPTIONS.md` — the carried-requirements entry on reason-code precedence; `PHASE2_DESIGN.md`'s "SIU handling" item 5 |
 | 5 (phase 2) | everything, `PHASE2_DESIGN.md` first |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
@@ -440,7 +474,7 @@ narrows from `HO|AU|CP|CA|GL` to `HO` alone; `AU-1234567`, `CP-1234567`, `CA-123
 HO-only is a carrier scope decision, not a value with statutory or industry-standard support behind
 it — policy numbering is carrier-specific, and `HO` is what's confirmed today. `DP` (dwelling fire,
 common on Florida residential books for landlord and non-owner-occupied risk) is the next candidate
-if the estate turns out to write that line, and `MH` (manufactured housing) after that — both
+where a configured book writes that line, and `MH` (manufactured housing) after that — both
 excluded now for want of evidence, not by a judgment against them. An unrecognized prefix is a
 blocker like any other malformed policy number, not a refusal: the notice still lands `PENDED`,
 never a rejected or discarded state, per `CLAUDE.md`'s state-model constraint. `validation.feature`'s
@@ -587,26 +621,84 @@ dead-symbol comment did. `gauntlet check` passes on `main` post-merge (198/198 t
 100%/204 killed, 4 specs / 0 surviving / 40 reviewed-equivalent / 0 stale — mutation score unchanged
 from before this reopening, expected per the entry's own explanation above, not a sign of drift).
 
-**Item 4g's decisions are made, and were revised on 2026-08-17 — documentation-only sessions on
-`main`, no branch, no spec, no implementation yet.** The 2026-08-16 session settled the shape:
-required-field sets vary by coverage category with the universal four as the overlap; this item is
-Section II only, since Section I has no model fields to require yet; the injured-party fields rename
-to `claimant_name`/`claimant_contact`/`incident_description`; the "Non-injury losses" scenario title
-needs renaming as part of the same spec; Coverage E/F are deliberately not sub-divided; and category
-derivation must reuse item 4h's enforcement pattern rather than add an unenforced third loss-type
-set. That session also decided contact stops blocking while name and description stay required —
-**superseded 2026-08-17**: name and contact are each caller-supplied configuration with no default,
-and `incident_description` is the only unconditionally required category field. The earlier decision
-fixed a carrier policy choice in the domain, which is what the configuration entry in
-`ASSUMPTIONS.md` forbids; making it configuration dissolved the question rather than answering it,
-since a book that holds claimant details at first notice and one that does not are both now
-expressible. Three scenario breaks the 2026-08-16 entry did not name were found and measured while
-revising it — see the item's own entry above. Item 4g is next in sequence and ready to spec.
+**Item 4g is done and merged to `main`** (merge commit `51f2956`, 2026-08-17), carrying item 4i with
+it. The Section II required-field set became carrier configuration: `claimant_name` and
+`claimant_contact` are each caller-supplied booleans with no default, `incident_description` is
+required unconditionally, and both `injury` and `liability` are covered. The three model fields were
+renamed from the injured-party vocabulary. `_SECTION_II_LOSS_TYPES` is held to
+`RECOGNIZED_LOSS_TYPES` by a direct unit-test assertion, reusing item 4h's mechanism rather than
+adding a second one. Item 4i's step definition now guards the empty case before splitting, matching
+its sibling — it landed in this item's implementation commit, as decided.
 
-**Item 4i, the `the reason codes are` empty-string gap, is added — see its own entry above.** Found
-while drafting item 4e's spec, latent (nothing in the suite currently exercises it), not sequenced
-ahead of anything above it. Decided 2026-08-17 to fix the step definition rather than route around
-it in the spec, landing inside item 4g's implementation commit.
+**The decision this item shipped is not the one it started with.** The 2026-08-16 session settled
+that `claimant_contact` stops blocking while name and description stay required. That was superseded
+on 2026-08-17: fixing a carrier policy choice in the domain is what the configuration entry in
+`ASSUMPTIONS.md` forbids, and making both fields configuration dissolved the question rather than
+answering it — a book that holds claimant details at first notice and one that does not are now both
+expressible, so there is no shipped answer to be wrong about.
+
+**Three scenario breaks the original entry did not name were found by measurement, not by reading.**
+The `liability` row in the loss-type recognition outline asserted an empty blockers cell that went
+false; "Multiple missing claimant fields" and "A later-canonical subset" both built their blockers
+from a field that stopped blocking, and both keep true titles while their bodies break — which is
+why nothing flagged them. See the item's own entry above.
+
+**The spec took three drafts, and the second and third are the instructive ones.** The first draft
+measured correctly and still under-specified the item: every scenario asserting a claimant-field
+blocker used `injury`, all three mentioning `liability` asserted no blockers, and an implementation
+keying on `loss_type == "injury"` would have passed it unchanged. It also stated the configuration
+in unquoted fixed `Given` lines, which generate no mutants at all — so the subject of the entire
+item was outside mutation's reach while the count rose from 116 to 122 and looked like growth. The
+second draft fixed both and produced one eleven-row outline carrying a `loss_type` column, which
+simulated at ~31 surviving mutants: the rule is symmetric across `injury` and `liability` by design,
+so every swap in that column is inert. The third split it into two six-row outlines with the loss
+type fixed per outline, which removed that column entirely. **The deciding argument was reason
+granularity, not the count**: `gauntlet mutant approve` scopes only by feature file and
+`--scenario`, so thirty-one survivors in one scenario would have shared one reason spanning three
+unrelated equivalence arguments — item 4c's recorded failure at triple scale.
+
+**Final shape:** `features/validation.feature` 116 -> 178 mutants; 24 surviving, 12 per outline,
+confined to the configuration-flag and field-value columns with none in `description` or `blockers`.
+Predicted at 24 before implementation and measured at 24 after, which is the check that the
+implementation reads the configuration the way the specification means it. `gauntlet check` passes
+on `main` post-merge (213/213 tests, mutation 100%/209 killed, 4 specs / 0 surviving / 64
+reviewed-equivalent / 0 stale).
+
+**One defect was caught in review and fixed before the merge:** the implementation added
+`DEFAULT_CLAIMANT_NAME_REQUIRED` and `DEFAULT_CLAIMANT_CONTACT_REQUIRED` to the step definitions and
+read them through `context.get()`. The domain honored the no-default constraint and the harness
+reinstated exactly what items 2 and 3 were merged to remove. It was inert at the time — every
+Section II scenario stated its configuration — but a future scenario that forgot the `Given` would
+have silently passed for the wrong reason, invisibly: step files are not covered by the spec digest,
+and the code-mutation gate only mutates `src/`. The fix moved the values into `features/validation.feature`'s
+`Background`, where they are approved, visible, and digest-covered, and made the step read the
+context directly so a missing configuration raises. **Measured before recommending: `Background`
+steps are collected into their own list and never walked by `mutants()`, so the count stayed at 178
+and no locator moved.** A configuration value belongs in the specification, not in a constant beside
+the code that reads it.
+
+**Item 4j is done and merged to `main`** (merge commit `22d672e`, 2026-08-18). The recognized
+policy-number prefix set is now a caller-supplied collection with no default; `POLICY_NUMBER_PATTERN`
+drops its hardcoded `HO` and becomes shape-only, with the captured prefix checked against the
+configured set. An unrecognized prefix still resolves `POLICY_NUMBER_MALFORMED` — no new reason code,
+no unrecognized-configuration branch. The number *shape* stays a domain constant, per
+`ASSUMPTIONS.md`'s open decision that it is structural and belongs to phase 2's adapter layer.
+
+**Its specification was split for the reason item 4g established, applied before the cost was
+incurred rather than after.** A single outline carrying the configured set as a column beside the
+digit-count, case, and separator rows simulated at ~13 survivors: on a row testing `HO-ABCDEFG` the
+configured set is inert, because the number is malformed whatever the set holds. Splitting into
+"Policy number prefix recognition, by configuration" and "Policy number shape" — the latter with the
+set fixed in a `Given`, which mutation never reaches — gave 3 survivors and 0. Both were measured
+before the draft, not after. The `AU`/`CP`/`CA`/`GL` rows were reduced to one representative excluded
+prefix: under configuration, "documents which lines this book does not write" is no longer a fact the
+specification states, and four same-outcome rows would have bought equivalent-mutant approvals for
+nothing new.
+
+`features/validation.feature` 178 -> 180 mutants; 3 surviving, all in the prefix-recognition outline,
+zero in the shape outline — which is itself the check that the two rules stayed separate.
+`gauntlet check` passes on `main` post-merge (212/212 tests, mutation 100%/217 killed, 4 specs / 0
+surviving / 67 reviewed-equivalent / 0 stale).
 
 **ClaimGate is generalized away from a named carrier estate** (merge commit `ef90c77`, 2026-08-17).
 The project was designed against a specific three-carrier Florida residential property estate; that
@@ -625,8 +717,7 @@ and signature byte-identical, all 40 mutant approvals untouched. A re-approval, 
 configuration decisions — because the block to replace was identified by line number against a view
 of the file taken before an earlier commit had shifted it. Caught by grepping the branch for the
 entries the queue cross-references, restored at `141f799` before the merge. Locate a block to
-replace by an anchor string, never by a line range. `ASSUMPTIONS.md` is 520 lines and holds three
-entries dated 2026-08-17; a session finding fewer should stop rather than proceed.
+replace by an anchor string, never by a line range.
 
 **A corrupted spec was found on `main` on 2026-08-17, before any of the above.** `gauntlet check`
 reported 197/198 tests and one modified, unapproved spec at 0.001s. Neither was a defect:
@@ -639,8 +730,22 @@ mutants in that scenario produce the identical id and the id alone cannot say wh
 Identify an injection from `git diff`, or by matching the signature against
 `mutation.mutants()` — never from the test id. See `docs/harness-findings.md`.
 
-**Current state, `main` at `ef90c77`.** `gauntlet check` passes. The ledger holds 40
-reviewed-equivalent mutant approvals across 4 specs plus 3 config paths, unchanged through the
-generalization; `features/validation.feature` yields 116 mutants, `features/duplicates.feature` 57.
-No reopening branch is open and no spec is unapproved. Item 4g is next, with item 4i folded into its
-implementation commit; item 4j follows it, blocked on nothing.
+**Documentation was corrected against phase 1's completed state on 2026-08-18** (commit `0114b45`).
+`README.md` still described a three-carrier estate as the design target and carried a disclaimer
+paragraph asserting that carrier names and NAIC identifiers in the repository were public regulatory
+information — directly contradicting `DISCLAIMER.md`, which the generalization had rewritten to say
+the opposite. `PHASE2_DESIGN.md` carried six stale claims about phase-1 code, including two dead
+symbol names in the paragraph arguing that SIU vocabulary must never harden into a conclusion:
+`siu_flags.feature`, renamed at item 2, and `SiuFlags(late_reporting, recent_policy_inception)`,
+replaced by `SiuIndicatorResult`. Item 4f's defect, in the document least able to afford it.
+
+**Current state, `main` at `0114b45`.** `gauntlet check` passes: 212/212 tests, code mutation
+100%/217 killed, acceptance 4 specs / 0 surviving / 67 reviewed-equivalent / 0 stale. The ledger
+holds 67 mutant approvals across 4 specs plus 3 config paths. `features/validation.feature` yields
+180 mutants, `features/duplicates.feature` 57. No reopening branch is open and no spec is
+unapproved.
+
+**Phase 1's domain core is complete.** Items 1 through 4j are merged. Item 4k is the only phase-1
+domain item outstanding and is sequenced before phase 2; the remaining documentation work is
+`ASSUMPTIONS.md`'s open-decision pass and `docs/harness-findings.md`'s banked entries. Item 5, the
+phase-2 build, follows.
