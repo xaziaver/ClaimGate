@@ -369,6 +369,38 @@ or data. Nothing below was confirmed against a live book.
   configuration file — but it shapes the spec, so it is recorded rather than left to whoever writes
   the loader.
 
+- **A missing configuration value and a malformed one are different reason codes -
+  advisor-recommended, human-ratified, 2026-08-22.** Your redraft widened `MISSING_REQUIRED_CONFIGURATION`
+  to `INVALID_REQUIRED_CONFIGURATION` so one code stayed honest across both cases. Widening is the wrong
+  direction. `validation.feature` settled this one layer down at item 4e, splitting
+  `LOSS_TYPE_UNRECOGNIZED` out of `MISSING_REQUIRED_FIELD` so a typo is not indistinguishable from a blank
+  field. The operational version is sharper here: an absent value means the carrier was never onboarded
+  into the rules file, a malformed one means it was onboarded wrongly. Different defects, different
+  people, different fixes, and the load boundary is the last point at which the system can tell them
+  apart. The codes are `CARRIER_NOT_CONFIGURED`, `MALFORMED_REQUIRED_CONFIGURATION` and
+  `MISSING_REQUIRED_CONFIGURATION`, a closed enumeration, in that canonical order - malformed before
+  missing, for the same reason `POLICY_NUMBER_MALFORMED` precedes `MISSING_REQUIRED_FIELD` in
+  `validation.feature`'s declared order. Cost: one more code, and the refusal's ordering must now be
+  specified rather than left implicit. Free today - measured at `5d37a4f`, the old name has five
+  occurrences, all inside this one unlocked spec file, no step definition, no `src/`, no ledger entry.
+
+- **A day count of zero is a valid configuration, not a malformed one -
+  advisor-recommended, human-ratified, 2026-08-22.** Malformed for a day count is non-integer or
+  negative. Zero is neither and it is meaningful: a duplicate match window of 0 compares only same-day
+  notices, a late reporting threshold of 0 makes every notice late, a recent policy inception threshold
+  of 0 counts only a same-day inception as recent. Each is a carrier choice a deployment might make
+  deliberately, and a configuration loader has no standing to refuse it. Whether it is sensible carrier
+  policy is a different question asked somewhere else. The spec carries a scenario on the accepting side
+  of that boundary, not only the refusing side.
+
+- **Example prefix sets use `HO` and `DP`, never `AU` - advisor-recommended, human-ratified,
+  2026-08-22.** Your example carrier recognizes `"HO;AU"`. `AU` is personal auto: a different line, and
+  no auto peril exists in `RECOGNIZED_LOSS_TYPES` - there is no collision or comprehensive value a notice
+  could carry. A claims manager reading a residential rules file configured for HO and AU reads it as a
+  configuration error, not an example. `DP` (dwelling fire) is the standard companion form on a Florida
+  residential book for landlord and non-owner-occupied risk, and item 4b already named it as the next
+  candidate prefix. Two prefixes are still two prefixes for what the example is doing.
+
 - **The per-carrier rules file is TOML, keyed by `carrier_code`, with one placeholder carrier —
   advisor-recommended, human-ratified, 2026-08-22.** Matching `gauntlet.toml` and `pyproject.toml`
   rather than introducing a second configuration format, and readable by `tomllib` in the standard
