@@ -974,3 +974,35 @@ proven configured and unconfigured; the refusal rows sit in one scenario so a si
 covers them; and both tables carry a loading row so the engine has a differing row to swap against.
 The draft also established that two of the six caller-supplied values accept `int | None` and four
 do not — a distinction this file and `ASSUMPTIONS.md` had both been blurring, now corrected in both.
+
+**The first redraft landed at `11fd18b` and needs a second.** Spec-only,
+pushed, `src/` untouched. Measured against the engine and verified
+independently rather than accepted from the agent's report: 42 -> 59 mutants,
+17 / 11 / 4 unchanged and 10 / 12 / 5 on the three new refusal scenarios. Rules
+1-3 are unchanged, confirmed by comparing all 32 locator and signature pairs
+rather than by equal counts, which do not establish it.
+
+**Two defects block a lock, both measured.** The malformed-value outline
+states its expectation in the `Then` step as
+`INVALID_REQUIRED_CONFIGURATION:<field>`, reusing a placeholder that also
+appears in a `Given`, so the expectation is not a column and all 12 of its
+mutants are equivalent - simulated 12 of 12, the first fully inert scenario in
+this project. And the scenario carrying this item's headline rule, that a
+refusal names every value it rejected, puts its whole assertion in a step data
+table, which the Gherkin IR discards at parse time: measured 5 mutants, all on
+`"AAAA"` literals, none on the assertion. Both are in
+`docs/harness-findings.md`.
+
+**The reason-code decision the agent escalated is settled the other way.** It
+renamed `MISSING_REQUIRED_CONFIGURATION` to `INVALID_REQUIRED_CONFIGURATION`
+to keep one code honest across both cases, and flagged it rather than treating
+it as settled, which is the behaviour wanted. The answer is two codes, per item
+4e's precedent one layer down. See `ASSUMPTIONS.md`, 2026-08-22.
+
+**A claim in the prompt that produced that draft was wrong, and the agent was
+right not to take it.** The prompt said the compound `CODE:field` reason value
+is used by no other feature file. `validation.feature` carries 22
+`MISSING_REQUIRED_FIELD` occurrences and 7
+`POLICY_NUMBER_MALFORMED:policy_number` in `Examples` cells, plus a
+`| code | field |` data-table form in nine scenarios. The agent read the file
+and said so.
