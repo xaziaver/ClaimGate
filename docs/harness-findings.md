@@ -101,6 +101,27 @@ a feature file leans on hardest are often the ones nothing checks. Both facts
 matter when estimating what a change will disturb — they are the difference
 between a naive blast-radius count and a real one.
 
+A step's data table is a third blind spot, and a worse one:
+`gauntlet.acceptance.gherkin.Step` has only `keyword`, `text`, `line` and
+`column`, so a table written under a step is discarded during parsing and
+never reaches the IR. Measured 2026-08-22: `carrier_configuration.feature`'s
+"Several missing and malformed values in the same entry are all named in one
+refusal" yields 5 mutants, all `"AAAA"` literals, none from its three-row
+assertion table; each of `validation.feature`'s four standalone
+`Then the blockers are:` scenarios yields exactly one mutant, on its `Given`'s
+quoted literal. Nine expectations in that file sit outside mutation. An
+assertion that has to be structured belongs in an `Examples` column in compact
+form - `validation.feature`'s own `the blockers are <compact>` step parses
+`CODE:field` pairs joined by `;` - with the data-table form kept only where the
+shape genuinely needs it.
+
+A ragged `Examples` row, one whose cell count differs from the header's,
+parses with no error and no diagnostic and silently yields fewer mutants than
+its siblings. Verified 2026-08-22 by construction: a three-row two-column table
+with one cell omitted produced 5 mutants instead of 6, and the short row's
+locator was well formed. A mutant count is this project's unit of blast-radius
+estimation, so check table widths when a count comes in lower than expected.
+
 ### Mutant counts are checkable directly, without a gate run or an approved spec
 
 The acceptance gate's approval stage skips mutation entirely on an unapproved
@@ -402,6 +423,20 @@ all of them — item 4c's recorded failure, where one inherited reason carried f
 forward invisibly. Thirty-one survivors in one scenario would have needed a single reason spanning
 three unrelated equivalence arguments. **When choosing an outline's shape, count the argument types
 a shared approval reason would have to cover, not just the survivors.**
+
+**A third shape produces the same symptom for a different reason, and this
+one is fixable.** Measured on item 5a's first redraft, 2026-08-22. An outline
+whose rows carry genuinely different expected outcomes is still fully inert if
+the expectation is not one of its columns - if the `Then` step builds it from a
+placeholder that also appears in a `Given`, as in
+`Then the load is CODE:<field>`. `_row_distance` scores only `Examples`
+columns, so it cannot see the expectation, and because the placeholder feeds
+the input and the assertion together a swap moves both and stays correct.
+Measured 12 mutants, simulated 12 survivors, against a structurally identical
+sibling outline in the same file that kept its expectation as a column and
+simulated 1 of 10. **Before drafting any outline, check that its expectation is
+a column.** That test is cheaper than counting survivors and it catches this
+shape every time.
 
 Survivor counts in this entry are simulated against the rule, not measured — survivors cannot be
 measured until the implementation exists.
