@@ -943,8 +943,34 @@ persisted notices only (5c); and the recent-inception indicator resolves not-eva
 phase-2 notice because its input does not exist yet (5f). `PHASE2_DESIGN.md`'s carrier-reference,
 duplicate-reason-code, and SIU-threshold-axis passages are corrected to match.
 
-**Main is at `55357df`, not the `6e8364c` named in the "Current state" paragraph above.** `55357df`
-is the phase-1 close commit — documentation only, no `src/`, `features/`, or ledger change — so
-every gate figure in that paragraph stands unchanged and is not restated here. Thirteen merged
-`reopening/*` branches remain on origin; harmless, and deleting them is housekeeping rather than a
-queue item.
+**Current refs, 2026-08-22.** `main` is at `071af43`. It carries phase 1 closed, item 5 split into
+5a–5g, the phase-2 decisions in `ASSUMPTIONS.md`, three skills under `.claude/skills/`, and nine
+new entries in `docs/harness-findings.md`. The earlier note in this section naming `55357df` and
+`6e8364c` is superseded; no gate figure has moved, because nothing since `55357df` has touched
+`src/`, `features/`, or the ledger.
+
+**Item 5a is drafted, not locked, and its scope is contested.** The spec is
+`features/carrier_configuration.feature` on branch `phase2/5a-carrier-configuration`, spec-only
+commit `5d37a4f`. Four scenarios, 42 mutants measured directly against the engine — 17, 11, 4 and
+10 by scenario. Survivors are unknown and unknowable until the spec is approved and step
+definitions exist, because the acceptance gate's approval stage short-circuits before mutation runs.
+
+**`gauntlet check` is red on the acceptance gate, and that is the guaranteed state rather than a
+defect.** It reports `1 unapproved or modified spec(s)`; every other gate is green with `src/`
+untouched. The diagnostic instructs a human to run `gauntlet lock`, which is the wrong command —
+spec approval is `gauntlet spec approve`, and neither belongs to the agent. See
+`docs/harness-findings.md`, "Command ownership."
+
+**The next action is a redraft, not an approval.** Three things are owed before the spec is worth
+locking, all recorded in `ASSUMPTIONS.md` under 2026-08-22: malformed-but-present values were
+narrowed out of the draft and item 5a covers them; a refusal must name every value it rejected
+rather than one; and the fourth scenario states four values by their domain parameter names in a
+file that otherwise speaks business language, alongside a compound `CODE:field` reason value no
+other feature file uses.
+
+**What the draft got right and should survive the redraft:** the first rule is a plain scenario
+rather than an outline precisely so its literals are mutation targets; both SIU thresholds are
+proven configured and unconfigured; the refusal rows sit in one scenario so a single approval reason
+covers them; and both tables carry a loading row so the engine has a differing row to swap against.
+The draft also established that two of the six caller-supplied values accept `int | None` and four
+do not — a distinction this file and `ASSUMPTIONS.md` had both been blurring, now corrected in both.

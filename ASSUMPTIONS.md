@@ -342,6 +342,54 @@ or data. Nothing below was confirmed against a live book.
   the system. The indicator is a fact about what was evaluated; phase 2's honest answer is that it
   was not. See "Data we do not have at intake" for how the date is obtained once an adapter exists.
 
+- **A configuration value that is present but malformed is refused at load, alongside an absent one
+  — advisor-recommended, human-ratified, 2026-08-22.** `QUEUE.md` item 5a specifies that "an
+  unrecognized or absent configuration value is refused at load," and the entry above records the
+  loading boundary as the only thing standing between "a mistyped configuration file and a silently
+  wrong required-field set." Mistyped means present and wrong, not missing. A first spec draft
+  narrowed the item to absence only; that removes the half of the rule the harness can actually
+  protect, because a wrong-typed value is a mutable Examples cell while an absent one is an empty
+  cell that only ever takes the mutation marker.
+
+  What counts as malformed is decided per value by its type, not by a new vocabulary: a
+  non-boolean where a boolean is required, a non-integer or negative where a day count is
+  required, an empty collection where at least one recognized prefix is required. Cost: the spec
+  carries more rows, and each malformed row must state which value it malformed or the refusal is
+  untestable.
+
+- **A refusal names every value it rejected, not the first one — advisor-recommended,
+  human-ratified, 2026-08-22.** `validation.feature` already established that blockers are
+  reported together rather than one per run, and a configuration loader has the stronger version of
+  the same argument: a deployment with six malformed values that learns about them one restart at a
+  time costs six restarts to fix what one message could have named. The refusal is a collection,
+  and a scenario asserting a single-value refusal is asserting the degenerate case of that
+  collection rather than a different rule.
+
+  This is an operational decision rather than a business one — no statutory duty attaches to a
+  configuration file — but it shapes the spec, so it is recorded rather than left to whoever writes
+  the loader.
+
+- **The per-carrier rules file is TOML, keyed by `carrier_code`, with one placeholder carrier —
+  advisor-recommended, human-ratified, 2026-08-22.** Matching `gauntlet.toml` and `pyproject.toml`
+  rather than introducing a second configuration format, and readable by `tomllib` in the standard
+  library at the project's pinned floor with no dependency added.
+
+  **The specification does not name the format and must not.** A feature file describing TOML would
+  be describing a storage decision rather than business behaviour, and the swappability the
+  jurisdiction and carrier axes rest on requires that the format be replaceable without touching a
+  spec. This entry exists because item 5a's *implementation* commit cannot proceed without the
+  decision, not because the spec needs it.
+
+- **Two of the six caller-supplied values legitimately accept an absent state; four do not.**
+  Recorded 2026-08-22, correcting a looser framing in the entry above and in `QUEUE.md` item 5a,
+  both of which describe all six as caller-supplied with no default without distinguishing "must be
+  supplied" from "must have a value." `compute_siu_indicators` takes `int | None` for both
+  thresholds on `main`; `validate`'s two booleans and prefix collection and `find_duplicates`'s
+  window day count have no such affordance. So an unconfigured SIU threshold loads and resolves
+  not-evaluated downstream, while an unconfigured required field refuses the load. Both facts were
+  established from the signatures, and the distinction is the difference between a correct loader
+  and one that refuses a deployment for declining to set a threshold nobody has agreed a value for.
+
 ## Undocumented phase-1 thresholds
 
 - **365 (`REPORTING_WINDOW_DAYS`).** Its only rationale was "carriers accept late FNOL" — a
