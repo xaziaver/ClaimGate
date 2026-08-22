@@ -488,6 +488,68 @@ package itself is never installed** — the root `conftest.py` puts `src/` on `s
 install path that matches how this project actually runs is `uv pip install -r
 requirements-dev.txt`, not an editable install of `claimgate`.
 
+### The acceptance gate's approval stage short-circuits everything after it
+
+`_stages` runs approval, then baseline, then mutation, returning on the first
+failure. An unapproved or modified spec fails at approval, so **the scenarios
+never run and mutation never runs**. A newly drafted spec produces
+`N unapproved or modified spec(s)` and no information about whether it works.
+
+Compounding this: a feature file joins the suite only through an explicit
+`scenarios("../../features/x.feature")` call in a test module, so an unbound new
+file is not collected by pytest either. Between drafting and approval a new spec
+is invisible to every gate and to the test suite — the only check available is
+running the mutation engine directly for counts, which needs no approval.
+
+This first mattered at item 5a. Every item before it modified an already-approved
+spec; the four phase-1 features were added and approved together in one commit
+before the discipline existed, so 5a is the first spec in the project's history
+that no gate could see.
+
+### How a specification value is actually mutated
+
+Read from `mutation.py` rather than inferred from samples, because inertness is
+predictable only if the substitution rule is known:
+
+- `true`/`false`, `yes`/`no`, `on`/`off` are negated.
+- Numbers are incremented by one at matching decimal precision — `60` becomes
+  `61`, not some other value from the column.
+- Everything else is swapped for a value from the same column in another row,
+  ordered **most-different row first**, on the stated theory that a row differing
+  elsewhere expects a different outcome. With no alternative, the marker
+  `_gauntlet` is appended.
+- An empty cell has no alternative of its own and takes the marker.
+
+This is the mechanism behind the same-outcome-table finding: the engine is
+already trying to pick a discriminating swap, and in a table where every row
+shares an outcome there is none to pick, so every swap is inert by construction.
+The lever is the table's shape, not the engine's.
+
+### The boundary gate is narrower than its name
+
+It walks only the steps directory and flags absolute imports whose top-level root
+matches a top-level importable name under `src/` — here exactly one name,
+`claimgate`. `tests/api/` is not walked at all, and an import of anything not
+named `claimgate` is invisible to it. A step file that imports an HTTP client
+library and constructs its own client passes the gate cleanly while binding the
+acceptance suite to transport detail.
+
+This matters from phase 2 onward, where there is a transport to bind to. The rule
+that keeps step definitions behavioural is enforced against one package name;
+everything else about it is held by review.
+
+### CLAUDE.md's top block is tool-managed and will be overwritten
+
+Lines between `<!-- gauntlet:begin -->` and `<!-- gauntlet:end -->` are generated
+by gauntlet's scaffolding. Anything edited there is lost the next time the
+scaffold runs, silently and without a gate noticing. Every project edit to
+`CLAUDE.md` belongs below the end marker.
+
+This is a live trap rather than a theoretical one: the managed block contains the
+instruction to act on a gate's remedy rather than guessing, and one remedy in the
+harness names the wrong command. The correction cannot live where the instruction
+is. It lives in the `gauntlet-gates` skill instead.
+
 ## Process and technique
 
 Lessons about working with the harness rather than about the harness itself.
@@ -827,3 +889,78 @@ interchangeable: a simulation encodes a model of the rule, so a large gap betwee
 gate output means the implementation and the specification's intent have diverged — which is
 information, but only if the prediction was recorded as a prediction. A guess reported as a
 measurement destroys that signal.
+
+### Read the session prompts from a clone, never from the raw CDN
+
+An advisor session opened by fetching `ADVISOR.md` through
+`raw.githubusercontent.com` and received a cached copy shorter than the file at
+`origin/main` — missing, among other things, the instruction to produce document
+edits programmatically rather than by retyping. The session ran most of the way
+through on an out-of-date prompt and only noticed when an unrelated command
+printed the real file's length.
+
+The CDN caches independently of the repository, so a raw fetch can be stale
+without any signal. Read session prompts from a clone at a named ref. Nothing in
+that session contradicted the current text, but that was luck: the one
+instruction it happened to follow correctly was in the part it never read.
+
+### A superset check against `origin/main` is vacuous when `main` is unpushed
+
+The startup and save-point checklists verify that a working branch is a superset
+of `main` with `git log --oneline origin/main ^HEAD`, expecting 0. That compares
+against **origin's** main. When a documentation commit has landed on local `main`
+but was not pushed, the check passes while the branch may be missing it — the
+comparison succeeds against a ref that has not moved.
+
+Observed at item 5a, where a docs commit to `main` and a spec commit on the
+branch were both unpushed and the cited check reported success. Push `main`
+first, or compare against local `main`, before the check means anything.
+
+### Verifying a multi-file change means counting per file, not per commit
+
+A four-document edit was handed over and three documents landed. The push
+succeeded, the commit message described all four, and `git log` looked correct;
+the fourth file was simply absent from the commit. What caught it was
+`git diff --numstat` per path, not any check on the push.
+
+The failure leaves no trace in the gates, because no gate reads these documents.
+It surfaced as four cross-references on `main` pointing at entries that did not
+exist — including the one standing between a phase-2 agent and a placeholder
+value it must not invent. When an edit spans files, verify each file
+independently: occurrences per file, or numstat per path.
+
+### A shipped script must resolve the project interpreter, not `python3`
+
+A skill script invoked bare `python3`. On a machine whose system Python is 3.10
+it died on `import tomllib` — a standard-library module since 3.11 — inside
+gauntlet's own `config.py`. The message names a module, so it reads as a missing
+dependency, and the reasonable next move is to install a newer Python
+system-wide. That does not fix it: the project's venv already satisfies
+`requires-python >= 3.12`, and the script simply was not using it.
+
+Two things follow. Any script shipped alongside the project resolves its
+interpreter explicitly — `$VIRTUAL_ENV`, then `.venv/bin/python` — and fails with
+a message that says *interpreter*, not *module*, when it cannot. And a
+verification script must not create anything: `uv run` provisions a virtual
+environment as a side effect even with `--no-sync`, which is a surprising thing
+for a command whose only job is to read source and report.
+
+### A commit message passed with `-m` executes its own backticks
+
+An advisor handed over a multi-paragraph commit message as a `git commit -m`
+string. It contained backticked command names, as prose about a build system
+naturally does. The shell ran every one of them as command substitution before
+git ever saw the message: two failed harmlessly, and one was `gauntlet lock` —
+a human-only command that re-approves the verified config paths. Its output was
+spliced into the commit message, which is the visible symptom; the invisible one
+is a re-approval entry in the ledger that no human decided to make.
+
+Nothing was weakened, because the verified files had not changed and the
+re-approval recorded the same hashes. The cost is an audit-trail falsehood in
+the one artifact whose entire purpose is recording that a human approved
+something, and it was recoverable only because the commit had not been pushed.
+
+**Write commit messages to a file and use `git commit -F`.** Never paste prose
+about a command-line tool into `-m`. The same hazard applies to any long text
+handed between a session and a shell: if it contains backticks, `$`, or `!`, it
+needs a file or a quoted heredoc, not a double-quoted argument.

@@ -34,6 +34,15 @@ in order of what they actually cost.
   files are for files you are about to edit.
 - **Report what changed, not what you looked at.** A report that replays the
   investigation costs as much as the investigation did.
+- **Use the skills instead of reading the harness source.** `.claude/skills/`
+  carries `gauntlet-gates` (what each gate checks, whose commands are whose, why
+  a gate is red), `gherkin-specs` (spec conventions, the shape constraints that
+  decide whether a mutant dies, and `measure_mutants.py`), and `repo-edits`
+  (anchor-based splicing, per-file handoff verification). Scanning
+  `agent-gauntlet/src` to learn how the harness works costs a large share of a
+  session every time and the answer is almost always in one of those three or one
+  command away. When a skill turns out to be wrong, the source wins — fix the
+  skill in the same commit.
 
 ## Standing constraints (ClaimGate domain, decided in design conversation)
 
@@ -71,13 +80,18 @@ this list before proposing anything that would violate one.
   tolling, not an intake rule" — not "update validation.py."
 - **Main is always green.** Spec lock and implementation being separate commits means there is a
   legitimately red state between them — a spec drafted ahead of its approval or implementation.
-  That state lives on a branch named `reopening/<name>`, never on `main`. A reopening merges to
+  That state lives on a branch, never on `main`: `reopening/<name>` when an
+  already-approved spec is being reopened, `phase2/<item>` for new construction
+  such as a first feature file for a queue item. The prefix records which kind of
+  work it is; the rules below apply to both. A branch merges to
   `main` only when its spec is locked, its implementation is complete, and `gauntlet check` is
   green. This follows directly from the commit-granularity rule above, not a separate policy.
-- **Reopening branches stay a superset of main.** Documentation commits land on main; reopening
-  work stays on its branch. After any commit to main, merge main into the open reopening branch
-  so the branch remains a superset. A checked-out reopening branch should always show current
-  documentation.
+- **Working branches stay a superset of main.** Documentation commits land on main; item work
+  stays on its branch. After any commit to main, **push `main` first**, then merge it into the
+  open branch so the branch remains a superset. A checked-out working branch should always show
+  current documentation. Pushing first is not housekeeping: the superset check below compares
+  against `origin/main`, so an unpushed commit on local `main` makes that check pass while the
+  branch is missing it.
 - **A result that was not computed is never reported as a negative.** An indicator whose input is
   missing, or a comparison that was deliberately not run, resolves to a distinct not-evaluated
   value with a reason code — never to false, never to an empty result. Two reopenings have turned
@@ -143,8 +157,10 @@ Before any work, orient and verify. Report before acting.
 1. Read `QUEUE.md`'s status section, then follow its reading table for the item
    named there. Do not load documents the table does not list for that item.
 2. `git fetch origin`, then confirm every ref is where the status section says it
-   is. If work is on a reopening branch, `git log --oneline origin/main ^HEAD`
-   must print 0 — a reopening branch stays a superset of `main`. If it does not,
+   is. If work is on a branch, `git log --oneline origin/main ^HEAD` must print
+   0 — a working branch stays a superset of `main`. Confirm local `main` is
+   pushed before trusting that: the check compares against `origin/main`, and an
+   unpushed commit on local `main` makes it pass vacuously. If it does not,
    STOP: you are reading a `QUEUE.md` older than the handoff written for you.
    Merge `origin/main`, push, re-read, then continue.
 3. Confirm the working tree is clean and local matches remote for every branch
