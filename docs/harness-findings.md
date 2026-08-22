@@ -82,6 +82,15 @@ threshold tampering, not the spec-approval command. The correct command is
 `gauntlet spec approve`, and it belongs to the human. Acting on that remedy
 literally would not approve the spec and would re-baseline the protection.
 
+**Confirmed on the unapproved case too, not just modified.** A brand-new,
+never-approved spec (`features/carrier_configuration.feature`, item 5a, first
+new feature file since `fc86add`) produced the identical text: `is not
+approved. A human must review it and run \`gauntlet lock\` before it can be
+relied on.` The remedy is generated from one code path covering both
+conditions, so the wrong command isn't specific to a spec that changed after
+approval — any spec the acceptance gate hasn't approved, new or modified,
+carries this same incorrect instruction.
+
 ### Acceptance mutation does not see everything
 
 `Feature.background` is never passed to `mutants()`, so Background steps are
