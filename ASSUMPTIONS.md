@@ -269,6 +269,78 @@ or data. Nothing below was confirmed against a live book.
   engine only swaps between values a column already contains. Whatever loads a carrier
   configuration needs its own rejection of unrecognized values, specified where that loading
   happens. Recorded here so it is a known gap rather than a discovered one.
+- **The per-carrier rules file moves from phase 3 into phase 2 — advisor-recommended,
+  human-ratified, 2026-08-22.** `PHASE2_DESIGN.md`'s carrier-reference section describes a static
+  identity-only file in phase 2 and a per-carrier rules file "eventually," in phase 3. That was
+  written before items 2, 3, 4g, and 4j moved six values out of the domain and made them
+  caller-supplied with no default: three on `validate`, two on `compute_siu_indicators`, one on
+  `find_duplicates`. The phase-2 shell has to supply all six on every call and has nowhere to get
+  them, so the rules file is phase-2 work whatever the design document says. Identity and rules stay
+  separate files, per that section's own reasoning — a carrier's NAIC number and a carrier's
+  duplicate window are different kinds of fact, and one file holding both is what makes
+  `carrier_code` look branchable.
+
+  Selecting a parameter set by `carrier_code` is a lookup, not a branch: the shell passes the
+  selected values through to the domain, and no code path reads the key to choose behaviour. The
+  distinction is the same one the jurisdiction map rests on, and if the two end up structurally
+  different, one of them is wrong.
+
+  **The axis is carrier, not jurisdiction, with one genuine exception pending.**
+  `PHASE2_DESIGN.md`'s SIU carried requirement says these thresholds will come "from jurisdiction
+  config"; the configuration entry above says carrier. Carrier is right for five of the six — a
+  duplicate window, a required-field set, and a recognized prefix set are carrier policy, and
+  identical Florida statute governs carriers that differ on all three. The late-reporting threshold
+  is the one that may genuinely belong on the jurisdiction axis, since its defensibility is
+  entangled with the statutory notice window; that stays open under "Replacement for the 30-day
+  late-reporting threshold" and is not settled by this entry. Cost of deciding carrier now: if that
+  one threshold later moves axes, it moves alone.
+
+- **Duplicate-detection not-evaluated reason codes do not appear in `reason_codes` —
+  advisor-recommended, human-ratified, 2026-08-22. Resolves the carried requirement
+  `PHASE2_DESIGN.md` records as undecided under "HTTP surface."** `reason_codes` is derived from
+  blockers and means something is wrong with this notice. `FOLLOW_ON_NOTICE_TYPE` and
+  `NO_EXISTING_CLAIM_NOTICE_TYPE` mean a comparison was deliberately not run, which is not a defect
+  in the notice: a `SUPPLEMENTAL` notice resolving `FOLLOW_ON_NOTICE_TYPE` is behaving exactly as
+  intended. Merging the two would make every follow-on notice read as flawed to any client counting
+  `reason_codes`, and would put a second enumeration into a field whose codes are validation
+  blockers — against the standing constraint that reason-code enumerations are closed and scoped to
+  one feature.
+
+  They surface instead on the duplicate-candidates structure the notice already needs, carrying
+  status, matches, and reason together, so the not-evaluated value and its reason cannot be read
+  apart from each other. Cost: a client reads two fields rather than one, and a client that reads
+  only `reason_codes` cannot see that duplicate detection did not run. Accepted, because the
+  alternative is worse in the direction that matters — a false signal of defect beats a signal in a
+  field the caller has to know to look at.
+
+- **Phase 2 matches duplicate candidates against ClaimGate's own persisted notices only —
+  advisor-recommended, human-ratified, 2026-08-22.** `find_duplicates` takes an existing-claims
+  collection and `PHASE2_DESIGN.md` never says where the shell gets it. The policy administration
+  lookup is a phase-3 adapter concern, so in phase 2 the candidate set is the notices ClaimGate
+  itself holds for the same `carrier_code`.
+
+  **Stated cost, which is real and not a technicality:** a loss already open in the administration
+  system before ClaimGate went live, or reported through any other channel, is invisible to the
+  matcher. Duplicate detection in phase 2 therefore answers "has this been reported *here* before,"
+  not "has this been reported." That is a narrower question than the specification's language
+  implies, and a reader who assumes the broader one will over-trust a clean result. Acceptable for a
+  shell whose duplicate output is non-blocking evidence rather than a gate; unacceptable to leave
+  unwritten. Revisit when the phase-3 adapter lands — at which point the candidate set widens and
+  the reason a clean result can be trusted changes with it.
+
+- **The continuous coverage date does not exist in phase 2, so the recent-inception indicator
+  resolves not-evaluated on every phase-2 notice — advisor-recommended, human-ratified,
+  2026-08-22.** Item 4c settled that the date arrives via a phase-2 adapter lookup returning the
+  policy's original inception date; there is no adapter in the phase-2 shell, and building one is
+  phase-3 work. So the input is genuinely absent and the indicator resolves `NOT_EVALUATED` with
+  `NO_CONTINUOUS_COVERAGE_DATE` on every notice the shell processes.
+
+  **This is the correct behaviour, not a stub awaiting a value**, and it is recorded because it will
+  look like a gap to whoever builds 5f. Supplying a placeholder date — the loss date, the receipt
+  date, a null-safe default — manufactures a determination nobody made, which is the precise failure
+  "unevaluated is not negative" exists to prevent, and it would do so silently on every record in
+  the system. The indicator is a fact about what was evaluated; phase 2's honest answer is that it
+  was not. See "Data we do not have at intake" for how the date is obtained once an adapter exists.
 
 ## Undocumented phase-1 thresholds
 
