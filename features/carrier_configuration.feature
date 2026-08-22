@@ -4,8 +4,8 @@ Feature: Carrier configuration loading
   I need each carrier's own required-field, threshold, and window rules
   resolved before any domain rule runs
   So that no domain function is ever called with a value nobody configured,
-  and a carrier this deployment has no rules for is refused before that
-  ever happens
+  and a carrier this deployment has no usable rules for is refused before
+  that ever happens
 
   # The six values loaded here are every caller-supplied value phase 1 moved
   # out of the domain with no default, verified against the three signatures
@@ -41,19 +41,30 @@ Feature: Carrier configuration loading
   # carrier at all.
 
   # Reason codes are a closed enumeration, like every other feature file's:
-  # CARRIER_NOT_CONFIGURED and MISSING_REQUIRED_CONFIGURATION are the
-  # complete set today. Escalate before adding to it.
+  # CARRIER_NOT_CONFIGURED and INVALID_REQUIRED_CONFIGURATION are the
+  # complete set today. The second is a rename of an earlier draft's
+  # MISSING_REQUIRED_CONFIGURATION, widened to cover what this draft adds -
+  # see the note below on malformed values - because "missing" stopped being
+  # true of everything the code has to name once a present-but-malformed
+  # value is also refused under it. Escalate before adding a third code.
 
-  # Only presence is specified below for the four values with no legitimate
-  # absent state - not the shape of a present-but-malformed value (a string
-  # where a boolean is expected, an empty prefix collection, a negative
-  # window). Absence is the one case every "no domain default" item so far
-  # has actually decided (items 2, 3, 4g, 4j); a malformed-but-present value
-  # is a caller-contract question this draft does not answer and flags
-  # rather than guesses at.
+  # A required value is refused whether it is absent from a recognized
+  # carrier's entry or present in a shape the receiving function cannot use.
+  # What counts as malformed follows from each value's own type, not a new
+  # vocabulary: a non-boolean where claimant_name_required or
+  # claimant_contact_required needs a boolean, a non-integer or negative
+  # number where late_reporting_threshold_days, recent_inception_threshold_days,
+  # or window_days needs a day count, an empty collection where
+  # recognized_policy_number_prefixes needs at least one recognized prefix.
+  # ASSUMPTIONS.md, "A configuration value that is present but malformed is
+  # refused at load, alongside an absent one." Two of the six - both SIU
+  # thresholds - accept a genuinely absent state and are proven so in the
+  # rule below; a malformed value in either of those two is refused exactly
+  # like the other four's absence, because "absent" and "wrong shape" are
+  # different questions even for a value allowed to be absent.
 
   Background:
-    Given the carrier rules source recognizes "AAAA"
+    Given the carrier rules source recognizes "AAAA", with a complete and valid entry for every one of the six values
 
   Rule: A recognized carrier's rules resolve to every value the domain will receive
 
@@ -110,7 +121,7 @@ Feature: Carrier configuration loading
     # side this scenario proves, for both fields at once, mirroring
     # siu_indicators.feature's own "Neither recent policy inception input is
     # present" - the same genuinely-optional shape, one layer earlier, where
-    # refusing would be wrong in the opposite direction from Rule 4 below.
+    # refusing would be wrong in the opposite direction from the rule below.
     Scenario: A recognized carrier's rules load with neither SIU threshold configured
       Given the carrier "AAAA" requires the claimant name
       And "AAAA" does not require the claimant contact
@@ -132,7 +143,8 @@ Feature: Carrier configuration loading
     # engine a row with a different outcome to swap against - the same
     # technique validation.feature's outlines use (docs/harness-findings.md,
     # "A same-outcome column is sometimes the point of the rule, not a table
-    # defect").
+    # defect"). It relies on the Background's "AAAA" entry being complete
+    # and valid, since this scenario states no value of its own.
     Scenario Outline: An unrecognized carrier code has no rules to load
       When the carrier configuration for "<carrier_code>" is loaded
       Then the load is <outcome>
@@ -142,40 +154,80 @@ Feature: Carrier configuration loading
         | AAAA         |                        |
         | ZZZZ         | CARRIER_NOT_CONFIGURED |
 
-  Rule: A required value missing from a recognized carrier's entry refuses the load
+  Rule: A required configuration value that is missing or malformed refuses the load, and the refusal names every value it rejected
 
-    # The four values with no absent-and-legitimate state, per the rule
-    # above: claimant_name_required, claimant_contact_required,
-    # recognized_policy_number_prefixes, and window_days. Kept together in
-    # one scenario rather than one per field - they are inherently a family
-    # of same-shaped refusals, and gauntlet mutant approve scopes only by
-    # feature file and --scenario, so scattering them across scenarios would
-    # cost one approval reason per field for what is the same argument each
-    # time (docs/harness-findings.md, "Approval reasons decay in ways no key
-    # can catch"; QUEUE.md item 4c's recorded cost at scale). The first row
-    # is fully configured and loads, keeping this table mixed for the same
-    # reason the rule above's table is.
+    # Two scenario outlines below each exercise one bad value at a time -
+    # the degenerate case of a collection - and a plain scenario after them
+    # proves the general case: several bad values in the same entry are all
+    # named together, not just the first found. All three belong to this one
+    # Rule and share one approval reason, per gauntlet mutant approve's
+    # feature-and-scenario scoping (docs/harness-findings.md, "Approval
+    # reasons decay in ways no key can catch"; QUEUE.md item 4c's recorded
+    # cost at scale) and because a single-value refusal is a special case of
+    # the general rule, not a separate one.
     #
     # The baseline values fixed in each row's own Given lines below (name,
-    # contact, prefixes, window) are not columns here and so are not
-    # mutation targets in this scenario - that is deliberate, not the item
-    # 4g failure mode: their own correctness is already proven independently
-    # by the plain scenario above. What this outline tests is a different
-    # axis entirely - presence - carried by the missing_field column, which
-    # is the one that varies and the one this outline is about.
-    Scenario Outline: A required configuration value must be present in a recognized carrier's entry
+    # contact, prefixes, window) are not columns in either outline and so
+    # are not mutation targets there - deliberate, not the item 4g failure
+    # mode: their own correctness is already proven independently by the
+    # first rule's plain scenario. What each outline tests is a different
+    # axis entirely, carried by the one column that varies.
+
+    Scenario Outline: A single value missing from a recognized carrier's entry refuses the load, naming it
       Given "AAAA" requires the claimant name
       And "AAAA" does not require the claimant contact
       And "AAAA" recognizes the policy-number prefixes "HO;AU"
       And "AAAA" configures a duplicate match window of 60 days
-      And the "AAAA" configuration is missing "<missing_field>"
+      And "AAAA"'s configuration is missing the <field>
       When the carrier configuration for "AAAA" is loaded
       Then the load is <outcome>
 
       Examples:
-        | missing_field                     | outcome                                                           |
-        |                                   |                                                                   |
-        | claimant_name_required            | MISSING_REQUIRED_CONFIGURATION:claimant_name_required             |
-        | claimant_contact_required         | MISSING_REQUIRED_CONFIGURATION:claimant_contact_required          |
-        | recognized_policy_number_prefixes | MISSING_REQUIRED_CONFIGURATION:recognized_policy_number_prefixes  |
-        | window_days                       | MISSING_REQUIRED_CONFIGURATION:window_days                        |
+        | field                              | outcome                                                            |
+        |                                     |                                                                     |
+        | claimant name                       | INVALID_REQUIRED_CONFIGURATION:claimant name                       |
+        | claimant contact                    | INVALID_REQUIRED_CONFIGURATION:claimant contact                    |
+        | recognized policy-number prefixes   | INVALID_REQUIRED_CONFIGURATION:recognized policy-number prefixes   |
+        | duplicate match window              | INVALID_REQUIRED_CONFIGURATION:duplicate match window              |
+
+    # A malformed value is present but unusable, never absent - the other
+    # half of ASSUMPTIONS.md's "refused at load, alongside an absent one."
+    # The two SIU thresholds appear only here, not in the outline above,
+    # because their own absence is the prior rule's proven-fine case; what
+    # this outline proves for them is narrower and different - a value that
+    # is there but the wrong shape is refused exactly as it would be for the
+    # four fields with no legitimate absent state at all.
+    Scenario Outline: A single value present but malformed in a recognized carrier's entry refuses the load, naming it
+      Given "AAAA" requires the claimant name
+      And "AAAA" does not require the claimant contact
+      And "AAAA" recognizes the policy-number prefixes "HO;AU"
+      And "AAAA" configures a duplicate match window of 60 days
+      And "AAAA" configures the <field> as <value>
+      When the carrier configuration for "AAAA" is loaded
+      Then the load is INVALID_REQUIRED_CONFIGURATION:<field>
+
+      Examples:
+        | field                              | value                        |
+        | claimant name                       | neither yes nor no           |
+        | claimant contact                    | neither yes nor no           |
+        | recognized policy-number prefixes   | an empty set                 |
+        | duplicate match window              | a negative number of days    |
+        | late reporting threshold            | a negative number of days    |
+        | recent policy inception threshold   | a negative number of days    |
+
+    # Proves the collection behavior the two outlines above cannot: a
+    # refusal is a list, and every entry on it is named, not only the one
+    # encountered first. Mixes a missing value with two malformed ones
+    # deliberately, so the same mechanism is shown covering both failure
+    # kinds at once rather than only the kind each outline tests in
+    # isolation.
+    Scenario: Several missing and malformed values in the same entry are all named in one refusal
+      Given "AAAA" requires the claimant name
+      And "AAAA"'s configuration is missing the claimant contact
+      And "AAAA" recognizes no policy-number prefixes
+      And "AAAA" configures the duplicate match window as a negative number of days
+      When the carrier configuration for "AAAA" is loaded
+      Then every rejected value is named in the refusal:
+        | INVALID_REQUIRED_CONFIGURATION | claimant contact                  |
+        | INVALID_REQUIRED_CONFIGURATION | recognized policy-number prefixes |
+        | INVALID_REQUIRED_CONFIGURATION | duplicate match window             |
