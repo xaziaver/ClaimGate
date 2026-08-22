@@ -154,6 +154,8 @@ A reporter-facing view, if one is ever added, is a separate resource with its ow
 — not a public alias for this one. The first consumer of an internal endpoint must not freeze
 internal state names into a contract nobody meant to publish.
 
+Decided 2026-08-22: they do not — see `ASSUMPTIONS.md`. The question and its reasoning are kept 
+below as the record of why it was a real question either way.
 **Carried requirement, undecided: whether duplicate-detection `NOT_EVALUATED` reason codes belong in
 the notice's `reason_codes` field.** `duplicates.feature`'s notice-type rule (`QUEUE.md` item 3)
 resolves a `SUPPLEMENTAL`, `REOPENED`, or `LOSS_ASSESSMENT` candidate to `NOT_EVALUATED` with a
@@ -213,7 +215,10 @@ build either of those in phase 2.
 ## Carrier reference
 
 A static, version-controlled file holding **identity only** — no thresholds, no behavior — separate
-from the phase-3 carrier-rules TOML that will eventually hold the real per-carrier configuration.
+from the per-carrier rules file that holds the six caller-supplied configuration values. 
+**Corrected 2026-08-22: that rules file was originally placed in phase 3, before items 2, 3, 4g, and 4j 
+made six domain values caller-supplied with no default. The shell cannot call the domain without them, 
+so it is phase-2 work — see `QUEUE.md` item 5a and `ASSUMPTIONS.md`. Identity and rules remain separate files.**
 
 | Code | Carrier | NAIC | NAIC group |
 |---|---|---|---|
@@ -387,6 +392,12 @@ transition history).
    generate reorderings, so no gate can see it. This is the same shape as the unasserted lower-bound
    guard that mutation testing caught during the triage reopening, arriving where mutation cannot
    help. Sequenced in `QUEUE.md`, not here.
+   
+   **Delivered 2026-08-18 (`QUEUE.md` item 4k, merge `7da0bd1`): `siu_indicators.feature` now 
+   carries "Neither recent policy inception input is present." This carried requirement is closed. 
+   Its "from jurisdiction config" phrasing was also wrong on the axis — SIU thresholds are carrier 
+   configuration under `ASSUMPTIONS.md`, with the late-reporting threshold the one possible 
+   exception, recorded there.**
 
 A Gherkin scenario asserting SIU indicators are absent from both response bodies is required — a
 cheap negative assertion that catches a regression the moment someone adds a field carelessly.

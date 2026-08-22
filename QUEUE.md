@@ -358,9 +358,138 @@ Ordered by domain severity, not by effort. One line each on why that position.
     than moving existing ones, so no restale: 38 -> 39 mutants, one new, all seven approvals
     byte-identical.
 
-5. **Phase 2 build.** Sequenced last deliberately — it should be built on a domain that's already
-   been swept for the defects above, not on top of ones still waiting to be found. Full design for
-   what phase 2 actually is: `PHASE2_DESIGN.md`.
+5a. **Carrier configuration: the loader, and the rejection of an unrecognized value.** Phase 1 moved
+    six values out of the domain and made them caller-supplied with no default — `validate`'s
+    `claimant_name_required`, `claimant_contact_required`, and `recognized_policy_number_prefixes`
+    (items 4g, 4j), `compute_siu_indicators`'s two thresholds (item 2), and `find_duplicates`'s
+    `window_days` (item 3). Six, verified against the signatures on `main` rather than counted from
+    this file. The shell cannot call the domain at all until something supplies every one, which is
+    why this is first: every later item calls it.
+
+    **`PHASE2_DESIGN.md`'s carrier-reference section places the per-carrier rules file in phase 3,
+    and that sentence predates all six moves.** Corrected there as of 2026-08-22. The identity
+    reference and the rules file stay physically separate as that section requires — identity is
+    `carrier_code` to NAIC, rules are the six values — because merging them is what would make
+    `carrier_code` look branchable.
+
+    **A lookup keyed by `carrier_code` is not a branch on `carrier_code`, and this entry has to say
+    so** or the next reader takes it for the leak the carrier-reference section forbids. The shell
+    selects a parameter set by key and passes it through; no code path reads the key to choose
+    behaviour. The jurisdiction map (5g) is the same shape, which is the check: if the two end up
+    structurally different, one of them is wrong.
+
+    **This is where the rejection `ASSUMPTIONS.md` already names as an unwatched gap lands** — see
+    "A carrier configuration crosses into the domain already resolved." That entry records the
+    loading boundary as the only thing between a mistyped configuration file and a silently wrong
+    required-field set, and records that no gate watches it: mutation cannot, because the engine
+    substitutes between values a column already contains. An unrecognized or absent configuration
+    value is refused at load and never reaches a domain call. Loading is not intake — refusing a
+    malformed configuration file refuses nothing a reporter sent and creates no statutory duty, so
+    the always-accept rule does not reach it.
+
+    *Blast radius, unmeasured.* A new feature file and its first `gauntlet spec approve`. Measure
+    before drafting, per the technique in `docs/harness-findings.md`.
+
+5b. **Instant-to-jurisdiction-date resolution, as its own named function with its own scenarios.**
+    Specified already in `ASSUMPTIONS.md`'s "Timezone-correct 'now'": the shell receives a
+    timezone-aware UTC instant and converts it to a calendar date in the jurisdiction's timezone
+    before any domain call, and the domain never receives a date derived from server local time.
+    Four scenarios named there — 01:00 and 22:00 Eastern resolving to the Eastern date, and both DST
+    transition boundaries, each needing a case on either side per the standing constraint.
+
+    Independent of 5a and sequenced second because it is small, it gates cleanly, and 5c calls it on
+    every request. Getting it wrong in either direction produces a wrong `LOSS_DATE_IN_FUTURE`
+    determination — false positives from a zone behind Eastern, false negatives from UTC — on a
+    field that already blocks intake today.
+
+5c. **Intake: `POST /notices`, `GET /notices/{notice_id}`, the three reachable states, the two-write
+    receipt, and the audit entries those transitions produce.** The core of phase 2 and the largest
+    item in this queue. `PHASE2_DESIGN.md`'s record-state model, audit-log schema, and HTTP-surface
+    sections are the specification input; the `400` on an unknown or malformed `carrier_code` is
+    this item's, while the reference file it validates against is 5a's.
+
+    **The receipt write is two writes deliberately, and the reason is statutory, not architectural.**
+    `RECEIVED` and its timestamp persist durably before any domain rule runs, because that timestamp
+    starts the Fla. Stat. 627.70131(1)(a) acknowledgment clock and must not depend on whether rule
+    evaluation succeeds, is correct, or runs at all. A single write after triage is the defect this
+    item most needs a scenario against.
+
+    **SIU is out of scope here.** No SIU computation, no SIU storage, no SIU field — 5f builds all of
+    it. Serializers are allow-list based from this item onward regardless, per `PHASE2_DESIGN.md`'s
+    SIU rule 2, because a deny-list leaks every field added after it is written and 5f is when
+    fields start being added.
+
+    **A boundary-gate fact that shapes this item, read from `gauntlet/gates/boundary.py` rather than
+    inferred.** The gate walks only the steps directory (`tests/acceptance` here) and flags absolute
+    imports whose top-level root matches a top-level importable name under `src/` — which is exactly
+    one name, `claimgate`. `tests/api/` is not walked at all, and an import of anything not named
+    `claimgate` is invisible to it. So a step definition that imports an HTTP client library and
+    builds its own client passes the gate cleanly while binding the acceptance suite to transport
+    detail. The test API layer owns constructing and driving the application; that discipline is
+    unenforced here and has to be held by review.
+
+    **Further-split trigger, stated before the cost is incurred rather than after.** Item 4 was one
+    number that became 4a through 4k. If this item's spec draft carries more than one Rule per
+    endpoint, or its measured mutant count would put more than roughly a dozen survivors in a single
+    scenario, split it — the deciding argument is reason granularity, not the count, per item 4g's
+    finding that `gauntlet mutant approve` scopes only by feature file and `--scenario`.
+
+5d. **Idempotency on `POST /notices`.** `Idempotency-Key` as a header, uniqueness on
+    `(carrier_code, idempotency_key)` enforced by a database constraint rather than a
+    check-then-write, 24-hour expiry, replay returning `200` with the original `notice_id` and
+    receipt timestamp but the notice's current state, replays kept out of the audit trail. All
+    specified in `PHASE2_DESIGN.md`; this item builds it.
+
+    Sequenced after 5c because the constraint is a real database constraint and there is no schema
+    to put it on until 5c exists. Its own reason for being separate from business duplicate
+    detection is in `PHASE2_DESIGN.md` and should not be re-litigated here: a bare network retry is
+    indistinguishable, to the duplicate matcher, from a genuinely separate loss on the same policy
+    inside the match window.
+
+5e. **`POST /notices/{notice_id}/resolution`.** The `PENDED → TRIAGED` transition, `USER` actor
+    only, `409` when the notice is not currently `PENDED`, `200` when the supplied data clears every
+    blocker, `422` with the current blockers when it does not — and, in that last case, a notice
+    that stays `PENDED` while an audit entry is still written with `outcome=REFUSED`. A refused
+    resolution attempt is an audit event, not a non-event.
+
+    **Supplemental data never mutates the stored payload**: each resolution writes its own immutable
+    payload record with its own hash, linked in arrival order, and the current view is derived from
+    that sequence. Tolling is recorded and never computed — precise UTC pend and resolution-received
+    timestamps, no tolling logic, and no field named `tolling` anywhere in phase 2.
+
+5f. **SIU separation: the separate table, the write-side event trail, the allow-list serializer's
+    negative assertions, and SIU computation wired in at all.** `PHASE2_DESIGN.md`'s SIU section is
+    the specification input. Indicators live in their own table rather than as columns on the notice
+    record, because physical separation is the part that cannot be retrofitted; an append-only
+    indicator-event trail records which indicator fired, under which `ruleset_version`, and when.
+    No read-side access log — with no authentication to populate it, that record would be theater.
+
+    **A scenario asserting SIU indicators are absent from both response bodies is required**, and it
+    is meaningful only from this item onward, because before it there is nothing to leak.
+
+    **Every phase-2 notice will carry a not-evaluated recent-inception indicator, and that is
+    correct rather than a stub to fill in.** The continuous coverage date arrives by adapter lookup
+    in phase 3; phase 2 has no adapter, so the input is genuinely absent and the indicator resolves
+    `NOT_EVALUATED` with `NO_CONTINUOUS_COVERAGE_DATE` — see `ASSUMPTIONS.md`, 2026-08-22. An agent
+    that supplies a placeholder date here has manufactured a determination nobody made, which is the
+    exact failure "unevaluated is not negative" exists to prevent.
+
+5g. **The jurisdiction map, and the two swappability proofs.** Statutory configuration is a real map
+    keyed by jurisdiction code with exactly one entry populated (`FL`) — a genuine lookup, not a
+    constant dressed as one. Jurisdiction derives from the insured property's state, never the
+    carrier's domicile and never the reporter's address. An absent or non-`FL` `property_state` does
+    not block: the notice proceeds to `TRIAGED` carrying an attribute for human review. No
+    jurisdiction-based branching anywhere beyond that one lookup, and no second real jurisdiction.
+
+    **The two swappability tests are demo artifacts proving the absence of hardcoding, not
+    features** — a carrier-set swap against an alternative reference fixture, and a jurisdiction
+    swap against a fictional second-jurisdiction fixture. `PHASE2_DESIGN.md` records what phase 1
+    already settled and what these therefore still have to prove: the domain half is done, since a
+    carrier difference has nothing left in the domain to condition on, so what remains unproven is
+    that the shell carries a second carrier set and a second ruleset through to those parameters
+    without a branch of its own. Sequenced last because that is only provable once there is a shell
+    to carry them. **If either test is hard to write, the difficulty is the finding — do not bend
+    the test to make it pass.**
 
 ## What to read
 
@@ -379,7 +508,13 @@ later.
 | 4i | this item's own entry; no other document needed |
 | 4j | `ASSUMPTIONS.md` — the same three entries as 4g, plus the `POLICY_NUMBER_PATTERN` open decision |
 | 4k | `ASSUMPTIONS.md` — the carried-requirements entry on reason-code precedence; `PHASE2_DESIGN.md`'s "SIU handling" item 5 |
-| 5 (phase 2) | everything, `PHASE2_DESIGN.md` first |
+| 5a | `PHASE2_DESIGN.md` — "Carrier reference"; `ASSUMPTIONS.md` — the three configuration entries dated 2026-08-17, plus the per-carrier rules entry dated 2026-08-22 |
+| 5b | `ASSUMPTIONS.md` — "Timezone-correct 'now'"; no other document needed |
+| 5c | `PHASE2_DESIGN.md` — "Record state model", "Audit log", "HTTP surface"; `STATUTORY_REGISTER.md` |
+| 5d | `PHASE2_DESIGN.md` — "Idempotency" and the "HTTP surface" status-code table |
+| 5e | `PHASE2_DESIGN.md` — "Pending resolution and tolling"; `STATUTORY_REGISTER.md` |
+| 5f | `PHASE2_DESIGN.md` — "SIU handling"; `ASSUMPTIONS.md` — "Data we do not have at intake" and the continuous-coverage entry dated 2026-08-22 |
+| 5g | `PHASE2_DESIGN.md` — "Jurisdiction axis" and "Swappability proofs" |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
 
@@ -791,3 +926,25 @@ is `uv pip install -r requirements-dev.txt`, not an editable install.
 **Phase 1 is complete.** Items 1 through 4k are merged, and the documentation pass across
 `README.md`, `PHASE2_DESIGN.md`, `QUEUE.md`, `ASSUMPTIONS.md`, and `docs/harness-findings.md` is
 done. Item 5, the phase-2 build, is next, and `PHASE2_DESIGN.md` is where it starts.
+
+**Item 5 is split into 5a through 5g, 2026-08-22.** Its entry was three lines pointing at a design
+document covering seven independent concerns — a state model, four endpoints, an audit log, an
+idempotency constraint, a jurisdiction map, a carrier reference, an SIU table, a timezone function,
+and two swappability tests — behind one number and one spec lock. Item 4 was also one number, and
+became 4a through 4k. The split is by spec lock: each subitem owns one specification, one measured
+blast radius, and one approval boundary. Sequencing is 5a and 5b first because they are what 5c
+calls, not because they are smaller.
+
+**Four phase-2 decisions were made on 2026-08-22 and recorded in `ASSUMPTIONS.md`,** each of which
+the shell would otherwise have had to decide for itself mid-implementation: the per-carrier rules
+file moves from phase 3 into phase 2 (5a); duplicate-detection not-evaluated reason codes stay out
+of `reason_codes` (5c's serializer); phase 2 matches duplicate candidates against ClaimGate's own
+persisted notices only (5c); and the recent-inception indicator resolves not-evaluated on every
+phase-2 notice because its input does not exist yet (5f). `PHASE2_DESIGN.md`'s carrier-reference,
+duplicate-reason-code, and SIU-threshold-axis passages are corrected to match.
+
+**Main is at `55357df`, not the `6e8364c` named in the "Current state" paragraph above.** `55357df`
+is the phase-1 close commit — documentation only, no `src/`, `features/`, or ledger change — so
+every gate figure in that paragraph stands unchanged and is not restated here. Thirteen merged
+`reopening/*` branches remain on origin; harmless, and deleting them is housekeeping rather than a
+queue item.
