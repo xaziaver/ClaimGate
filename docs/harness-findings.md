@@ -129,6 +129,24 @@ plain scenario with the assertion **quoted in the step text**, because
 plain scenario is mutable, and a one-row outline is strictly worse than the
 plain scenario it replaces.
 
+**Correction, 2026-08-23, and it reverses the correction above.** A quoted
+literal in a plain scenario is mutable but the mutant is vacuous.
+`LITERAL_PATTERN` captures the surrounding quotes, and `_swap` with no
+alternatives appends `_gauntlet` after the closing quote, so the mutated line
+reads `the loss date is "2026-01-15"_gauntlet`. `pytest_bdd.parsers.re`
+matches with `regex.fullmatch` and every step pattern in this project
+terminates its captured value with a quote, so the line binds to no step
+definition: pytest-bdd raises at step resolution, the test fails, the mutant
+scores as killed, and no domain code ever runs. A wrong implementation kills
+it identically. Measured 2026-08-23 by rendering every mutated line against
+all 45 step patterns: of 82 literal mutants across the four features that have
+step definitions, 7 bind and 75 do not, and all 7 that bind are numeric, where
+`_mutate_number` produces a well-formed value. Of the same four features' 366
+acceptance mutants, roughly a fifth are killed at step lookup. All 284
+rendered outline substitutions bind, because a sibling cell value is
+well-formed. **Prefer a multi-row outline. A plain scenario's quoted literal
+is a vacuous kill; only its numeric literals are real tests.**
+
 A ragged `Examples` row, one whose cell count differs from the header's,
 parses with no error and no diagnostic and silently yields fewer mutants than
 its siblings. Verified 2026-08-22 by construction: a three-row two-column table
