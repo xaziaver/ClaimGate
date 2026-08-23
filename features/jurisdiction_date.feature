@@ -53,18 +53,30 @@ Feature: Jurisdiction date resolution
   Rule: The jurisdiction's timezone is a parameter the resolution reads, not a zone it assumes
 
     # The same instant, resolved under each of Florida's two timezones,
-    # produces two different dates - Miami's and Pensacola's. A plain
-    # scenario, not an outline, so every value below - the repeated instant,
-    # both timezone names, and both resolved dates - is independently
-    # reachable by mutation rather than sitting in a fixed Given an outline
-    # would never mutate (docs/harness-findings.md, "Mutation cannot see a
-    # fixed Given"). An implementation that hardcodes America/New_York passes
-    # every scenario in the rule above and fails only here.
-    Scenario: The same instant resolves to a different jurisdiction date depending on which timezone applies
-      When the instant "2026-06-11T04:30Z" is resolved to a calendar date in the jurisdiction timezone "America/New_York"
-      Then the resolved date is "2026-06-11"
-      When the instant "2026-06-11T04:30Z" is resolved to a calendar date in the jurisdiction timezone "America/Chicago"
-      Then the resolved date is "2026-06-10"
+    # produces two different dates - Miami's and Pensacola's. An outline now,
+    # reversing the earlier choice here: a plain scenario's quoted literals
+    # are mutable but vacuous - the marker lands outside the closing quote,
+    # which no step definition in this project's house style can bind, so the
+    # mutant dies at step resolution before the domain is ever called, and a
+    # wrong implementation would have been killed identically
+    # (docs/harness-findings.md, "Acceptance mutation does not see
+    # everything," corrected 2026-08-23). An Examples column's sibling swap
+    # stays well-formed - America/New_York for America/Chicago,
+    # 2026-06-11 for 2026-06-10 - so it reaches the domain and is killed by
+    # an actual mismatch instead. The instant stays fixed in the When step
+    # rather than becoming a third column: it was one of the plain
+    # scenario's six vacuous mutants, and an outline never mutates a fixed
+    # value regardless, so nothing real is given up. An implementation that
+    # hardcodes America/New_York passes every scenario in the rule above and
+    # fails only here.
+    Scenario Outline: The same instant resolves to a different jurisdiction date depending on which timezone applies
+      When the instant "2026-06-11T04:30Z" is resolved to a calendar date in the jurisdiction timezone <timezone>
+      Then the resolved date is <resolved_date>
+
+      Examples:
+        | timezone          | resolved_date |
+        | America/New_York  | 2026-06-11    |
+        | America/Chicago   | 2026-06-10    |
 
   Rule: An unrecognized jurisdiction timezone refuses the resolution rather than falling back to a default
 
