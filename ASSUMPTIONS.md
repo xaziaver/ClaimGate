@@ -377,6 +377,19 @@ or data. Nothing below was confirmed against a live book.
   engine only swaps between values a column already contains. Whatever loads a carrier
   configuration needs its own rejection of unrecognized values, specified where that loading
   happens. Recorded here so it is a known gap rather than a discovered one.
+
+  **Annotated 2026-08-23: this entry's substance holds, its boundary language no longer does.**
+  Item 5a placed `carrier_configuration.py` in `src/claimgate/domain/`, so the domain package now
+  contains a module that parses configuration, refuses an unrecognized carrier code, and refuses
+  absent or malformed values by name. The sentence above - parsing, validating and rejecting a
+  malformed configuration value is the caller's job, above the domain boundary - is still true of
+  the six domain rules, which have no unrecognized-configuration branch and should never grow one.
+  It is no longer true of the domain package. The placement was ratified for the same reason item
+  5b's was: the module is a pure function of caller-supplied inputs carrying named refusal
+  outcomes, and `[tool.mutmut] source_paths` scopes the code-mutation gate to
+  `src/claimgate/domain/` only, so a sibling package would have exempted 98 killed mutants from
+  that gate with no visible signal. Read "above the domain boundary" here as a statement about
+  which code interprets configuration, not about which directory it lives in.
 - **The per-carrier rules file moves from phase 3 into phase 2 — advisor-recommended,
   human-ratified, 2026-08-22.** `PHASE2_DESIGN.md`'s carrier-reference section describes a static
   identity-only file in phase 2 and a per-carrier rules file "eventually," in phase 3. That was
