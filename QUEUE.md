@@ -1081,3 +1081,16 @@ the acceptance gate on this branch, reporting one unapproved spec - the
 guaranteed state between a spec draft and its approval, not a defect
 (`docs/harness-findings.md`, "Command ownership"). The next action is a
 human review and `gauntlet spec approve`, not an agent action.
+
+**Item 5a's locked spec carries 47 literal mutants whose kills may all be
+vacuous, and that is the first thing to check when its step definitions are
+written.** Measured 2026-08-23 on the four features that already have step
+definitions: a quoted literal mutated in a plain scenario renders a line that
+binds to no step pattern, so it is killed at step resolution rather than by
+the implementation. `carrier_configuration.feature` at `f19317e` has 47 of its
+84 mutants in plain scenarios. Whether they are vacuous depends on step
+definitions that do not exist yet; if they follow the house style, they will
+be. The same question applies to the 30 blank substitutions the refusal
+outline's loading row induces, which render lines with an empty field and may
+not bind either. Not worth reopening a locked spec on a prediction - worth
+measuring the moment there is something to measure against.
