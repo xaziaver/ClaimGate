@@ -129,6 +129,25 @@ or data. Nothing below was confirmed against a live book.
   address, or carrier configuration) arrives with item 5c and is recorded here as open, not
   answered. Scenarios may use `America/New_York` throughout; at least one must use
   `America/Chicago` to prove the zone is read rather than assumed.
+- **An unrecognized jurisdiction timezone is refused, never defaulted — advisor-recommended,
+  human-ratified, 2026-08-23.** Once item 5c resolves the zone from risk location or carrier
+  configuration, a bad value arrives here as an unrecognized IANA name — the same shape item 5a
+  settled one layer down, where a malformed configuration value is refused and named rather than
+  silently repaired. Falling back to `America/New_York` is the precise failure this item exists to
+  prevent, and it is worse than the bug it replaces: a silent default produces a wrong
+  `LOSS_DATE_IN_FUTURE` determination that reads as correct in a record a regulator or a court can
+  later inspect. This file's "Unevaluated is not negative" entry already states the principle — a
+  resolution whose required input is unusable must not return something that reads as a
+  determination. Cost: the resolution now has two outcomes rather than one, and every caller has to
+  handle the refusal.
+- **An instant that is not a timezone-aware UTC instant is out of scope for item 5b —
+  advisor-recommended, human-ratified, 2026-08-23.** The "Timezone-correct 'now'" contract has the
+  shell supply that instant, and it comes from the request pipeline and the server clock rather
+  than from configuration or a reporter, so it is a caller-contract violation rather than a runtime
+  input this resolution has to defend against. Distinguished here from the timezone name, which
+  genuinely does arrive from configuration, and named rather than left silent because two of the
+  timezone-parameter scenario's mutants depend on the answer and an equivalent-mutant approval will
+  need something to point at.
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
   recorded as `NOT_EVALUATED` with a reason code. It is never defaulted to false, absent, or any
