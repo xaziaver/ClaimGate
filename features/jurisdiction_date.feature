@@ -20,13 +20,14 @@ Feature: Jurisdiction date resolution
   # accepting a date that is genuinely still in the future locally.
   # ASSUMPTIONS.md, "Timezone-correct 'now.'"
 
-  # Rules 1 and 3 below fix the timezone to America/New_York because each is
+  # Two rules below fix the timezone to America/New_York, because each is
   # about a different axis - local-vs-UTC divergence, then the offset change
   # within one zone - and holding the zone constant keeps that axis isolated.
-  # Rule 2 is the one that varies the zone, because reading it as a parameter
-  # rather than assuming Eastern is its entire subject. Florida's western
-  # panhandle - Escambia, Santa Rosa, Okaloosa, and most of Walton - is
-  # America/Chicago; the rest of the state is America/New_York.
+  # The other two vary it: one proves a well-formed zone changes the result
+  # rather than being ignored, the other proves an unrecognized zone refuses
+  # rather than silently falling back to the first two rules' constant.
+  # Florida's western panhandle - Escambia, Santa Rosa, Okaloosa, and most of
+  # Walton - is America/Chicago; the rest of the state is America/New_York.
 
   Rule: An instant resolves to the calendar date in the jurisdiction's timezone, which can differ from the UTC calendar date
 
@@ -64,6 +65,26 @@ Feature: Jurisdiction date resolution
       Then the resolved date is "2026-06-11"
       When the instant "2026-06-11T04:30Z" is resolved to a calendar date in the jurisdiction timezone "America/Chicago"
       Then the resolved date is "2026-06-10"
+
+  Rule: An unrecognized jurisdiction timezone refuses the resolution rather than falling back to a default
+
+    # Extends the rule above: reading the zone as a parameter means an
+    # unusable one has to be rejected, not silently replaced with
+    # America/New_York or any other constant - the same shape item 5a
+    # settled one layer down, where a malformed configuration value is
+    # refused and named rather than repaired. The well-formed row is what a
+    # fallback would produce; the unrecognized row is what must happen
+    # instead, and both sit in one table so a substitution between them is
+    # an outcome mismatch, not a same-outcome swap. ASSUMPTIONS.md, "An
+    # unrecognized jurisdiction timezone is refused, never defaulted."
+    Scenario Outline: An unrecognized jurisdiction timezone refuses the resolution rather than falling back to a default
+      When the instant "2026-06-11T04:30Z" is resolved to a calendar date in the jurisdiction timezone <timezone>
+      Then the result is <outcome>
+
+      Examples:
+        | timezone           | outcome                            |
+        | America/New_York    | 2026-06-11                          |
+        | America/NewYork      | UNRECOGNIZED_JURISDICTION_TIMEZONE |
 
   Rule: The UTC offset in effect for a date, not proximity to a DST transition, is what can move the resolved date across a boundary
 
