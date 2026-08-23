@@ -243,11 +243,11 @@ Feature: Carrier configuration loading
         | claimant name                       | absent                      | MISSING_REQUIRED_CONFIGURATION:claimant name                      |
         | claimant name                       | neither yes nor no          | MALFORMED_REQUIRED_CONFIGURATION:claimant name                    |
         | claimant contact                    | absent                      | MISSING_REQUIRED_CONFIGURATION:claimant contact                   |
-        | claimant contact                    | neither required nor waived | MALFORMED_REQUIRED_CONFIGURATION:claimant contact                 |
+        | claimant contact                    | neither yes nor no          | MALFORMED_REQUIRED_CONFIGURATION:claimant contact                 |
         | recognized policy-number prefixes   | absent                      | MISSING_REQUIRED_CONFIGURATION:recognized policy-number prefixes  |
         | recognized policy-number prefixes   | an empty set                | MALFORMED_REQUIRED_CONFIGURATION:recognized policy-number prefixes|
-        | late reporting threshold            | fewer than zero days        | MALFORMED_REQUIRED_CONFIGURATION:late reporting threshold         |
-        | recent policy inception threshold   | a threshold below zero      | MALFORMED_REQUIRED_CONFIGURATION:recent policy inception threshold|
+        | late reporting threshold            | a negative number of days   | MALFORMED_REQUIRED_CONFIGURATION:late reporting threshold         |
+        | recent policy inception threshold   | a negative number of days   | MALFORMED_REQUIRED_CONFIGURATION:recent policy inception threshold|
         | duplicate match window              | absent                      | MISSING_REQUIRED_CONFIGURATION:duplicate match window             |
         | duplicate match window              | a negative number of days   | MALFORMED_REQUIRED_CONFIGURATION:duplicate match window           |
         |                                      |                              |                                                                    |
@@ -266,19 +266,45 @@ Feature: Carrier configuration loading
     # (docs/harness-findings.md, "Acceptance mutation does not see
     # everything").
     #
-    # The refusal lists rejected values in the same canonical order the
-    # reason-code enumeration above declares - malformed before missing -
-    # and alphabetically by field name within a code, mirroring validate()'s
-    # own sort key exactly: code position first, field name second. Stated
-    # here rather than left to the loader to decide for itself.
-    Scenario Outline: Several missing and malformed values in the same entry are all named in one refusal, in canonical order
+    # The order itself is a business decision, the same one that gave this
+    # file two reason codes rather than one: malformed before missing,
+    # because a carrier onboarded wrongly and a carrier never onboarded are
+    # different defects found by different people. Within a code, values are
+    # sorted on the field name as this specification writes it - the
+    # business term the CODE:field pair renders - not on any internal key,
+    # so the order stays checkable from the specification alone.
+    # ASSUMPTIONS.md, "A missing configuration value and a malformed one are
+    # different reason codes." As a dated consistency check rather than the
+    # reason for the rule: validate()'s own sort key agrees with this one on
+    # today's six values (verified 2026-08-22), though it sorts on the
+    # model's snake_case field name, a different string that need not always
+    # agree with the rendered one.
+    #
+    # This scenario is a plain scenario, not an outline, so the quoted
+    # refusal string below is independently reachable by mutation
+    # (docs/harness-findings.md, "Acceptance mutation does not see
+    # everything", the correction on a one-row outline forfeiting its own
+    # step literals for one marker substitution). Mutation cannot permute a
+    # list, so this row alone proves only that the assertion is read, not
+    # that the order is enforced; the scenario after it supplies the row
+    # mutation cannot.
+    Scenario: Several missing and malformed values in the same entry are all named in one refusal, in canonical order
       Given "AAAA" requires the claimant name
       And "AAAA"'s configuration is missing the claimant contact
       And "AAAA" recognizes no policy-number prefixes
       And "AAAA" configures the duplicate match window as a negative number of days
       When the carrier configuration for "AAAA" is loaded
-      Then every rejected value is named in the refusal as <reason_codes>
+      Then every rejected value is named in the refusal as "MALFORMED_REQUIRED_CONFIGURATION:duplicate match window;MALFORMED_REQUIRED_CONFIGURATION:recognized policy-number prefixes;MISSING_REQUIRED_CONFIGURATION:claimant contact"
 
-      Examples:
-        | reason_codes                                                                                                                                    |
-        | MALFORMED_REQUIRED_CONFIGURATION:duplicate match window;MALFORMED_REQUIRED_CONFIGURATION:recognized policy-number prefixes;MISSING_REQUIRED_CONFIGURATION:claimant contact |
+    # Isolates alphabetical-within-a-code from the rule above: both values
+    # here are the same code, so this row cannot pass by malformed-before-
+    # missing alone, and the Given lines name them in the opposite order
+    # from the one the refusal asserts, so appending in check order - or in
+    # Given order - fails it. validation.feature's equivalent rule carries
+    # one scenario per isolated property; this is the property the scenario
+    # above cannot isolate on its own.
+    Scenario: Two values missing from the same entry are named in alphabetical order, not the order they were found
+      Given "AAAA"'s configuration is missing the claimant name
+      And "AAAA"'s configuration is missing the claimant contact
+      When the carrier configuration for "AAAA" is loaded
+      Then every rejected value is named in the refusal as "MISSING_REQUIRED_CONFIGURATION:claimant contact;MISSING_REQUIRED_CONFIGURATION:claimant name"
