@@ -1168,3 +1168,18 @@ decision was made on the merits and not on this constraint, but the false fact i
 corrected here rather than the entry silently fixed.
 
 
+**Item 5b is done.** Spec locked at `aafd66c`, implementation at `cefe8ec`, documentation
+corrections at `12dbb48`, on `phase2/5b-jurisdiction-date`, all pushed. Not merged to `main` on its
+own — per the 5a/5b split above, the two merge together once 5a is green.
+
+`features/jurisdiction_date.feature` carries 20 acceptance mutants, 4 / 4 / 4 / 8 across its four
+scenarios, every one `kind == "example"` — measured directly against
+`gauntlet.acceptance.mutation.mutants()`, not read off a gate summary. Zero survivors, independently
+re-measured against the locked spec rather than taken on trust from the implementing session's own
+report: the branch's most recent full gate run (`20260823T184121-20922`, a stop-check run with no
+`run.started`/`run.finished` bracket but a complete `gate.finished` sequence — see
+`docs/harness-findings.md`) shows 236/236 tests passing and the acceptance gate passing at "5 spec(s),
+67 reviewed-equivalent" — the same reviewed-equivalent count as before this item, confirming its 20
+new mutants added zero new approvals. Code mutation: 100% / 232 killed project-wide, of which 15 are
+`domain/jurisdiction.py` — agent-measured, in isolation, and recorded as such rather than independently
+re-verified here.
