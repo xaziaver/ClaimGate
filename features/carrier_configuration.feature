@@ -289,8 +289,7 @@ Feature: Carrier configuration loading
     # that the order is enforced; the scenario after it supplies the row
     # mutation cannot.
     Scenario: Several missing and malformed values in the same entry are all named in one refusal, in canonical order
-      Given "AAAA" requires the claimant name
-      And "AAAA"'s configuration is missing the claimant contact
+      Given "AAAA"'s configuration is missing the claimant contact
       And "AAAA" recognizes no policy-number prefixes
       And "AAAA" configures the duplicate match window as a negative number of days
       When the carrier configuration for "AAAA" is loaded
