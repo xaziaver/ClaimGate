@@ -94,9 +94,9 @@ Feature: Jurisdiction date resolution
       Then the result is <outcome>
 
       Examples:
-        | timezone           | outcome                            |
-        | America/New_York    | 2026-06-11                          |
-        | America/NewYork      | UNRECOGNIZED_JURISDICTION_TIMEZONE |
+        | timezone         | outcome                            |
+        | America/New_York | 2026-06-11                         |
+        | America/NewYork  | JURISDICTION_TIMEZONE_UNRECOGNIZED |
 
   Rule: The UTC offset in effect for a date, not proximity to a DST transition, is what can move the resolved date across a boundary
 
