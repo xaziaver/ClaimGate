@@ -455,6 +455,19 @@ shape every time.
 Survivor counts in this entry are simulated against the rule, not measured — survivors cannot be
 measured until the implementation exists.
 
+**A loading row is not free, and in a mixed-outcome table it is a regression.** Measured on
+`carrier_configuration.feature` at `3ebea71`, 2026-08-23. `_discriminating_alternatives` prefers
+the most-different row, and an all-blank row differs from every other row in every column, so once
+one exists every cell in the table substitutes to blank and none ever substitutes to a sibling
+value again. With the blank row: 33 mutants, 30 substituting to blank, 1 or 2 surviving. Without
+it: 30 mutants, all substituting to sibling values - `claimant name -> claimant contact` and the
+like - every one killed by the outcome column, none surviving. A blank substitution asks whether
+the rule fires when nothing is named; a sibling substitution asks whether the implementation
+attributes the right outcome to the right input, which is the question a mixed-outcome table
+exists to ask. Diagnose which table you have before adding a loading row: it manufactures the
+discriminating row a same-outcome table lacks, and destroys the discrimination a mixed-outcome
+table already had.
+
 ### An expensive file-rewriting gate inside an automatic retry loop is the highest-risk state here
 
 The acceptance gate mutates spec files in place and takes ~230s. On a reopening it is *guaranteed*
