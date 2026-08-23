@@ -1,15 +1,15 @@
 {
   "entries": {
     "config:.claude/settings.json": {
-      "approved_at": "2026-08-21T22:31:47+00:00",
+      "approved_at": "2026-08-23T12:48:17+00:00",
       "digest": "sha256:2389ec61376179d2247e2100d78d8f47a5e6ab77dcea5f4cec53052978c03710"
     },
     "config:gauntlet.toml": {
-      "approved_at": "2026-08-21T22:31:47+00:00",
+      "approved_at": "2026-08-23T12:48:17+00:00",
       "digest": "sha256:70517884e3883dc684b91bb2f9b68893cf40787507db503db480a21313b97078"
     },
     "config:pyproject.toml": {
-      "approved_at": "2026-08-21T22:31:47+00:00",
+      "approved_at": "2026-08-23T12:48:17+00:00",
       "digest": "sha256:73516701ad676a7c2e12b66006342ca168f41c5bb933e0bd15f8bab129b80ddc"
     },
     "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|loss_date|REOPENED|2026-06-02": {
@@ -413,6 +413,10 @@
       "digest": "sha256:cbe71612a0037828bfe774c7d67a03f9feaec0ceab82c4872c303136854220e8",
       "reason": "Twelve mutants across two mechanisms, recorded under one reason because approval is scoped per scenario and not per mutant - and because approve stamps every survivor in the scenario, not only the ones the gate reports as unapproved. Read this as two records. (a) A configuration flag mutated on a row where the field that flag guards is populated: the required-field check is reachable only when the field is absent, so on those rows the flag is never consulted and flipping it cannot change any blocker. Eight mutants, four per flag. (b) A field value mutated on a row where that field's own flag reads not-required: nothing reads the value on those rows, so substituting or blanking it is inert. Four mutants, two per field. Neither mechanism weakens the outline. Each flag is proven to be consulted by the pair of rows where its field is absent, one row per flag state, and that pair is what kills the flag mutation, because the outcome differs across it - the boundary is proven by the pair jointly and never by a single row. The unconditional field is proven by the row where both flags read not-required and it alone blocks; no mutation of either flag can rescue that row, which is why nothing survives in the description or blockers columns. This outline has a parallel twin for the other Section II loss type, identical by design (QUEUE.md item 4g) - that symmetry is why loss type is not a column here and why the same reason applies to both. Rows are described by role rather than by literal value, per the convention in docs/harness-findings.md: example data is what a vocabulary pass changes, so a reason quoting it decays while its locator stays valid. REVISIT TRIGGER: void if incident_description becomes configurable, if a claimant field is added or removed, if either flag comes to gate more than one field, or if the two Section II outlines ever stop being identical to one another.",
       "reviewer": "xaziaver"
+    },
+    "spec:features/carrier_configuration.feature": {
+      "approved_at": "2026-08-23T12:48:07+00:00",
+      "digest": "sha256:99c29e034fd0d43c1164a2bd72642f0fbd396c36d44dc1f0726bc2fda65e2394"
     },
     "spec:features/duplicates.feature": {
       "approved_at": "2026-08-17T13:09:14+00:00",
