@@ -116,6 +116,26 @@ or data. Nothing below was confirmed against a live book.
   can never land in the gap — the tzdata mapping skips it entirely — and both readings of the
   ambiguous hour fall on the same calendar date, 2026-11-01. They matter for timestamps, which is
   item 5c's problem, not this one.
+  **Corrected 2026-08-23: the conversion is a domain function, not a shell one —
+  advisor-recommended, human-ratified.** This entry's original wording places the
+  conversion in the shell, "before calling any domain function". That placement is
+  what makes the shell compute a date and hand a date to the domain, which is
+  nearer the thing this entry exists to forbid than the alternative. The
+  conversion takes a timezone-aware UTC instant and an IANA timezone name, both
+  supplied by the caller, reads no clock and no ambient state, and returns a
+  calendar date or refuses with `JURISDICTION_TIMEZONE_UNRECOGNIZED`. It lives at
+  `src/claimgate/domain/jurisdiction.py`. The shell's remaining job is unchanged
+  and is item 5c's: obtain the instant, resolve which zone applies, pass both. The
+  shell never computes a date. The principle stands verbatim — the domain never
+  receives a date derived from server local time — and is now met literally,
+  because the domain never receives a date at all. Cost: `zoneinfo` enters the
+  domain, so the domain depends on the platform IANA database, and ClaimGate
+  declares no runtime dependencies today. The dependency is specified rather than
+  hidden, since an absent zone is the refusal path this item builds — but a
+  runtime image with no tz database refuses every notice rather than none. Whether
+  to pin `tzdata` is a `pyproject.toml` change and a human re-lock; recorded here
+  as open, and settled with item 5c's deployment work rather than now.
+
 
 - **The jurisdiction timezone is a parameter of the conversion, not a constant in it.**
   Advisor-recommended, human-ratified, 2026-08-22. Florida spans two timezones: the western

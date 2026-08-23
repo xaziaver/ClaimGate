@@ -207,7 +207,7 @@ claim about the rest of the suite.
 
 ### A green gate sometimes means nothing was checked
 
-Three distinct instances, all real:
+Four distinct instances, all real:
 
 - The coverage gate reads `.gauntlet/coverage.json` off disk and runs no
   subprocess. When the tests gate errors at collection, coverage can still
@@ -219,6 +219,14 @@ Three distinct instances, all real:
   unit suite green while it still asserts the values the spec abandoned. No gate
   compares example data across the two layers.
 
+- The code-mutation gate's source scope is not Gauntlet's. Every structural gate
+  scopes to `gauntlet.toml`'s `[project] src` — `gates/tests.py` builds coverage
+  with `--cov={ctx.src}` — but the mutation gate shells out to mutmut, which
+  scopes to `[tool.mutmut] source_paths` in `pyproject.toml`, a file the protect
+  gate only content-verifies. A module outside that path yields no mutants at all.
+  Because every mutation run here is full-scope, its zero contribution disappears
+  into a total dominated by the domain's: the score stays healthy and nothing on
+  screen indicates a module stopped being checked.
 When a gate looks clean, say what it actually exercised.
 
 ### Check `git diff` after any interrupted mutation run

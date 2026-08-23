@@ -1106,3 +1106,44 @@ this change gave the before-state as 24 nominal and 18 real; both figures
 were two high, and the correction is recorded rather than silently fixed
 because the point of counting real separately from nominal is that the two
 diverge.
+
+**Item 5b's implementation is blocked on an unresolved module-home question,
+escalated rather than decided, 2026-08-23.** Neither `PHASE2_DESIGN.md` nor
+`ASSUMPTIONS.md` names a `src/` path for the shell layer both documents
+describe — "the phase-2 API shell must receive a timezone-aware UTC instant
+and convert it to a calendar date... before calling any domain function"
+(`ASSUMPTIONS.md`, "Timezone-correct 'now'") states the *responsibility* but
+not a location, and no shell package exists yet: `src/claimgate/` holds only
+`domain/`; everything else — 5c's endpoints, 5a's carrier/config loader — is
+unbuilt.
+
+The choice has a measured consequence, not just a style preference.
+`pyproject.toml`'s `[tool.mutmut] source_paths = ["src/claimgate/domain/"]` —
+a protected path this session cannot edit — is what the code-mutation gate
+scopes to. Placing the resolution function inside `domain/` puts it under
+that gate automatically, but contradicts the design's own framing that
+timezone conversion is explicitly *not* a domain concern ("the domain never
+receives a date derived from server local time"). Placing it anywhere else
+keeps that separation but silently exempts it from code-mutation coverage —
+mutmut will never generate a mutant against it, and there is no
+session-writable way to extend `source_paths` to reach it. The other
+structural gates (size, complexity, coverage, crap, duplication, static) run
+over all of `src/` per `gauntlet.toml`'s `src = "src/"`, so those are
+unaffected either way; only the mutmut-scoped code-mutation gate is.
+
+Not decided here. Item 5b's own entry already says this is a shell concern;
+this is the missing second half — where in `src/` the shell lives — and it
+is genuinely unset, not merely undocumented.
+**Corrected 2026-08-23: the constraint this entry records does not exist.**
+`pyproject.toml` is not a protected path. Gauntlet's `DEFAULT_PROTECTED_PATHS`
+(`src/gauntlet/config.py`) is `gauntlet.toml`, `.gauntlet/`,
+`.claude/settings.json` and the lock file; those are what the PreToolUse guard
+blocks. `pyproject.toml` appears only in `DEFAULT_VERIFIED_PATHS`, which the
+protect gate hashes against the lock — "content-verified rather than blocked". An
+agent may write it; the protect gate then fails with `N-1/N paths unchanged` until
+a human runs `gauntlet lock`. Extending `[tool.mutmut] source_paths` was therefore
+available as a proposal routed through a human, not blocked. The placement
+decision was made on the merits and not on this constraint, but the false fact is
+corrected here rather than the entry silently fixed.
+
+
