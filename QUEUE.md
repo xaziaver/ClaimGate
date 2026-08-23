@@ -1006,3 +1006,31 @@ is used by no other feature file. `validation.feature` carries 22
 `POLICY_NUMBER_MALFORMED:policy_number` in `Examples` cells, plus a
 `| code | field |` data-table form in nine scenarios. The agent read the file
 and said so.
+
+**The second redraft landed at `b039b48` and needed four corrections, none
+structural.** Measured independently rather than accepted from the agent's
+report: 76 mutants, 17 / 11 / 4 unchanged on rules 1-3, 10 on the new zero-day
+rule, 33 and 1 on the two refusal scenarios; `gauntlet.lock.json`, `src/` and
+`tests/` untouched across the whole branch, and `main` confirmed an ancestor of
+it. Both shape decisions stand. The collapse of the refusal outline to a single
+field/value pair, with `absent` as a value a field can be configured as, is
+better than what was recommended: every non-blank cell substitutes to empty
+rather than to a sibling value, so all thirty real-row mutants die.
+
+**What needed correcting, and one piece of advice that was wrong.** Moving the
+multi-value assertion out of a data table was right and cost five mutants
+nobody measured, because a one-row outline forfeits its step literals - the
+advice in `docs/harness-findings.md` that sent it to an `Examples` column is
+now corrected there. The scenario title claimed a canonical order a single row
+cannot exercise. The sort was specified over "field name" without saying which
+string, while this file's field names are business prose and `validate()`'s are
+snake_case. And three synonyms for a negative day count bought no
+discrimination at all - 76 mutants before and after unifying them.
+
+**The simulated survivor count on the refusal outline is 1 or 2, not 1.** The
+blank row's `field` and `value` cells are symmetric; which of them survives
+turns on what the loader does with an unrecognized field name, which item 5a
+deliberately does not specify (`ASSUMPTIONS.md`). Recorded as a range because a
+simulation reported as 1 that the gate later measures as 2 reads as
+specification-implementation divergence, and that signal is only worth having
+if the simulation was right.

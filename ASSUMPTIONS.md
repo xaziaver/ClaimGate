@@ -384,6 +384,26 @@ or data. Nothing below was confirmed against a live book.
   specified rather than left implicit. Free today - measured at `5d37a4f`, the old name has five
   occurrences, all inside this one unlocked spec file, no step definition, no `src/`, no ledger entry.
 
+  The refusal's order is stated over the field name as the specification writes
+  it - the business term the `CODE:field` pair renders - not over any internal
+  key. `validate()` sorts by `_CANONICAL_CODE_ORDER.index(code)` then `field`,
+  where `field` is the model's own snake_case name (verified 2026-08-22); the
+  two orders agree on today's six values but are not the same rule. Stating it
+  over the rendered name keeps the order checkable from the specification alone.
+  Cost: a change to a rendered field name is then an ordering change, and has to
+  be measured as one rather than treated as vocabulary.
+
+- **A key in a carrier's entry that is not one of the six values is out of
+  scope for item 5a - advisor-recommended, human-ratified, 2026-08-22.** Item
+  5a resolves the six caller-supplied values the domain will receive. Whether
+  the rules file may carry anything else, and what a loader does when it finds
+  it, is a question about that file's schema rather than about resolving a
+  value, and it belongs with the phase-2 adapter layer where the file's shape
+  is settled. Named here rather than left silent because the valid row of the
+  refusal outline carries a surviving mutant that depends on the answer - an
+  unrecognized field name substituted into a blank cell - and an
+  equivalent-mutant approval reason needs something to point at.
+
 - **A day count of zero is a valid configuration, not a malformed one -
   advisor-recommended, human-ratified, 2026-08-22.** Malformed for a day count is non-integer or
   negative. Zero is neither and it is meaningful: a duplicate match window of 0 compares only same-day
