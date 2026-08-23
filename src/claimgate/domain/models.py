@@ -77,3 +77,18 @@ class SiuIndicators:
 class TriageOutcome:
     severity: str
     queue: str
+
+
+JurisdictionDateValue = Literal["RESOLVED", "REFUSED"]
+
+
+@dataclass(frozen=True)
+class JurisdictionDateResult:
+    # Same convention as DuplicateMatchResult: reason is set only when value
+    # is REFUSED, and resolved_date is only ever populated when value is
+    # RESOLVED - a refusal, not a missing input, but "unevaluated is not
+    # negative" (ASSUMPTIONS.md) applies the same way: a result that was not
+    # computed is never reported as a date.
+    value: JurisdictionDateValue
+    resolved_date: date | None = None
+    reason: str | None = None
