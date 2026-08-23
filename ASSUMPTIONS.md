@@ -140,6 +140,16 @@ or data. Nothing below was confirmed against a live book.
   resolution whose required input is unusable must not return something that reads as a
   determination. Cost: the resolution now has two outcomes rather than one, and every caller has to
   handle the refusal.
+
+  Named `JURISDICTION_TIMEZONE_UNRECOGNIZED`, subject first, matching
+  `LOSS_TYPE_UNRECOGNIZED` and `NOTICE_TYPE_UNRECOGNIZED` - the only two
+  codes in implemented domain code that name the same kind of failure
+  (verified against `src/claimgate/domain/` 2026-08-23). Item 5a's
+  `MISSING_REQUIRED_CONFIGURATION` and `MALFORMED_REQUIRED_CONFIGURATION`
+  invert that order and are the product's only codes that do; they were
+  settled before this inventory was checked and are left as they are
+  because that specification is locked. Settle the inconsistency when item
+  5a's implementation lands, not by reopening an approved spec for a name.
 - **An instant that is not a timezone-aware UTC instant is out of scope for item 5b —
   advisor-recommended, human-ratified, 2026-08-23.** The "Timezone-correct 'now'" contract has the
   shell supply that instant, and it comes from the request pipeline and the server clock rather

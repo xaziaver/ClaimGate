@@ -1094,3 +1094,15 @@ be. The same question applies to the 30 blank substitutions the refusal
 outline's loading row induces, which render lines with an empty field and may
 not bind either. Not worth reopening a locked spec on a prediction - worth
 measuring the moment there is something to measure against.
+
+**Item 5b's timezone-parameter rule went from 22 nominal mutants to 20,
+and from 16 real ones to 20.** Converting it from a plain scenario to a
+two-row outline removed six quoted-literal mutants that would have died at
+step resolution and added four Examples-column swaps that reach the domain.
+Every mutant in `jurisdiction_date.feature` is now `kind == "example"`,
+with no blank substitutions and no marker appends, so the nominal and real
+counts coincide for the first time in this project. An earlier report of
+this change gave the before-state as 24 nominal and 18 real; both figures
+were two high, and the correction is recorded rather than silently fixed
+because the point of counting real separately from nominal is that the two
+diverge.
