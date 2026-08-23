@@ -428,6 +428,18 @@ Ordered by domain severity, not by effort. One line each on why that position.
     detail. The test API layer owns constructing and driving the application; that discipline is
     unenforced here and has to be held by review.
 
+    **Item 5c owes a scenario proving the shell supplies a timezone-aware UTC instant — an obligation
+    inherited from item 5b, not a defect in it.** `ASSUMPTIONS.md`'s "An instant that is not a
+    timezone-aware UTC instant is out of scope for item 5b" entry puts a naive instant out of scope
+    for `resolve_jurisdiction_date` as a caller-contract violation, and that decision stands. But the
+    violation is silent rather than loud: `datetime.astimezone()` on a naive value assumes server
+    local time and returns a plausible wrong date rather than raising. Measured 2026-08-23 — with the
+    server clock on `America/Chicago`, a naive `2026-06-11T01:00` resolves to `2026-06-11`, where the
+    correct answer for the aware UTC instant is `2026-06-10`. `[tool.mypy] strict = true` cannot catch
+    it, because aware and naive datetimes share one type. 5c is where the instant is obtained, so 5c
+    is where this is defended — a guard in `domain/jurisdiction.py` would be behavior no scenario
+    describes.
+
     **Further-split trigger, stated before the cost is incurred rather than after.** Item 4 was one
     number that became 4a through 4k. If this item's spec draft carries more than one Rule per
     endpoint, or its measured mutant count would put more than roughly a dozen survivors in a single
@@ -517,6 +529,15 @@ later.
 | 5g | `PHASE2_DESIGN.md` — "Jurisdiction axis" and "Swappability proofs" |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
+
+**Process finding, 2026-08-23: this table's per-item entries can claim completeness they don't have.**
+Item 5b's row reads `ASSUMPTIONS.md` — "Timezone-correct 'now'"; no other document needed`. The
+item's actual blocking question — where the resolution function lives, `domain/` or a not-yet-built
+shell package — turned out to be a `PHASE2_DESIGN.md`-shaped structural question, the exact kind of
+document this row said wasn't needed. A memoryless session following the table alone would have
+reached the same escalation, just with less to reason from before doing so. The table needs either a
+column or a stated convention for "documents this item may need if it hits a structural question," or
+its entries need to stop reading as exhaustive.
 
 `docs/decisions.md` is a dated historical record, not current guidance. Read it
 only when tracing why a phase-1 rule exists, and read `ASSUMPTIONS.md`'s audit of
