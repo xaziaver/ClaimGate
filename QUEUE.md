@@ -1045,3 +1045,39 @@ locked. The general shape is worth carrying: the blast radius of an example-data
 change is the number of scenarios restating that literal, it is invisible from
 the decision itself, and equal mutant counts will hide it. Compare locators, not
 counts.
+
+**Item 5a is done and locked.** `features/carrier_configuration.feature`
+approved and locked at `f19317e` on `phase2/5a-carrier-configuration`, ledger
+digest `sha256:99c29e034fd0d43c...`, matching the file reviewed at `3ebea71`
+byte for byte. 84 mutants across seven scenarios: 17 / 11 / 4 on rules 1-3,
+10 on the zero-day rule, 33 on the refusal outline, 5 and 4 on the two
+multi-value scenarios. No step definitions and no `src/` change - the
+acceptance gate stays red until 5b's implementation phase, by design. One
+open item carried forward: the refusal outline's blank loading row costs 30
+sibling-value mutants and adds one or two permanent equivalent approvals.
+Correct as locked, not worth reopening for; revisit when the implementation
+lands and those survivors need reasons written.
+
+**Item 5b is next**, on `phase2/5b-jurisdiction-date` off `main`. Two of the
+four scenarios its `ASSUMPTIONS.md` entry named tested the wrong thing and
+have been corrected there; the entry now also records that the jurisdiction
+timezone is a parameter rather than a constant, because Florida spans two
+zones.
+
+**Item 5b's first draft landed at `3d8278f`, spec-only, pushed.**
+`features/jurisdiction_date.feature`: three rules, each its own scenario - an
+instant resolves to the jurisdiction's local calendar date rather than the
+UTC one (2 rows), the jurisdiction timezone is a parameter the resolution
+reads rather than a zone it assumes (a plain scenario proving it with the
+same instant under both `America/New_York` and `America/Chicago`), and the
+UTC offset in effect for a date, not proximity to a DST transition, is what
+moves a resolved date across a boundary (4 rows). Measured directly against
+the engine: 18 mutants, 4 / 6 / 8 by rule. Simulated survivors: 0 across all
+three - every row's instant and resolved-date values are pairwise distinct,
+so every substitution the engine would pick produces either a value mismatch
+or an unparseable literal, and unlike item 5a's field-name ambiguity, nothing
+here turns on a question the spec leaves open. `gauntlet check` is red on
+the acceptance gate on this branch, reporting one unapproved spec - the
+guaranteed state between a spec draft and its approval, not a defect
+(`docs/harness-findings.md`, "Command ownership"). The next action is a
+human review and `gauntlet spec approve`, not an agent action.
