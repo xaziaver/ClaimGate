@@ -1034,3 +1034,14 @@ deliberately does not specify (`ASSUMPTIONS.md`). Recorded as a range because a
 simulation reported as 1 that the gate later measures as 2 reads as
 specification-implementation divergence, and that signal is only worth having
 if the simulation was right.
+
+**Rules 1-3's locators moved once during item 5a, at `b039b48`.** The counts
+held at 17 / 11 / 4 throughout, which is why the record read "unchanged", but
+three locators were replaced when the example prefix set changed from `HO;AU`
+to `HO;DP` - twice in `Given "AAAA" recognizes the policy-number prefixes` and
+once in `Then the recognized policy-number prefixes are received as`, across two
+rules the decision was not about. Costless here because the spec was never
+locked. The general shape is worth carrying: the blast radius of an example-data
+change is the number of scenarios restating that literal, it is invisible from
+the decision itself, and equal mutant counts will hide it. Compare locators, not
+counts.
