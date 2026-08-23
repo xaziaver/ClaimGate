@@ -178,6 +178,22 @@ or data. Nothing below was confirmed against a live book.
   genuinely does arrive from configuration, and named rather than left silent because two of the
   timezone-parameter scenario's mutants depend on the answer and an equivalent-mutant approval will
   need something to point at.
+
+  **Annotated 2026-08-23, measured: the violation is silent, which is why the
+  obligation moves to item 5c rather than disappearing.** A naive `datetime`
+  is not rejected by anything. `datetime.astimezone()` on a value with no
+  `tzinfo` assumes *server local time* and returns a plausible wrong date
+  rather than raising: with the server clock on `America/Chicago`, a naive
+  `2026-06-11T01:00` resolves to `2026-06-11` where the correct answer for the
+  aware UTC instant is `2026-06-10`. `[tool.mypy] strict = true` cannot catch
+  it, because aware and naive datetimes share one type. So this caller-contract
+  violation does not fail loudly at first integration - it produces exactly the
+  wrong `LOSS_DATE_IN_FUTURE` determination this item exists to prevent, from a
+  code path with no error and a green gate. Item 5b is still the wrong place to
+  defend against it: a guard here would be behavior no scenario in the locked
+  spec describes. The obligation is item 5c's, where the instant is obtained,
+  and it is recorded there rather than left implicit in this exclusion.
+
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
   recorded as `NOT_EVALUATED` with a reason code. It is never defaulted to false, absent, or any

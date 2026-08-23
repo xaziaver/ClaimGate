@@ -227,6 +227,7 @@ Four distinct instances, all real:
   Because every mutation run here is full-scope, its zero contribution disappears
   into a total dominated by the domain's: the score stays healthy and nothing on
   screen indicates a module stopped being checked.
+
 When a gate looks clean, say what it actually exercised.
 
 ### Check `git diff` after any interrupted mutation run
