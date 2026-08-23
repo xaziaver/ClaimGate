@@ -91,6 +91,18 @@ conditions, so the wrong command isn't specific to a spec that changed after
 approval — any spec the acceptance gate hasn't approved, new or modified,
 carries this same incorrect instruction.
 
+### `pyproject.toml` is verified, not protected — an escalation that said otherwise was wrong
+
+An escalation during item 5b's session asserted that `pyproject.toml` could not be edited because it
+is a protected path. It is not. Gauntlet's `DEFAULT_PROTECTED_PATHS` (`src/gauntlet/config.py`) —
+the files an agent must not touch at all, which is what the `PreToolUse` guard blocks — is
+`gauntlet.toml`, `.gauntlet/`, `.claude/settings.json`, and the lock file. `pyproject.toml` appears
+only in `DEFAULT_VERIFIED_PATHS`, which the protect gate content-hashes each run rather than blocking
+outright: an agent can write it, and the gate then fails with `N-1/N paths unchanged` until a human
+re-locks with `gauntlet lock`. Extending `[tool.mutmut] source_paths` to reach a module outside
+`src/claimgate/domain/` was therefore always available as a proposal routed through a human, not a
+blocked action. Verified by reading `src/gauntlet/config.py` directly, 2026-08-23.
+
 ### Acceptance mutation does not see everything
 
 `Feature.background` is never passed to `mutants()`, so Background steps are
@@ -413,6 +425,18 @@ status --porcelain -uall` — working tree against `HEAD`, not commit against
 commit — so a run issued straight after a commit, with a clean tree, would
 find no changed files and the gate would report passed, vacuously, with
 nothing actually mutated.
+
+### A zero-mutant scope leaves no on-screen tell in the runs this project actually issues
+
+A claim made during item 5b's session, that a zero-mutant mutation run would show `0 killed` as a
+visible tell, is wrong for this project as it is actually run. That tell would only appear on a
+`--changed` run that included the mutation gate, and — per the entry above — none of this project's
+`--changed` invocations ever do; they are all scoped to `static`, `size`, and `complexity`. In the
+full, non-`--changed` runs this project actually issues, an out-of-scope module contributes zero
+mutants to a `killed` total dominated by the domain's, and there is no signature distinguishing "this
+module had zero mutants" from "this module had mutants, all killed" — both read as the same aggregate
+number. Corrected by re-reading this document before reasoning about gate behaviour, which is the
+argument for doing so.
 
 ### Mutation cannot see a fixed Given, so a spec can state a rule it never protects
 
@@ -756,6 +780,17 @@ the intended source (not just the conflict-marked hunks) before staging, since a
 report is not a complete report. For timeouts specifically: treat them as a category with a known
 recovery procedure — diff the working tree, check for a partially-written state, re-run — rather
 than as one-off accidents to be individually rediscovered each time.
+
+### A markdown list can swallow the paragraph after it, invisibly in a diff
+
+An entry spliced into "A green gate sometimes means nothing was checked" at `79d7461` was inserted
+without the blank line its closing sentence needed before the next paragraph. CommonMark's lazy-
+continuation rule folded that following paragraph into the list item as a result; fixed at `12dbb48`.
+Verify a splice by outcome, not by grepping for the phrase just written — that only proves the text
+landed, not that it landed as its own block. Check something that would change if the splice went
+wrong: a line-count delta on the file, or the emptiness of a specific adjacent line. A list swallowing
+the paragraph after it is invisible in a diff and reads correctly in review, because the rendered
+prose still makes sense — only the structure is wrong.
 
 ### A command whose output you don't read is a command whose failure you won't see
 
