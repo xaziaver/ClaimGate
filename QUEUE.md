@@ -428,6 +428,18 @@ Ordered by domain severity, not by effort. One line each on why that position.
     detail. The test API layer owns constructing and driving the application; that discipline is
     unenforced here and has to be held by review.
 
+    **Item 5c owes a scenario proving the shell supplies a timezone-aware UTC instant — an obligation
+    inherited from item 5b, not a defect in it.** `ASSUMPTIONS.md`'s "An instant that is not a
+    timezone-aware UTC instant is out of scope for item 5b" entry puts a naive instant out of scope
+    for `resolve_jurisdiction_date` as a caller-contract violation, and that decision stands. But the
+    violation is silent rather than loud: `datetime.astimezone()` on a naive value assumes server
+    local time and returns a plausible wrong date rather than raising. Measured 2026-08-23 — with the
+    server clock on `America/Chicago`, a naive `2026-06-11T01:00` resolves to `2026-06-11`, where the
+    correct answer for the aware UTC instant is `2026-06-10`. `[tool.mypy] strict = true` cannot catch
+    it, because aware and naive datetimes share one type. 5c is where the instant is obtained, so 5c
+    is where this is defended — a guard in `domain/jurisdiction.py` would be behavior no scenario
+    describes.
+
     **Further-split trigger, stated before the cost is incurred rather than after.** Item 4 was one
     number that became 4a through 4k. If this item's spec draft carries more than one Rule per
     endpoint, or its measured mutant count would put more than roughly a dozen survivors in a single
@@ -517,6 +529,15 @@ later.
 | 5g | `PHASE2_DESIGN.md` — "Jurisdiction axis" and "Swappability proofs" |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
+
+**Process finding, 2026-08-23: this table's per-item entries can claim completeness they don't have.**
+Item 5b's row reads `ASSUMPTIONS.md` — "Timezone-correct 'now'"; no other document needed`. The
+item's actual blocking question — where the resolution function lives, `domain/` or a not-yet-built
+shell package — turned out to be a `PHASE2_DESIGN.md`-shaped structural question, the exact kind of
+document this row said wasn't needed. A memoryless session following the table alone would have
+reached the same escalation, just with less to reason from before doing so. The table needs either a
+column or a stated convention for "documents this item may need if it hits a structural question," or
+its entries need to stop reading as exhaustive.
 
 `docs/decisions.md` is a dated historical record, not current guidance. Read it
 only when tracing why a phase-1 rule exists, and read `ASSUMPTIONS.md`'s audit of
@@ -1045,3 +1066,120 @@ locked. The general shape is worth carrying: the blast radius of an example-data
 change is the number of scenarios restating that literal, it is invisible from
 the decision itself, and equal mutant counts will hide it. Compare locators, not
 counts.
+
+**Item 5a is done and locked.** `features/carrier_configuration.feature`
+approved and locked at `f19317e` on `phase2/5a-carrier-configuration`, ledger
+digest `sha256:99c29e034fd0d43c...`, matching the file reviewed at `3ebea71`
+byte for byte. 84 mutants across seven scenarios: 17 / 11 / 4 on rules 1-3,
+10 on the zero-day rule, 33 on the refusal outline, 5 and 4 on the two
+multi-value scenarios. No step definitions and no `src/` change - the
+acceptance gate stays red until 5b's implementation phase, by design. One
+open item carried forward: the refusal outline's blank loading row costs 30
+sibling-value mutants and adds one or two permanent equivalent approvals.
+Correct as locked, not worth reopening for; revisit when the implementation
+lands and those survivors need reasons written.
+
+**Item 5b is next**, on `phase2/5b-jurisdiction-date` off `main`. Two of the
+four scenarios its `ASSUMPTIONS.md` entry named tested the wrong thing and
+have been corrected there; the entry now also records that the jurisdiction
+timezone is a parameter rather than a constant, because Florida spans two
+zones.
+
+**Item 5b's first draft landed at `3d8278f`, spec-only, pushed.**
+`features/jurisdiction_date.feature`: three rules, each its own scenario - an
+instant resolves to the jurisdiction's local calendar date rather than the
+UTC one (2 rows), the jurisdiction timezone is a parameter the resolution
+reads rather than a zone it assumes (a plain scenario proving it with the
+same instant under both `America/New_York` and `America/Chicago`), and the
+UTC offset in effect for a date, not proximity to a DST transition, is what
+moves a resolved date across a boundary (4 rows). Measured directly against
+the engine: 18 mutants, 4 / 6 / 8 by rule. Simulated survivors: 0 across all
+three - every row's instant and resolved-date values are pairwise distinct,
+so every substitution the engine would pick produces either a value mismatch
+or an unparseable literal, and unlike item 5a's field-name ambiguity, nothing
+here turns on a question the spec leaves open. `gauntlet check` is red on
+the acceptance gate on this branch, reporting one unapproved spec - the
+guaranteed state between a spec draft and its approval, not a defect
+(`docs/harness-findings.md`, "Command ownership"). The next action is a
+human review and `gauntlet spec approve`, not an agent action.
+
+**Item 5a's locked spec carries 47 literal mutants whose kills may all be
+vacuous, and that is the first thing to check when its step definitions are
+written.** Measured 2026-08-23 on the four features that already have step
+definitions: a quoted literal mutated in a plain scenario renders a line that
+binds to no step pattern, so it is killed at step resolution rather than by
+the implementation. `carrier_configuration.feature` at `f19317e` has 47 of its
+84 mutants in plain scenarios. Whether they are vacuous depends on step
+definitions that do not exist yet; if they follow the house style, they will
+be. The same question applies to the 30 blank substitutions the refusal
+outline's loading row induces, which render lines with an empty field and may
+not bind either. Not worth reopening a locked spec on a prediction - worth
+measuring the moment there is something to measure against.
+
+**Item 5b's timezone-parameter rule went from 22 nominal mutants to 20,
+and from 16 real ones to 20.** Converting it from a plain scenario to a
+two-row outline removed six quoted-literal mutants that would have died at
+step resolution and added four Examples-column swaps that reach the domain.
+Every mutant in `jurisdiction_date.feature` is now `kind == "example"`,
+with no blank substitutions and no marker appends, so the nominal and real
+counts coincide for the first time in this project. An earlier report of
+this change gave the before-state as 24 nominal and 18 real; both figures
+were two high, and the correction is recorded rather than silently fixed
+because the point of counting real separately from nominal is that the two
+diverge.
+
+**Item 5b's implementation is blocked on an unresolved module-home question,
+escalated rather than decided, 2026-08-23.** Neither `PHASE2_DESIGN.md` nor
+`ASSUMPTIONS.md` names a `src/` path for the shell layer both documents
+describe — "the phase-2 API shell must receive a timezone-aware UTC instant
+and convert it to a calendar date... before calling any domain function"
+(`ASSUMPTIONS.md`, "Timezone-correct 'now'") states the *responsibility* but
+not a location, and no shell package exists yet: `src/claimgate/` holds only
+`domain/`; everything else — 5c's endpoints, 5a's carrier/config loader — is
+unbuilt.
+
+The choice has a measured consequence, not just a style preference.
+`pyproject.toml`'s `[tool.mutmut] source_paths = ["src/claimgate/domain/"]` —
+a protected path this session cannot edit — is what the code-mutation gate
+scopes to. Placing the resolution function inside `domain/` puts it under
+that gate automatically, but contradicts the design's own framing that
+timezone conversion is explicitly *not* a domain concern ("the domain never
+receives a date derived from server local time"). Placing it anywhere else
+keeps that separation but silently exempts it from code-mutation coverage —
+mutmut will never generate a mutant against it, and there is no
+session-writable way to extend `source_paths` to reach it. The other
+structural gates (size, complexity, coverage, crap, duplication, static) run
+over all of `src/` per `gauntlet.toml`'s `src = "src/"`, so those are
+unaffected either way; only the mutmut-scoped code-mutation gate is.
+
+Not decided here. Item 5b's own entry already says this is a shell concern;
+this is the missing second half — where in `src/` the shell lives — and it
+is genuinely unset, not merely undocumented.
+**Corrected 2026-08-23: the constraint this entry records does not exist.**
+`pyproject.toml` is not a protected path. Gauntlet's `DEFAULT_PROTECTED_PATHS`
+(`src/gauntlet/config.py`) is `gauntlet.toml`, `.gauntlet/`,
+`.claude/settings.json` and the lock file; those are what the PreToolUse guard
+blocks. `pyproject.toml` appears only in `DEFAULT_VERIFIED_PATHS`, which the
+protect gate hashes against the lock — "content-verified rather than blocked". An
+agent may write it; the protect gate then fails with `N-1/N paths unchanged` until
+a human runs `gauntlet lock`. Extending `[tool.mutmut] source_paths` was therefore
+available as a proposal routed through a human, not blocked. The placement
+decision was made on the merits and not on this constraint, but the false fact is
+corrected here rather than the entry silently fixed.
+
+
+**Item 5b is done.** Spec locked at `aafd66c`, implementation at `cefe8ec`, documentation
+corrections at `12dbb48`, on `phase2/5b-jurisdiction-date`, all pushed. Not merged to `main` on its
+own — per the 5a/5b split above, the two merge together once 5a is green.
+
+`features/jurisdiction_date.feature` carries 20 acceptance mutants, 4 / 4 / 4 / 8 across its four
+scenarios, every one `kind == "example"` — measured directly against
+`gauntlet.acceptance.mutation.mutants()`, not read off a gate summary. Zero survivors, independently
+re-measured against the locked spec rather than taken on trust from the implementing session's own
+report: the branch's most recent full gate run (`20260823T184121-20922`, a stop-check run with no
+`run.started`/`run.finished` bracket but a complete `gate.finished` sequence — see
+`docs/harness-findings.md`) shows 236/236 tests passing and the acceptance gate passing at "5 spec(s),
+67 reviewed-equivalent" — the same reviewed-equivalent count as before this item, confirming its 20
+new mutants added zero new approvals. Code mutation: 100% / 232 killed project-wide, of which 15 are
+`domain/jurisdiction.py` — agent-measured, in isolation, and recorded as such rather than independently
+re-verified here.

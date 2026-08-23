@@ -86,6 +86,114 @@ or data. Nothing below was confirmed against a live book.
   resolving to the Eastern date and not the UTC date; an instant at 22:00 Eastern likewise; and
   both DST transition boundaries. A zone behind Eastern produces false `LOSS_DATE_IN_FUTURE`
   flags; UTC produces the inverse error, accepting a date that is genuinely future locally.
+
+  **Corrected 2026-08-23: two of the four named scenarios test the wrong thing, found while
+  drafting item 5b.** The 01:00 America/New_York scenario is degenerate. Any instant at 01:00
+  Eastern is 05:00 or 06:00 UTC the same day, so the local date and the UTC date always agree and
+  the scenario passes under an implementation that ignores the timezone entirely. The instant that
+  actually discriminates is early-UTC, not early-Eastern: `2026-06-11T01:00Z` resolves to
+  `2026-06-10T21:00` EDT, local date 2026-06-10, one day behind the UTC date 2026-06-11. That
+  replaces the 01:00-Eastern scenario. The 22:00-Eastern scenario stands as originally named: an
+  instant at 22:00 EDT is 02:00 UTC the next day, so it does discriminate.
+
+  "Both DST transition boundaries" tests the wrong quantity. The 2026 Eastern transitions are
+  2026-03-08 02:00 -> 03:00 local (spring forward) and 2026-11-01 02:00 -> 01:00 local (fall
+  back), both well inside their day rather than anywhere near a local midnight, so no UTC instant
+  crossing either transition instant changes which calendar date it resolves to. What DST changes
+  is the UTC offset in effect for a given date, and it is a *change in offset* — not proximity to a
+  transition — that can move a resolved date across a boundary. Replaced with an offset pair at a
+  date boundary, keeping the standing either-side constraint (an instant on both sides of local
+  midnight, under each offset): under EST, `2026-01-15T04:30Z` resolves to `2026-01-14` (30
+  minutes before local midnight) and `2026-01-15T05:01Z` resolves to `2026-01-15` (a minute
+  after); under EDT, `2026-07-15T03:59Z` resolves to `2026-07-14` (a minute before local midnight)
+  and `2026-07-15T04:30Z` resolves to `2026-07-15` (30 minutes after). The same UTC wall-clock
+  time, `04:30Z`, resolves to a different date under each offset — that pair is the point: the
+  offset moved it, not the calendar date of the UTC instant itself.
+
+  For the record, so neither is re-added as its own scenario: the spring-forward gap (02:00-02:59
+  local on 2026-03-08 does not exist) and the fall-back ambiguous hour (01:00-01:59 local on
+  2026-11-01 occurs twice) are both real and both irrelevant to *date* resolution. A UTC instant
+  can never land in the gap — the tzdata mapping skips it entirely — and both readings of the
+  ambiguous hour fall on the same calendar date, 2026-11-01. They matter for timestamps, which is
+  item 5c's problem, not this one.
+  **Corrected 2026-08-23: the conversion is a domain function, not a shell one —
+  advisor-recommended, human-ratified.** This entry's original wording places the
+  conversion in the shell, "before calling any domain function". That placement is
+  what makes the shell compute a date and hand a date to the domain, which is
+  nearer the thing this entry exists to forbid than the alternative. The
+  conversion takes a timezone-aware UTC instant and an IANA timezone name, both
+  supplied by the caller, reads no clock and no ambient state, and returns a
+  calendar date or refuses with `JURISDICTION_TIMEZONE_UNRECOGNIZED`. It lives at
+  `src/claimgate/domain/jurisdiction.py`. The shell's remaining job is unchanged
+  and is item 5c's: obtain the instant, resolve which zone applies, pass both. The
+  shell never computes a date. The principle stands verbatim — the domain never
+  receives a date derived from server local time — and is now met literally,
+  because the domain never receives a date at all. Cost: `zoneinfo` enters the
+  domain, so the domain depends on the platform IANA database, and ClaimGate
+  declares no runtime dependencies today. The dependency is specified rather than
+  hidden, since an absent zone is the refusal path this item builds — but a
+  runtime image with no tz database refuses every notice rather than none. Whether
+  to pin `tzdata` is a `pyproject.toml` change and a human re-lock; recorded here
+  as open, and settled with item 5c's deployment work rather than now.
+
+
+- **The jurisdiction timezone is a parameter of the conversion, not a constant in it.**
+  Advisor-recommended, human-ratified, 2026-08-22. Florida spans two timezones: the western
+  panhandle — Escambia, Santa Rosa, Okaloosa, and most of Walton — is `America/Chicago`, the rest
+  of the state `America/New_York`. The same instant is two different Florida dates across that
+  line: `2026-06-11T04:30Z` is 2026-06-11 in Miami and 2026-06-10 in Pensacola. A carrier writing
+  notices out of Pensacola would get a loss date a day off around midnight Central, on the field
+  that already drives `LOSS_DATE_IN_FUTURE` today. Item 5b therefore specifies a function taking a
+  timezone-aware UTC instant **and an IANA timezone name**, returning the calendar date in that
+  zone. It does not decide which zone a given notice gets — that question (risk location, mailing
+  address, or carrier configuration) arrives with item 5c and is recorded here as open, not
+  answered. Scenarios may use `America/New_York` throughout; at least one must use
+  `America/Chicago` to prove the zone is read rather than assumed.
+- **An unrecognized jurisdiction timezone is refused, never defaulted — advisor-recommended,
+  human-ratified, 2026-08-23.** Once item 5c resolves the zone from risk location or carrier
+  configuration, a bad value arrives here as an unrecognized IANA name — the same shape item 5a
+  settled one layer down, where a malformed configuration value is refused and named rather than
+  silently repaired. Falling back to `America/New_York` is the precise failure this item exists to
+  prevent, and it is worse than the bug it replaces: a silent default produces a wrong
+  `LOSS_DATE_IN_FUTURE` determination that reads as correct in a record a regulator or a court can
+  later inspect. This file's "Unevaluated is not negative" entry already states the principle — a
+  resolution whose required input is unusable must not return something that reads as a
+  determination. Cost: the resolution now has two outcomes rather than one, and every caller has to
+  handle the refusal.
+
+  Named `JURISDICTION_TIMEZONE_UNRECOGNIZED`, subject first, matching
+  `LOSS_TYPE_UNRECOGNIZED` and `NOTICE_TYPE_UNRECOGNIZED` - the only two
+  codes in implemented domain code that name the same kind of failure
+  (verified against `src/claimgate/domain/` 2026-08-23). Item 5a's
+  `MISSING_REQUIRED_CONFIGURATION` and `MALFORMED_REQUIRED_CONFIGURATION`
+  invert that order and are the product's only codes that do; they were
+  settled before this inventory was checked and are left as they are
+  because that specification is locked. Settle the inconsistency when item
+  5a's implementation lands, not by reopening an approved spec for a name.
+- **An instant that is not a timezone-aware UTC instant is out of scope for item 5b —
+  advisor-recommended, human-ratified, 2026-08-23.** The "Timezone-correct 'now'" contract has the
+  shell supply that instant, and it comes from the request pipeline and the server clock rather
+  than from configuration or a reporter, so it is a caller-contract violation rather than a runtime
+  input this resolution has to defend against. Distinguished here from the timezone name, which
+  genuinely does arrive from configuration, and named rather than left silent because two of the
+  timezone-parameter scenario's mutants depend on the answer and an equivalent-mutant approval will
+  need something to point at.
+
+  **Annotated 2026-08-23, measured: the violation is silent, which is why the
+  obligation moves to item 5c rather than disappearing.** A naive `datetime`
+  is not rejected by anything. `datetime.astimezone()` on a value with no
+  `tzinfo` assumes *server local time* and returns a plausible wrong date
+  rather than raising: with the server clock on `America/Chicago`, a naive
+  `2026-06-11T01:00` resolves to `2026-06-11` where the correct answer for the
+  aware UTC instant is `2026-06-10`. `[tool.mypy] strict = true` cannot catch
+  it, because aware and naive datetimes share one type. So this caller-contract
+  violation does not fail loudly at first integration - it produces exactly the
+  wrong `LOSS_DATE_IN_FUTURE` determination this item exists to prevent, from a
+  code path with no error and a green gate. Item 5b is still the wrong place to
+  defend against it: a guard here would be behavior no scenario in the locked
+  spec describes. The obligation is item 5c's, where the instant is obtained,
+  and it is recorded there rather than left implicit in this exclusion.
+
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
   recorded as `NOT_EVALUATED` with a reason code. It is never defaulted to false, absent, or any

@@ -91,6 +91,18 @@ conditions, so the wrong command isn't specific to a spec that changed after
 approval — any spec the acceptance gate hasn't approved, new or modified,
 carries this same incorrect instruction.
 
+### `pyproject.toml` is verified, not protected — an escalation that said otherwise was wrong
+
+An escalation during item 5b's session asserted that `pyproject.toml` could not be edited because it
+is a protected path. It is not. Gauntlet's `DEFAULT_PROTECTED_PATHS` (`src/gauntlet/config.py`) —
+the files an agent must not touch at all, which is what the `PreToolUse` guard blocks — is
+`gauntlet.toml`, `.gauntlet/`, `.claude/settings.json`, and the lock file. `pyproject.toml` appears
+only in `DEFAULT_VERIFIED_PATHS`, which the protect gate content-hashes each run rather than blocking
+outright: an agent can write it, and the gate then fails with `N-1/N paths unchanged` until a human
+re-locks with `gauntlet lock`. Extending `[tool.mutmut] source_paths` to reach a module outside
+`src/claimgate/domain/` was therefore always available as a proposal routed through a human, not a
+blocked action. Verified by reading `src/gauntlet/config.py` directly, 2026-08-23.
+
 ### Acceptance mutation does not see everything
 
 `Feature.background` is never passed to `mutants()`, so Background steps are
@@ -128,6 +140,24 @@ plain scenario with the assertion **quoted in the step text**, because
 `LITERAL_PATTERN` matches a quoted string in a step. A quoted literal in a
 plain scenario is mutable, and a one-row outline is strictly worse than the
 plain scenario it replaces.
+
+**Correction, 2026-08-23, and it reverses the correction above.** A quoted
+literal in a plain scenario is mutable but the mutant is vacuous.
+`LITERAL_PATTERN` captures the surrounding quotes, and `_swap` with no
+alternatives appends `_gauntlet` after the closing quote, so the mutated line
+reads `the loss date is "2026-01-15"_gauntlet`. `pytest_bdd.parsers.re`
+matches with `regex.fullmatch` and every step pattern in this project
+terminates its captured value with a quote, so the line binds to no step
+definition: pytest-bdd raises at step resolution, the test fails, the mutant
+scores as killed, and no domain code ever runs. A wrong implementation kills
+it identically. Measured 2026-08-23 by rendering every mutated line against
+all 45 step patterns: of 82 literal mutants across the four features that have
+step definitions, 7 bind and 75 do not, and all 7 that bind are numeric, where
+`_mutate_number` produces a well-formed value. Of the same four features' 366
+acceptance mutants, roughly a fifth are killed at step lookup. All 284
+rendered outline substitutions bind, because a sibling cell value is
+well-formed. **Prefer a multi-row outline. A plain scenario's quoted literal
+is a vacuous kill; only its numeric literals are real tests.**
 
 A ragged `Examples` row, one whose cell count differs from the header's,
 parses with no error and no diagnostic and silently yields fewer mutants than
@@ -189,7 +219,7 @@ claim about the rest of the suite.
 
 ### A green gate sometimes means nothing was checked
 
-Three distinct instances, all real:
+Four distinct instances, all real:
 
 - The coverage gate reads `.gauntlet/coverage.json` off disk and runs no
   subprocess. When the tests gate errors at collection, coverage can still
@@ -200,6 +230,15 @@ Three distinct instances, all real:
 - Unit tests never read feature files. A vocabulary change to a spec leaves the
   unit suite green while it still asserts the values the spec abandoned. No gate
   compares example data across the two layers.
+
+- The code-mutation gate's source scope is not Gauntlet's. Every structural gate
+  scopes to `gauntlet.toml`'s `[project] src` — `gates/tests.py` builds coverage
+  with `--cov={ctx.src}` — but the mutation gate shells out to mutmut, which
+  scopes to `[tool.mutmut] source_paths` in `pyproject.toml`, a file the protect
+  gate only content-verifies. A module outside that path yields no mutants at all.
+  Because every mutation run here is full-scope, its zero contribution disappears
+  into a total dominated by the domain's: the score stays healthy and nothing on
+  screen indicates a module stopped being checked.
 
 When a gate looks clean, say what it actually exercised.
 
@@ -387,6 +426,18 @@ commit — so a run issued straight after a commit, with a clean tree, would
 find no changed files and the gate would report passed, vacuously, with
 nothing actually mutated.
 
+### A zero-mutant scope leaves no on-screen tell in the runs this project actually issues
+
+A claim made during item 5b's session, that a zero-mutant mutation run would show `0 killed` as a
+visible tell, is wrong for this project as it is actually run. That tell would only appear on a
+`--changed` run that included the mutation gate, and — per the entry above — none of this project's
+`--changed` invocations ever do; they are all scoped to `static`, `size`, and `complexity`. In the
+full, non-`--changed` runs this project actually issues, an out-of-scope module contributes zero
+mutants to a `killed` total dominated by the domain's, and there is no signature distinguishing "this
+module had zero mutants" from "this module had mutants, all killed" — both read as the same aggregate
+number. Corrected by re-reading this document before reasoning about gate behaviour, which is the
+argument for doing so.
+
 ### Mutation cannot see a fixed Given, so a spec can state a rule it never protects
 
 `_literal_mutants` returns `[]` for any scenario where `is_outline` is true, and `LITERAL_PATTERN`
@@ -454,6 +505,19 @@ shape every time.
 
 Survivor counts in this entry are simulated against the rule, not measured — survivors cannot be
 measured until the implementation exists.
+
+**A loading row is not free, and in a mixed-outcome table it is a regression.** Measured on
+`carrier_configuration.feature` at `3ebea71`, 2026-08-23. `_discriminating_alternatives` prefers
+the most-different row, and an all-blank row differs from every other row in every column, so once
+one exists every cell in the table substitutes to blank and none ever substitutes to a sibling
+value again. With the blank row: 33 mutants, 30 substituting to blank, 1 or 2 surviving. Without
+it: 30 mutants, all substituting to sibling values - `claimant name -> claimant contact` and the
+like - every one killed by the outcome column, none surviving. A blank substitution asks whether
+the rule fires when nothing is named; a sibling substitution asks whether the implementation
+attributes the right outcome to the right input, which is the question a mixed-outcome table
+exists to ask. Diagnose which table you have before adding a loading row: it manufactures the
+discriminating row a same-outcome table lacks, and destroys the discrimination a mixed-outcome
+table already had.
 
 ### An expensive file-rewriting gate inside an automatic retry loop is the highest-risk state here
 
@@ -716,6 +780,17 @@ the intended source (not just the conflict-marked hunks) before staging, since a
 report is not a complete report. For timeouts specifically: treat them as a category with a known
 recovery procedure — diff the working tree, check for a partially-written state, re-run — rather
 than as one-off accidents to be individually rediscovered each time.
+
+### A markdown list can swallow the paragraph after it, invisibly in a diff
+
+An entry spliced into "A green gate sometimes means nothing was checked" at `79d7461` was inserted
+without the blank line its closing sentence needed before the next paragraph. CommonMark's lazy-
+continuation rule folded that following paragraph into the list item as a result; fixed at `12dbb48`.
+Verify a splice by outcome, not by grepping for the phrase just written — that only proves the text
+landed, not that it landed as its own block. Check something that would change if the splice went
+wrong: a line-count delta on the file, or the emptiness of a specific adjacent line. A list swallowing
+the paragraph after it is invisible in a diff and reads correctly in review, because the rendered
+prose still makes sense — only the structure is wrong.
 
 ### A command whose output you don't read is a command whose failure you won't see
 
