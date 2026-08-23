@@ -1183,3 +1183,9 @@ report: the branch's most recent full gate run (`20260823T184121-20922`, a stop-
 new mutants added zero new approvals. Code mutation: 100% / 232 killed project-wide, of which 15 are
 `domain/jurisdiction.py` — agent-measured, in isolation, and recorded as such rather than independently
 re-verified here.
+
+A session report on 2026-08-23 attributed item 5b's status closure to two `main`
+commits that did not contain it. The closure was on the branch, which is correct,
+and the entry itself says so. The error was in the report only. Recorded because
+a status summary that names the wrong commit is indistinguishable from one that
+names the right commit until someone checks, and nothing in the harness checks it.
