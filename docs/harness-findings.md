@@ -115,6 +115,20 @@ form - `validation.feature`'s own `the blockers are <compact>` step parses
 `CODE:field` pairs joined by `;` - with the data-table form kept only where the
 shape genuinely needs it.
 
+**Correction, 2026-08-22, to the paragraph above.** An `Examples` column is
+not the only mutable carrier, and reaching for it reflexively cost five
+mutants the same day that advice was written. `_literal_mutants` returns early
+for outlines, so converting a plain scenario into a one-row outline in order
+to move an assertion into an `Examples` cell forfeits every step literal in
+that scenario and gains only what a one-row table yields - one
+`value+_gauntlet` substitution per column. Measured on item 5a's multi-value
+refusal scenario: 5 mutants as a plain scenario with the assertion in a data
+table, 1 as a one-row outline with the assertion in an `Examples` cell, 6 as a
+plain scenario with the assertion **quoted in the step text**, because
+`LITERAL_PATTERN` matches a quoted string in a step. A quoted literal in a
+plain scenario is mutable, and a one-row outline is strictly worse than the
+plain scenario it replaces.
+
 A ragged `Examples` row, one whose cell count differs from the header's,
 parses with no error and no diagnostic and silently yields fewer mutants than
 its siblings. Verified 2026-08-22 by construction: a three-row two-column table
