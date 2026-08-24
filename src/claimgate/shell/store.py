@@ -58,6 +58,14 @@ class PayloadRecord:
     reference: str
     carrier_code: str
     received_at: datetime
+    # None for a refused submission - there is no notice to link it to.
+    # Item 5e appends later resolution payload records to this same
+    # per-notice sequence, which presumes this first element exists.
+    notice_id: str | None = None
+
+
+def _hash_payload(raw_payload: Mapping[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(raw_payload, sort_keys=True, default=str).encode()).hexdigest()
 
 
 class NoticeStore:
@@ -66,7 +74,20 @@ class NoticeStore:
         self.audit_entries: dict[str, list[AuditEntry]] = {}
         self.payloads: list[PayloadRecord] = []
 
-    def receive_notice(self, notice_id: str, carrier_code: str) -> None:
+    def receive_notice(
+        self, notice_id: str, carrier_code: str, raw_payload: Mapping[str, Any]
+    ) -> None:
+        # The raw payload and the RECEIVED write are one statutory fact
+        # (627.70131(4)(b)): the payload is persisted first, in the same
+        # call, so nothing can write RECEIVED without it.
+        self.payloads.append(
+            PayloadRecord(
+                reference=_hash_payload(raw_payload),
+                carrier_code=carrier_code,
+                received_at=datetime.now(UTC),
+                notice_id=notice_id,
+            )
+        )
         self.notices[notice_id] = NoticeRecord(
             notice_id=notice_id,
             carrier_code=carrier_code,
@@ -97,9 +118,7 @@ class NoticeStore:
         )
 
     def refuse_payload(self, carrier_code: str, raw_payload: Mapping[str, Any]) -> str:
-        reference = hashlib.sha256(
-            json.dumps(raw_payload, sort_keys=True, default=str).encode()
-        ).hexdigest()
+        reference = _hash_payload(raw_payload)
         self.payloads.append(
             PayloadRecord(
                 reference=reference, carrier_code=carrier_code, received_at=datetime.now(UTC)

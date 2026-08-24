@@ -5,6 +5,7 @@ scope-wall raises (items 5g, 5i) and the deliberately preserved item 5h gap.
 """
 
 from collections.abc import Mapping
+from dataclasses import asdict
 from datetime import UTC, datetime
 
 import pytest
@@ -92,6 +93,26 @@ def test_a_schema_valid_notice_is_received_then_triaged() -> None:
     trail = store.get_audit_trail(response.notice_id)
     assert [entry.to_state for entry in trail] == ["RECEIVED", "TRIAGED"]
     assert [entry.actor_type for entry in trail] == ["EXTERNAL", "SYSTEM"]
+
+
+def test_the_accepted_path_persists_the_raw_payload_linked_to_the_notice() -> None:
+    # Design-mandated (PHASE2_DESIGN.md's audit log section, 627.70131(4)(b)),
+    # not scenario-mandated: no acceptance scenario asserts this, since
+    # features/notice_intake.feature names no field or table.
+    store = NoticeStore()
+
+    response = _submit(store)
+
+    assert response.notice_id is not None
+    assert len(store.payloads) == 1
+    payload = store.payloads[0]
+    assert payload.notice_id == response.notice_id
+    assert payload.carrier_code == "AAAA"
+    # Same hash recipe refuse_payload uses, proven independently rather than
+    # by re-reading the source: an unlinked refusal of the identical raw
+    # fields produces the identical reference.
+    independent_reference = NoticeStore().refuse_payload("AAAA", asdict(_DEFAULT_FIELDS))
+    assert payload.reference == independent_reference
 
 
 def test_an_absent_loss_date_flows_through_unchanged_item_5h_is_not_built_here() -> None:

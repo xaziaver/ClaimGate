@@ -8,7 +8,11 @@ acknowledgment clock and must not depend on whether rule evaluation succeeds, is
 correct, or even runs at all. There is no rejected, invalid, or discarded state
 (CLAUDE.md): once a submission clears the carrier-identity and loss-date schema
 checks below, it always reaches RECEIVED and then TRIAGED or PENDED in the same
-request.
+request. The raw payload is persisted in that same RECEIVED write
+(PHASE2_DESIGN.md's audit log section, "the raw inbound payload is stored once,
+verbatim, immutable, and referenced by hash") - the receipt and the payload are
+one statutory fact, not two, and item 5e's resolution design appends later
+payload records to the same per-notice sequence this write starts.
 
 Two refusals happen before that receipt write, and persist differently, both by
 decision recorded in ASSUMPTIONS.md:
@@ -102,22 +106,28 @@ def submit_notice(
     if resolve_carrier_identity(carrier_code, CARRIER_IDENTITY_REFERENCE).value == "REFUSED":
         return SubmitNoticeResponse(status=400)
 
+    raw_payload = asdict(fields)
     loss_date = _parse_loss_date(fields.loss_date)
     if loss_date is None:
-        reference = store.refuse_payload(carrier_code, asdict(fields))
+        reference = store.refuse_payload(carrier_code, raw_payload)
         return SubmitNoticeResponse(status=400, reference=reference)
 
     rules = _resolve_rules(carrier_code, carrier_rules_source)
     today = _resolve_today(submitted_at, jurisdiction_timezone)
     candidate = _build_candidate(fields, loss_date)
-    return _create_notice(store, carrier_code, candidate, today, rules)
+    return _create_notice(store, carrier_code, candidate, today, rules, raw_payload)
 
 
 def _create_notice(
-    store: NoticeStore, carrier_code: str, candidate: Candidate, today: date, rules: CarrierRules
+    store: NoticeStore,
+    carrier_code: str,
+    candidate: Candidate,
+    today: date,
+    rules: CarrierRules,
+    raw_payload: Mapping[str, Any],
 ) -> SubmitNoticeResponse:
     notice_id = str(uuid.uuid4())
-    store.receive_notice(notice_id, carrier_code)
+    store.receive_notice(notice_id, carrier_code, raw_payload)
     state, blockers, severity, queue = _apply_domain_rules(candidate, today, rules)
     store.record_decision(
         notice_id, state=state, blockers=blockers, severity=severity, queue=queue
