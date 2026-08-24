@@ -137,6 +137,7 @@ because accepting a notice is a statutory duty — there is no failure mode past
 system is allowed to refuse. `POST /notices/{id}/resolution` *does* return a 4xx on failure, because
 a resolution is an internal staff action, not a notice — refusing it creates no statutory duty, and
 telling the reviewer their submission didn't clear the pend is the useful, correct answer.
+**Annotated 2026-08-24:** the status-code table's `409` for a reused key with different content does not contradict this — the idempotency lookup is evaluated *before* the schema boundary, alongside the carrier-identity check, so the claim holds as written. Comparison rule, ordering, and the 24-hour tie are decided in `ASSUMPTIONS.md`, "Idempotency: what a repeated key is compared against".
 
 **`notice_id`, not `claim_id`.** ClaimGate does not issue claim numbers. A claim number is assigned
 by the policy administration system once phase 3's adapter boundary exists, and will be stored as a

@@ -476,6 +476,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     that sequence. Tolling is recorded and never computed — precise UTC pend and resolution-received
     timestamps, no tolling logic, and no field named `tolling` anywhere in phase 2.
 
+    **Carried from item 5d, 2026-08-24:** a scenario that a replay of a notice this endpoint moved
+    `PENDED → TRIAGED` reports `TRIAGED` — the "current state, not the state at first processing"
+    half of `PHASE2_DESIGN.md`'s replay rule, which 5d can only half-prove.
+
 5f. **SIU separation: the separate table, the write-side event trail, the allow-list serializer's
     negative assertions, and SIU computation wired in at all.** `PHASE2_DESIGN.md`'s SIU section is
     the specification input. Indicators live in their own table rather than as columns on the notice
@@ -1612,7 +1616,9 @@ throughout (re-verified before this fix's own gate run, not assumed). Items 5d (
 date presence check) remain open, each its own queue item, none built or fixed here.
 
 **Item 5c is merged to `main`** (merge commit `afb35a0`). Confirmed by `git log --oneline -1` on
-`main` at the start of this session, not assumed from the prior entry.
+`main` at the start of this session, not assumed from the prior entry. This record landed on the
+item branch rather than on `main`, contrary to the documentation-lands-on-main convention; carried
+forward at 5d's merge rather than unpicked, as item 4a did.
 
 **Item 5d's prep decisions are recorded, drafting-session work only, on branch
 `phase2/5d-idempotency` off `main`, three commits pushed.** Persistence engine (SQLite via the
@@ -1655,11 +1661,15 @@ explains how to detect: whether by comparing the submitted content against what 
 has on file, and if so by what rule. Nothing this session read decides that comparison, and
 drafting a scenario for it would mean inventing one, which is exactly what `CLAUDE.md`'s standing
 constraint against defaulting a status code forbids. Every scenario in this draft resubmits the
-Background's own notice content unchanged for that reason; the `409` case is not built.
+Background's own notice content unchanged for that reason; the `409` case is not built. *Resolved
+2026-08-24: comparison by payload reference, decided and ratified — `ASSUMPTIONS.md`, "Idempotency:
+what a repeated key is compared against"; the 409 rule is now drafted.*
 
 **Not decided by this session, deliberately:** the exact-24-hour tie (whether a replay landing at
 precisely `submitted_at + 24h` counts as within the window or past it). Both boundary rows sit a
 full minute either side of the mark rather than on it, so the tie is untested rather than guessed.
+*Resolved 2026-08-24: half-open, expired at equality; a row at exactly 24 hours is now in the
+table.*
 
 **`gauntlet check` is expected to report one unapproved spec on this branch** — the guaranteed
 state between a spec draft and its approval, not a defect (`docs/harness-findings.md`, "Command
@@ -1667,3 +1677,20 @@ ownership"). Not run this session beyond `gauntlet spec list`, which confirms no
 has drifted. **The next action is a human review and `gauntlet spec approve`, not an agent
 action** — per this session's own instruction, no implementation, no approval, and no `gauntlet`
 command beyond `spec list` were run.
+
+**Item 5d's spec is amended at `8926c7e`, spec-only plus documentation, pushed.** Three rules
+added and two escalations closed by ratified decision (`ASSUMPTIONS.md`, "Idempotency: what a
+repeated key is compared against"): the `409` conflict, decided by payload reference; the
+exact-24-hour tie, decided half-open with a row now on the boundary; a replay reports the state the
+notice is in (a `PENDED` original replays as `PENDED`); and a key is remembered only by the notice
+it created (a key first used on a schema-refused submission does not block the corrected
+resubmission). Rule 1's two fixed `Then`s now name the original notice — the previous phrasing
+was ambiguous in the 201 row, where 5c's existing step definitions would have inspected the new
+notice and proven nothing about the replay. Measured directly against the engine after the
+amendment: 40 mutants, 12 / 6 / 6 / 4 / 6 / 6 by rule, all `example`, all 20 locators from
+`9851478` preserved unchanged, so the comment and fixed-step rewrites are inert by locator
+identity. Advisor's simulation, recorded as a simulation: 0 survivors of 40. Two step-definition
+notes for the implementing session: "that submission is remembered as the original" must
+tolerate a 400 response with no notice identifier, and "identifies a new notice, not the
+original" must hold when there was no original notice. Next action is the human's: export at
+this ref, review, `gauntlet spec approve` at the start of the implementing session.

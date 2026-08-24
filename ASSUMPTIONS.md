@@ -297,6 +297,51 @@ or data. Nothing below was confirmed against a live book.
   casing that the parse step normalizes away). Not decided now - flagged for whoever builds that
   layer.
 
+- **Idempotency: what a repeated key is compared against, and when the window closes —
+  advisor-recommended, human-ratified 2026-08-24.** `PHASE2_DESIGN.md`'s "Idempotency" section and
+  status-code table decided that a key reused with a different payload is `409` and that keys
+  expire after 24 hours, and decided neither how "different" is judged nor what happens at exactly
+  24 hours. Item 5d's first draft escalated both rather than guess (correctly, under `CLAUDE.md`'s
+  never-default constraint). Decided:
+
+  1. **"Different payload" is a different payload reference** — the SHA-256 recipe recorded above
+     under "The payload reference recipe", already persisted on every created notice since item 5c's
+     close-out fix. The resubmission's reference is computed by the same recipe and compared to the
+     reference linked to the notice that `(carrier_code, idempotency_key)` resolves to. Equal is a
+     replay (`200`); unequal is a conflict (`409`). One recipe, one definition of "the same
+     submission" — a second comparison rule would be a second source of truth for the same
+     question. This is what Stripe-style idempotency does (compare request content, refuse a
+     mismatch); the IETF Idempotency-Key draft prescribes the same comparison. The draft's
+     preferred status code for a mismatch differs from `409` and was not re-read this session; the
+     `409` decision stands as already recorded and is not reopened.
+  2. **The key is envelope and is examined before the schema boundary.** Order on `POST /notices`:
+     carrier identity, then the idempotency lookup, then the loss-date schema check, then receipt.
+     Consequence: a conflicting resubmission whose loss date does not parse gets `409`, not `400`.
+     This also means `PHASE2_DESIGN.md`'s "never returns a 4xx once a payload clears the schema
+     boundary" remains true — `409` is decided before that boundary; see the annotation there.
+  3. **A `409` creates no notice and adds no audit entry to the original, but the conflicting
+     content is kept with a reference of its own** — the same treatment as a schema-invalid `400`,
+     deliberately unlike the unknown-carrier `400` that persists nothing. An unknown carrier creates
+     no duty here; a mis-keyed submission from an administered carrier may be a real loss, and the
+     record of what arrived is cheap to keep and expensive to reconstruct. Design call, not an
+     industry standard.
+  4. **A key is remembered only by the notice it created.** The uniqueness constraint lives on the
+     notice table. A submission refused at the schema boundary creates no notice and its key is not
+     remembered against the refusal; the next use of that key is judged on its own. Keeping a
+     separate table of attempts would make a refused submission's key block the corrected
+     resubmission the caller is most likely to send next.
+  5. **The 24-hour window is half-open.** A replay is within the window while
+     `replay_submitted_at - submitted_at < 24h`, and past it at equality. Basis: RFC 9111 §4.2 —
+     a stored response is fresh only while `freshness_lifetime > current_age`, stale at equality
+     (verified 2026-08-24 against rfc-editor.org's text). It is the convention every caller's HTTP
+     stack already applies to a TTL, so a client cannot be surprised by it. Both instants are the
+     receipt clock (`submitted_at`, per the one-receipt-clock decision above), never `now()`.
+
+  **Carried to item 5e:** a scenario that a replay of a notice resolved `PENDED → TRIAGED` reports
+  `TRIAGED`. Item 5d proves only that the replayed state comes from the notice rather than a
+  constant (a `PENDED` original replays as `PENDED`); the "may have moved since" half of the design
+  text is unprovable until a notice can move.
+
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
   recorded as `NOT_EVALUATED` with a reason code. It is never defaulted to false, absent, or any
