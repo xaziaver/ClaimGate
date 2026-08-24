@@ -79,6 +79,23 @@ or data. Nothing below was confirmed against a live book.
   
 ## Carried requirements — decided, not yet built
 
+- **One receipt clock, not two — decided 2026-08-24, advisor-recommended, human-ratified.**
+  `store.py`'s `receive_notice` timestamps the payload record and the `RECEIVED` audit entry with
+  `datetime.now(UTC)`, while `notice_intake.py`'s `submit_notice` separately judges the notice
+  against the `submitted_at` parameter the shell was given — two different clock reads for one
+  statutory receipt event (Fla. Stat. 627.70131(1)(a)'s acknowledgment clock; `PHASE2_DESIGN.md`'s
+  Record state model, "the timestamp is set once at capture"). Invisible to every scenario today
+  because calls are synchronous and the gap between the two reads is microseconds; wrong the moment
+  a transport layer, a queue, or any asynchronous boundary sits between the two calls.
+
+  **Decided:** the receipt instant is `submitted_at`, passed through to the store; `now()` is not
+  consulted for any receipt-adjacent timestamp. Not fixed now — build it during item 5d's port of
+  the store to SQLite, since that port rewrites `receive_notice` and its callers anyway. Flag it in
+  that item's own report as design-consistency work the port carries, not something any
+  `idempotency.feature` scenario mandates: no scenario asserts a literal timestamp value, for the
+  same reason `notice_intake.feature`'s own Rule 2 comment already gives — `occurred_at` is real
+  wall-clock time at the moment a run executes and cannot be stated as a spec literal.
+
 - **Timezone-correct "now."** The phase-2 API shell must receive a timezone-aware UTC instant and
   convert it to a calendar date in the jurisdiction's timezone before calling any domain function.
   The domain never receives a date derived from server local time. The conversion is a named,
@@ -912,6 +929,24 @@ or data. Nothing below was confirmed against a live book.
   the lock and now reads `NO_CONTINUOUS_COVERAGE_DATE`.
 
 ## Open decisions
+
+- **Persistence engine: SQLite via the stdlib `sqlite3` module, decided 2026-08-24,
+  advisor-recommended, human-ratified.** Item 5d's own design text requires uniqueness on
+  `(carrier_code, idempotency_key)` "enforced by a database constraint" (`PHASE2_DESIGN.md`,
+  "Idempotency") — a literal `UNIQUE` constraint satisfies that with zero new dependencies. The
+  two-write receipt (Record state model, above) becomes a single real transaction instead of two
+  in-memory dict writes that happen to share a process, which is what turns `store.py`'s "the raw
+  payload and the RECEIVED write are one statutory fact" comment into an enforced guarantee rather
+  than a comment describing call order. Item 5g's swappability proofs are data-swaps — a different
+  carrier set, a different jurisdiction map — not engine-swaps, so nothing in this project's design
+  asks persistence itself to be pluggable; nothing is lost committing to one engine now. STRICT
+  tables, constraints declared in the schema, no ORM.
+
+  **Costs, stated rather than discovered later:** single-writer concurrency, and no server-side
+  access control beyond what the process itself enforces. Both accepted for phase 2. Both are
+  revisited at phase 3's adapter boundary — the same boundary that already owns policy
+  administration and claim-number minting (`CLAUDE.md`) — not before. See `PHASE2_DESIGN.md`'s
+  "Persistence engine" section for the same decision in design-doc voice.
 
 - **Replacement for the 30-day late-reporting threshold — not being set now.** Setting it quickly
   is the process that produced the 365, the 30, and the 500. Constraints for whoever settles it: a

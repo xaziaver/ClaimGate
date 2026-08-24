@@ -167,6 +167,29 @@ Whether these two reason codes surface in the notice's `reason_codes` list along
 blockers, or stay scoped to a duplicate-candidates-specific field, is a real, undecided question
 with a real rule behind it either way — resolve before the serializer is written, not after.
 
+## Persistence engine
+
+SQLite, via the stdlib `sqlite3` module, STRICT tables, constraints declared in the schema — not
+an ORM, not a separate server process. Decided 2026-08-24, advisor-recommended, human-ratified.
+This document decides everything about the writes above and, until now, nothing about what
+performs them.
+
+**Why:** the Idempotency section immediately below requires uniqueness on `(carrier_code,
+idempotency_key)` "enforced by a database constraint" — a literal `UNIQUE` constraint on those two
+columns satisfies that directly, with no new dependency. The two-write receipt (Record state
+model, above) becomes a single real transaction rather than two calls into an in-memory dict that
+happen to run in the same process, which is what makes `store.py`'s "the raw payload and the
+RECEIVED write are one statutory fact" comment an enforced guarantee instead of a comment
+describing call order. And the swappability proofs item 5g owes (Swappability proofs, below) are
+data-swaps — a different carrier set, a different jurisdiction map — not engine-swaps; nothing in
+this design asks persistence itself to be pluggable, so nothing is lost picking one engine now.
+
+**Costs, stated rather than discovered later:** single-writer concurrency, and no server-side
+access control beyond what the process itself enforces. Both accepted for phase 2. Both are
+revisited at phase 3's adapter boundary — the same boundary that already owns policy
+administration and claim-number minting (`CLAUDE.md`) — persistence technology joins it there
+rather than getting a phase of its own.
+
 ## Idempotency
 
 `POST /notices` accepts an optional `Idempotency-Key` **header**, not a body field — it's

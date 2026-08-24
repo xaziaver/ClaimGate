@@ -458,6 +458,13 @@ Ordered by domain severity, not by effort. One line each on why that position.
     indistinguishable, to the duplicate matcher, from a genuinely separate loss on the same policy
     inside the match window.
 
+    **The size gate has zero headroom on the function this item's port touches, noted here so
+    whoever builds it isn't surprised by it mid-change.** `gauntlet.toml`'s `max_function_lines` is
+    25; `store.py`'s `receive_notice` is 25 lines today (measured 2026-08-24, after item 5c's
+    payload-persistence fix). The SQLite port (`ASSUMPTIONS.md`, "Persistence engine") rewrites this
+    function regardless, so this is a tripwire, not a blocker — but it means the port has to extract
+    rather than grow in place from the first line written, not after the gate fails once.
+
 5e. **`POST /notices/{notice_id}/resolution`.** The `PENDED → TRIAGED` transition, `USER` actor
     only, `409` when the notice is not currently `PENDED`, `200` when the supplied data clears every
     blocker, `422` with the current blockers when it does not — and, in that last case, a notice
