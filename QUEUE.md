@@ -1266,3 +1266,66 @@ its own). Recommend splitting before locking, on the same reasoning item 4 was s
 already carries its own reason and its own measured cost, and one lock covering all three would put
 unrelated equivalence arguments behind a single `gauntlet mutant approve` reason the way item 4c's did
 at scale. Not decided here; the human's call.
+
+**`a5379c7` is superseded, decided by the human, 2026-08-23.** Four amendments returned:
+restructure the receipt rule for real mutation reach; leave the loss-date schema-boundary rule
+(Rule 3) untouched pending a human boundary decision; add a Background comment on the
+claimant-name requirement's non-effect in this file; and decide the further-split trigger
+explicitly rather than let it stand unaddressed. Landed at `bce47a6` on the same branch,
+spec-only, no step definitions.
+
+**The apostrophe finding is confirmed from source, not just reproduced.**
+`gauntlet/acceptance/mutation.py`'s `LITERAL_PATTERN` is
+`"[^"]*"|'[^']*'|\b\d+\.\d+\b|\b\d+\b` - the single-quote alternative matches any span between two
+apostrophes, which is why two possessives on one step line produce a mutant on the text between
+them, not on either possessive itself. The one-apostrophe-per-line rule stands; nothing in this
+draft needed correcting on this point.
+
+**The receipt rule (Rule 2) is restructured, measured before and after.** The plain scenario
+`a5379c7` shipped had seven `Then` steps and exactly one mutant, the vacuous "absent" literal -
+zero of the seven assertions were reachable by mutation, on the rule `PHASE2_DESIGN.md`'s audit-log
+section calls out as carrying the most statutory weight in this item. Rewritten as a Scenario
+Outline over the two audit entries themselves (one row per entry: ordinal, state, actor, identity,
+blockers), measured as a string against the engine before being written to disk and compared
+against a second candidate that kept `RECEIVED`/`EXTERNAL`/`SYSTEM` as fixed text on
+named-not-columned steps:
+
+| Candidate | Mutants | Kind | Notes |
+|---|---|---|---|
+| A - one row per entry (ordinal/state/actor/identity/blockers) | 10 | all `example` | chosen |
+| B - one row per notice outcome, receipt fields fixed | 6 | all `example` | 4 of 6 duplicate Rule 1's own policy_number/state coverage; never touches the receipt entry's own actor or state, since fixed text inside either scenario shape is never mutated |
+
+Candidate A chosen: it is the only one of the two that can catch an implementation which gets the
+*receipt* entry's own actor or state wrong, which is the entry the two-write design most needs
+protected, and it does not restate ground Rule 1 already covers. The relational blockers assertion
+survives the restructuring and is stronger for it - the receipt row now asserts no blockers yet,
+the determination row asserts the same ones the notice itself carries, and the swap between the
+two rows is what proves the receipt entry is not merely a second copy of the determination one.
+
+**`features/notice_intake.feature` now measures 22 mutants, 0 `literal`, 22 `example` - every
+mutant in the file domain-reaching.** 8 / 10 / 4 by rule. Simulated survivors: 0 across all three
+rules, evaluated against each rule as currently drafted - every mutant produces a mismatch against
+a correct implementation, the same finding as the first draft, now also true of the rule that
+previously had none to speak of.
+
+**Rule 3 (the loss-date schema boundary) is untouched, byte-identical to `a5379c7`, and is not this
+session's to amend.** Escalated back for a boundary decision: Fla. Stat. 627.70131(1)(a)'s
+acknowledgment duty is triggered by receipt of a claim-related communication, not receipt of a
+valid one, and a notice naming a carrier, a policy number, and a loss type with only the loss date
+unparseable is plausibly such a communication - refusing it with nothing persisted may itself be
+the exception to this feature's own two-write principle that its opening comment does not name as
+one. An `ASSUMPTIONS.md` entry deciding the boundary is expected before this rule is touched again.
+
+**A Background comment now explains why the claimant-name requirement never fires in this file.**
+Every notice below reports `wind_hail`, a Section I property peril; the requirement applies only to
+a Section II loss - an injury or a liability claim, where there is a specific person to name.
+Stated as a domain fact, not by naming the function that enforces it, mirroring
+`validation.feature`'s own convention of a Background comment explaining a configured value's
+non-effect on the scenarios below it.
+
+**The further-split trigger fired and was decided: declined.** What the trigger protects against is
+approval scope being coarser than the judgments it records, a cost realized when a file accumulates
+survivors - item 5a's 84 mutants, not this file's 22 with zero simulated survivors. Splitting would
+duplicate a twelve-line Background across three files for no protective gain at today's size.
+Reversal condition, recorded rather than left to be re-derived: revisit if this file passes roughly
+40 mutants, or the moment any rule here accumulates a survivor - whichever comes first.
