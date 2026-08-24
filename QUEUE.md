@@ -1478,3 +1478,128 @@ the Feature-level comment naming `validate()` survived two advisor review rounds
 same defect class item 4f cost its own queue item over, once that spec was already locked. Both
 caught at the pre-lock review of the exported file, not by any gate. Re-measured against `edb5abd`:
 40 mutants, every locator and every signature byte-identical, both as multisets and pairwise.
+
+**A third advisor miss was found and closed at the pre-lock export review, not by any gate: the
+item's own 400 on an unknown or malformed `carrier_code` still had no scenario.** It was flagged in
+the first advisor review of the draft — the disputed-reference finding, above — but only as an open
+question of which reference file the check validates against, not as a missing scenario, and it was
+dropped again from both amendment prompts that followed (`bce47a6`, `edb5abd`), each of which fixed
+other things and never added it. This is the third advisor miss recorded against item 5c, after the
+two already recorded at `0d955af` (Rule 4's unquoted placeholders, the dead-`validate()` comment
+surviving two review rounds), and is recorded as such.
+
+**Closed by adding `Rule: A notice is accepted only from a carrier this deployment administers`,
+between Rule 3 and Rule 4** — a two-row Scenario Outline (`AAAA`/201/kept, `ZZZZ`/400/not kept) that
+introduces no new step vocabulary: it reuses the Background's `the notice is submitted by carrier`
+step and Rule 3's `intake <notice_outcome>` and `a record of the submission <record_outcome>` steps
+verbatim. A malformed code gets no third row — it is definitionally absent from the identity
+reference, the same boundary as `ZZZZ`, and a third row would be same-outcome with `ZZZZ` and
+equivalent under swap. Measured directly against `gauntlet.acceptance.mutation.mutants()` and
+compared to `0d955af`: 48 mutants, the existing 40 byte-identical (locator, kind, original, and
+mutated value all compared, not locator alone), 8 new, all `example`-kind. Hand-simulated against a
+correct implementation: 0 survivors among the 8 — every substitution flips an outcome, matching this
+session's own prediction with nothing to reconcile.
+
+`features/notice_intake.feature` now specifies everything item 5c's own queue entry above says it
+owns — schema validity and the two-write receipt, the loss-date schema boundary, the
+jurisdiction-instant wiring, and now the carrier-identity 400, with 5a's reference file it validates
+against settled and cited by name. Still unapproved; file count against the revisit threshold
+recorded at `edb5abd` ("revisit if this file passes roughly 60 mutants, or the moment a mutant
+survives that still needs a human equivalence judgment"): 48 of ~60.
+
+**`features/notice_intake.feature` is approved at `59b58a4`** (commit `9ebaeb6`, human action) and
+**item 5c's implementation is built on `phase2/5c-notice-intake`, `gauntlet check` green: 296/296
+tests, coverage 100%/100%, code mutation 100%/342 killed, acceptance 7 spec(s)/69
+reviewed-equivalent — 0 new approvals, all 48 of this file's mutants killed.** Not yet merged to
+`main`; left for the human's review given the item's size and statutory weight, per this session's
+own instruction to report refs pushed rather than to close the item out.
+
+**What was built, and where.** `src/claimgate/domain/carrier_identity.py` (new): the identity
+reference `PHASE2_DESIGN.md`'s carrier-reference section describes — `CARRIER_IDENTITY_REFERENCE`
+(`AAAA`/`BBBB`/`CCCC`, matching that section's synthetic table verbatim) and
+`resolve_carrier_identity()`, settling this file's own escalation from the first draft (identity
+reference, not the rules source) in code, not just in `ASSUMPTIONS.md`. `CarrierIdentity` and
+`CarrierIdentityResult` added to `domain/models.py`, same convention as `CarrierConfigurationResult`.
+A new `src/claimgate/shell/` package — the "phase-2 API shell" `ASSUMPTIONS.md` and
+`PHASE2_DESIGN.md` name repeatedly but that nothing had built yet: `store.py` (`NoticeStore`, an
+in-memory repository — phase 2 names no database technology outside item 5d's idempotency
+constraint, which isn't built) and `notice_intake.py` (`submit_notice`, `get_notice`). The
+identity check runs first, ahead of the loss-date schema check, ahead of the receipt write, matching
+the new Rule's own comment; a loss date that fails to parse persists a hashed payload record via
+`NoticeStore.refuse_payload` and creates no notice; a recognized carrier and a parseable date reach
+`NoticeStore.receive_notice` (the durable `RECEIVED` write, before any domain rule runs) and then
+`record_decision` (`TRIAGED`/`PENDED`, `SYSTEM` actor). Test-side: `tests/api/notice_intake.py` (thin
+passthrough), `tests/acceptance/test_notice_intake_acceptance.py` (all four Rules' step definitions,
+12 scenario examples), `tests/unit/test_carrier_identity.py` (3 tests, domain-scoped), and
+`tests/shell/test_notice_intake.py` (7 tests covering what no scenario reaches — see below and
+`docs/harness-findings.md`'s new entry on why this file is not under `tests/unit/`).
+
+**Item 5h is deliberately preserved, not fixed here, per this session's own instruction.** The
+request schema does not require `loss_date`; an absent value flows to `Candidate.loss_date` unchanged
+as `date.min`, reaching `TRIAGED` carrying `0001-01-01` as today's date exactly as `ASSUMPTIONS.md`'s
+"An absent loss date is a domain blocker, not a schema refusal" describes. Requiring the field at the
+schema boundary would have silently decided that reopening the opposite way. Asserted directly by
+`test_an_absent_loss_date_flows_through_unchanged_item_5h_is_not_built_here`, so the preservation is
+verifiable, not just claimed.
+
+**Items 5g and 5i are not built; both raise rather than invent a status code, and both raises are
+unit-tested rather than left silently unreachable.** A carrier the identity reference recognizes
+whose rules entry cannot be resolved (`_resolve_rules`), and a `jurisdiction_timezone` this item
+receives but cannot resolve (`_resolve_today`), each raise `NotImplementedError` naming the queue item
+that owns the decision. No scenario in `features/notice_intake.feature` reaches either path.
+`jurisdiction_timezone` itself is received as a plain caller-supplied parameter, not derived from a
+map or `property_state` — item 5g's map-keyed generalization and swappability proofs are untouched.
+Items 5d (idempotency), 5e (the resolution endpoint), and 5f (SIU) have no code anywhere in this
+branch.
+
+**One design decision flagged as following from the code and the vocabulary already in place, not
+from an independent reading of a document that decides it:** the identity reference is a baked-in
+domain constant, not a parameter threaded through `submit_notice` the way the six carrier-rules
+values are. `PHASE2_DESIGN.md` calls the reference "a static, version-controlled file," structurally
+different from the six values `ASSUMPTIONS.md` calls "caller-supplied configuration with no
+default," and `RECOGNIZED_LOSS_TYPES`/`RECOGNIZED_NOTICE_TYPES` are the same shape already, baked
+into `validation.py`. Item 5g's carrier-set swap proof will need the reference to be swappable at
+the shell boundary; that plumbing is left for 5g to add rather than built ahead of need here.
+
+**One harness finding recorded in `docs/harness-findings.md`, found while getting the mutation gate
+green:** `[tool.mutmut]`'s `source_paths` (`domain/` only) and its `tests/unit/` test selection
+disagree, and a new `tests/unit/` file importing outside `claimgate.domain` breaks mutmut's
+collection for the whole run with an unhelpful captured error. Moved this item's shell-layer unit
+tests to `tests/shell/` instead; `gauntlet`'s own `tests`/`coverage` gates are unaffected by the
+directory name.
+
+**Close-out review found one gap: the accepted path never persisted the raw payload.** A green
+`gauntlet check` could not see it, because every scenario in `features/notice_intake.feature` that
+reaches an accepted notice asserts the notice and its state, never the payload record — the gap is
+against a design decision (`PHASE2_DESIGN.md`'s audit log section, "the raw inbound payload is
+stored once, verbatim, immutable, and referenced by hash," cited to 627.70131(4)(b)) that no
+scenario describes at all, so the gate's green run and 0-survivor mutation score were both correct
+about what they checked and silent about what they didn't. Found by tracing the spec's own Rule
+comments against `PHASE2_DESIGN.md`'s text and then against the code, not by any gate. **The
+implementing session's own "judgment calls flagged" list named the payload-reference hash recipe as
+a choice worth recording, and missed that the accepted path never called it at all** — the list
+caught the "how" of a decision it never noticed the "whether" of.
+
+**Fixed**: `NoticeStore.receive_notice` now persists a `PayloadRecord` (same `_hash_payload` recipe
+`refuse_payload` uses, extracted to remove the duplication) linked to the notice via
+`PayloadRecord.notice_id`, in the same call that writes the `RECEIVED` `NoticeRecord` and its audit
+entry — before `_apply_domain_rules` runs, matching the receipt-before-any-rule ordering the rest of
+this item already holds to. `submit_notice` builds the raw payload dict once and threads it through
+both the refusal and acceptance paths, so the two persist by the identical recipe rather than two
+implementations that could drift. Asserted by a new unit test,
+`test_the_accepted_path_persists_the_raw_payload_linked_to_the_notice`, the same way the item 5h
+preservation is asserted — proving the fix rather than only claiming it. `ASSUMPTIONS.md` gains "The
+payload reference recipe" recording the hash recipe itself as a decision (SHA-256, JSON,
+`sort_keys=True`, `default=str`) and flagging that it will need revisiting once a literal HTTP layer
+exists and "verbatim" can mean raw request bytes rather than a shell-parsed field mapping.
+`docs/harness-findings.md` gains two entries found while re-verifying: a mutant killed by a step
+definition's own parse error (three of `notice_intake.feature`'s 48 marker mutants, all on empty
+blockers cells) is scored identically to one killed by a real assertion, and the acceptance gate's
+wall-time maximum moved again, to 472.803s, this time from ordinary growth rather than the
+unbound-spec defect the prior maximum recorded.
+
+**Item 5c is closed.** Spec approved at `59b58a4` (commit `9ebaeb6`), implementation and this fix
+both on `phase2/5c-notice-intake`, `gauntlet check` green with the spec's digest unchanged
+throughout (re-verified before this fix's own gate run, not assumed). Items 5d (idempotency), 5e
+(the resolution endpoint), 5f (SIU), 5g (jurisdiction-map generalization), and 5h (the absent-loss-
+date presence check) remain open, each its own queue item, none built or fixed here.

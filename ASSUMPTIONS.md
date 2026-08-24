@@ -259,6 +259,27 @@ or data. Nothing below was confirmed against a live book.
   notice "sounds" incomplete. Reversible before this spec is locked, at a measured cost of 4 mutants
   and every locator in Rules 1 and 3 - free now, not free later.
 
+- **The payload reference recipe — advisor-ratified, 2026-08-24.** SHA-256 over the submitted
+  fields, serialized as JSON with `sort_keys=True` and `default=str`. This is the reference by which
+  a reporter and a carrier name the same communication - "A refused submission is still a received
+  communication," above, and "A carrier this deployment administers but cannot configure is our
+  defect, not the reporter's," both rely on a hash existing without saying what it is computed over.
+  Recorded because an unrecorded serialization is an unreproducible reference: two sessions hashing
+  the "same" payload with a different key order, a different float-vs-Decimal rendering, or a
+  different treatment of an absent field would produce different references for what a reporter and
+  a carrier would call the same submission, defeating the reference's own purpose. `sort_keys=True`
+  makes field order irrelevant; `default=str` is what lets a `Decimal` loss amount serialize at all.
+
+  **Revisit when a literal HTTP layer exists.** This recipe hashes the shell's own parsed field
+  mapping, because nothing in this project has raw request bytes to hash yet - every item through 5c
+  calls domain and shell functions directly, never over the wire. "Verbatim" in `PHASE2_DESIGN.md`'s
+  audit log section can then mean the raw request body itself, which is a stronger and simpler claim
+  than hashing a mapping this shell already parsed; whether that's a real behavior change or just a
+  documentation correction depends on whether parsing before hashing has ever hidden a distinction
+  the raw bytes would have kept (e.g. two payloads differing only in insignificant whitespace or key
+  casing that the parse step normalizes away). Not decided now - flagged for whoever builds that
+  layer.
+
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
   recorded as `NOT_EVALUATED` with a reason code. It is never defaulted to false, absent, or any

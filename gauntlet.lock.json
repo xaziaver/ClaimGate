@@ -438,6 +438,10 @@
       "approved_at": "2026-08-23T17:50:52+00:00",
       "digest": "sha256:595006155edcabdbcca2f466361f79c0d33747708465422cb9a0841eb4317d73"
     },
+    "spec:features/notice_intake.feature": {
+      "approved_at": "2026-08-24T14:52:14+00:00",
+      "digest": "sha256:fcf02e934fe8498be642bb0dc0fc5510fee519daa111c3d8b4a4e7f791fc71a4"
+    },
     "spec:features/siu_indicators.feature": {
       "approved_at": "2026-08-21T20:09:42+00:00",
       "digest": "sha256:1e7f697ecbcd62cd7447f331f935e94369e9768dfa0a45e9e2cf990dd370fec9"
