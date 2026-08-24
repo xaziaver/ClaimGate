@@ -20,7 +20,7 @@ Feature: Notice intake
   # SYSTEM decides, both before this feature's steps ever query the record
   # back).
 
-  # "A domain rule finds a blocker" here means validate()'s blockers only -
+  # "A domain rule finds a blocker" here means the validation blockers only -
   # the transition table's own wording. SIU indicators are explicitly out
   # of this item's scope (QUEUE.md item 5f: "No SIU computation, no SIU
   # storage, no SIU field - 5f builds all of it") and are asserted nowhere
@@ -277,7 +277,7 @@ Feature: Notice intake
 
     Scenario Outline: The submission instant, not the calendar date it falls on in UTC, decides whether a loss date is in the future
       Given the jurisdiction observes "America/New_York"
-      And the notice is submitted at <submitted_at>
+      And the notice is submitted at "<submitted_at>"
       And the notice reports a loss date of "2026-06-11"
       When the notice is submitted for intake
       Then the notice's state is <state>
@@ -289,7 +289,7 @@ Feature: Notice intake
         | 2026-06-11T02:30Z | PENDED  | LOSS_DATE_IN_FUTURE:loss_date  |
 
     Scenario Outline: The same submission instant is judged differently under each of the jurisdictions the book writes in
-      Given the jurisdiction observes <jurisdiction_timezone>
+      Given the jurisdiction observes "<jurisdiction_timezone>"
       And the notice is submitted at "2026-06-11T04:30Z"
       And the notice reports a loss date of "2026-06-11"
       When the notice is submitted for intake
