@@ -1329,3 +1329,49 @@ survivors - item 5a's 84 mutants, not this file's 22 with zero simulated survivo
 duplicate a twelve-line Background across three files for no protective gain at today's size.
 Reversal condition, recorded rather than left to be re-derived: revisit if this file passes roughly
 40 mutants, or the moment any rule here accumulates a survivor - whichever comes first.
+
+**Rule 3 is unblocked and amended, landed at `d768bdb` on `phase2/5c-notice-intake`, spec-only.**
+`ASSUMPTIONS.md`'s "A refused submission is still a received communication" entry (added this
+session, see below) settles the boundary the rule was waiting on. The outcome is now two columns,
+`notice_outcome` and `record_outcome`, rather than one compound phrase - matching
+`PHASE2_DESIGN.md`'s own status-code table wording for the same decision, "no notice created,
+submission recorded," two clauses rather than one. No field, table, or column is named in the
+scenario or its comment, per the instruction this amendment was given under. `features/notice_intake.feature`
+re-measured after this and the audit-trail change below, not before: 24 mutants, 8 / 10 / 6 by rule,
+all `example`-kind. Simulated survivors: 0 across all three rules, evaluated against each rule as
+now drafted. Rule 3's own count rose from 4 to 6 (the outcome split alone: 2 to 4, plus the
+unchanged `loss_date` swap); Rule 2's stayed at 10, its own addition below being deliberately
+mutation-inert.
+
+**Rule 2 gained one fixed assertion: the audit trail holds no entry beyond the two named.**
+Generates no mutant - there is no sibling row where a third entry would be correct, so the engine
+has nothing to swap it against - and is kept anyway as a domain fact worth stating even where
+mutation cannot check it, per instruction.
+
+**Constraint on 5c's implementation, recorded here rather than in the spec, since it decides
+nothing about behavior and everything about whether a mutant stays real.** Rule 2's `identity`
+column carries the same value on both rows (`no verified identity`, correctly - phase 2
+authenticates nothing), so both of its mutants are marker substitutions rather than row swaps. The
+placeholder is unquoted in the step (`Then that entry carries <identity>`), so the marker lands
+*inside* the captured value and the mutated line still binds - but only if the eventual step
+pattern captures to end of line. A quoted-literal or alternation-restricted pattern (matching only
+`"no verified identity"` or one of a fixed set of phrases) would make both of these mutants vacuous
+at step resolution instead, the same failure mode `docs/harness-findings.md` already documents for
+quoted literals in plain scenarios. This is the one place in this file where step-definition style,
+not spec content, decides whether a real mutant stays real - worth flagging to whoever writes the
+step for this file.
+
+**Two documents corrected together, `ASSUMPTIONS.md` and `PHASE2_DESIGN.md`, landed on `main` at
+`ece1427`** (originally committed to the wrong branch by mistake as `b281d67` on
+`phase2/5c-notice-intake`, caught before either was pushed, and cherry-picked onto `main` instead of
+force-correcting branch history - recorded here because the mistake happened and the fix should be
+traceable, not because it changed anything about the content). `ASSUMPTIONS.md` gains "A refused
+submission is still a received communication": Fla. Stat. 627.70131(1)(a)'s acknowledgment duty
+triggers on receipt of a communication, not receipt of a well-formed one, verified against the
+Legislature's text 2026-08-23; a refused submission persists its raw payload record, verbatim and
+hash-referenced, with a receipt timestamp - no notice identifier, no state, no audit entry, nothing
+retrievable through the notice endpoints; the 400 response carries the payload hash as an intake
+reference. Retention for these unreferenced payload records is named as item 5g's problem, not
+solved here. `PHASE2_DESIGN.md`'s status-code table entry for the schema-invalid case corrected
+from "nothing persisted," which this decision supersedes, to "no notice created, submission
+recorded."
