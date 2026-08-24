@@ -1470,3 +1470,11 @@ item; neither is this item's to build. See `ASSUMPTIONS.md` for both resolutions
 2026-08-24, along with the settled placement of item 5c's `400` on an unknown or malformed
 `carrier_code` — the identity reference, not item 5a's rules source, closing an escalation this
 drafting session raised that turned out to be decidable from documents already in hand.
+
+**Two more surgical fixes, both structurally inert to mutation, landed at `0d955af`.** Rule 4's two
+unquoted Examples placeholders originated in the advisor's own prompt text for that rule and were
+propagated faithfully rather than caught against Rule 1's and Rule 3's already-quoted convention;
+the Feature-level comment naming `validate()` survived two advisor review rounds unflagged — the
+same defect class item 4f cost its own queue item over, once that spec was already locked. Both
+caught at the pre-lock review of the exported file, not by any gate. Re-measured against `edb5abd`:
+40 mutants, every locator and every signature byte-identical, both as multisets and pairwise.
