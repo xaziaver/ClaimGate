@@ -1152,3 +1152,30 @@ something, and it was recoverable only because the commit had not been pushed.
 about a command-line tool into `-m`. The same hazard applies to any long text
 handed between a session and a shell: if it contains backticks, `$`, or `!`, it
 needs a file or a quoted heredoc, not a double-quoted argument.
+
+### `mutmut`'s source scope and its test selection disagree, and only one of them is enforced
+
+`[tool.mutmut] source_paths = ["src/claimgate/domain/"]` restricts which files mutmut copies into
+its isolated `mutants/` sandbox to `domain/` alone, but `pytest_add_cli_args_test_selection =
+["tests/unit/"]` still hands the whole `tests/unit/` directory to pytest inside that sandbox on every
+run. Nothing reconciles the two: a unit test under `tests/unit/` that imports anything outside
+`claimgate.domain` (a new `claimgate.shell` package, in this instance, item 5c's first orchestration
+code) fails to import inside the sandbox, because that package was never copied there. The failure
+surfaces as `ModuleNotFoundError` during collection and aborts the whole run before any mutant
+executes. The code-mutation gate reports this as `actual=None` with an error field that is just the
+progress spinner's frames repeated, not the real traceback — the real one has to be read from a
+direct `mutmut run` invocation, not from the gate's own captured output.
+
+A second trap compounds the first: `mutmut` does not clean its `mutants/` artifact directory between
+runs. Moving the offending test file to fix the import did not fix the failure on the next attempt,
+because a stale copy of the old file was still sitting in `mutants/tests/unit/` from the prior run.
+`mutants/` and `.mutmut-cache` are both gitignored and safe to delete outright; deleting them forced
+a clean re-copy that picked up the move.
+
+**A unit test for code outside `src/claimgate/domain/` does not belong under `tests/unit/`** — that
+directory is implicitly scoped to whatever `[tool.mutmut] source_paths` names, not to "unit test" as
+a category. This item's shell-layer tests moved to a sibling `tests/shell/` directory instead;
+`gauntlet`'s own `tests`/`coverage` gates run the whole `tests/` tree regardless of subdirectory name
+(confirmed by the passing-test count, which included every new test in both locations), so nothing
+was lost by moving them, and mutmut's internal `tests/unit/` selection stopped choking on an import
+it was never going to reach anyway.

@@ -1506,3 +1506,64 @@ jurisdiction-instant wiring, and now the carrier-identity 400, with 5a's referen
 against settled and cited by name. Still unapproved; file count against the revisit threshold
 recorded at `edb5abd` ("revisit if this file passes roughly 60 mutants, or the moment a mutant
 survives that still needs a human equivalence judgment"): 48 of ~60.
+
+**`features/notice_intake.feature` is approved at `59b58a4`** (commit `9ebaeb6`, human action) and
+**item 5c's implementation is built on `phase2/5c-notice-intake`, `gauntlet check` green: 296/296
+tests, coverage 100%/100%, code mutation 100%/342 killed, acceptance 7 spec(s)/69
+reviewed-equivalent — 0 new approvals, all 48 of this file's mutants killed.** Not yet merged to
+`main`; left for the human's review given the item's size and statutory weight, per this session's
+own instruction to report refs pushed rather than to close the item out.
+
+**What was built, and where.** `src/claimgate/domain/carrier_identity.py` (new): the identity
+reference `PHASE2_DESIGN.md`'s carrier-reference section describes — `CARRIER_IDENTITY_REFERENCE`
+(`AAAA`/`BBBB`/`CCCC`, matching that section's synthetic table verbatim) and
+`resolve_carrier_identity()`, settling this file's own escalation from the first draft (identity
+reference, not the rules source) in code, not just in `ASSUMPTIONS.md`. `CarrierIdentity` and
+`CarrierIdentityResult` added to `domain/models.py`, same convention as `CarrierConfigurationResult`.
+A new `src/claimgate/shell/` package — the "phase-2 API shell" `ASSUMPTIONS.md` and
+`PHASE2_DESIGN.md` name repeatedly but that nothing had built yet: `store.py` (`NoticeStore`, an
+in-memory repository — phase 2 names no database technology outside item 5d's idempotency
+constraint, which isn't built) and `notice_intake.py` (`submit_notice`, `get_notice`). The
+identity check runs first, ahead of the loss-date schema check, ahead of the receipt write, matching
+the new Rule's own comment; a loss date that fails to parse persists a hashed payload record via
+`NoticeStore.refuse_payload` and creates no notice; a recognized carrier and a parseable date reach
+`NoticeStore.receive_notice` (the durable `RECEIVED` write, before any domain rule runs) and then
+`record_decision` (`TRIAGED`/`PENDED`, `SYSTEM` actor). Test-side: `tests/api/notice_intake.py` (thin
+passthrough), `tests/acceptance/test_notice_intake_acceptance.py` (all four Rules' step definitions,
+12 scenario examples), `tests/unit/test_carrier_identity.py` (3 tests, domain-scoped), and
+`tests/shell/test_notice_intake.py` (7 tests covering what no scenario reaches — see below and
+`docs/harness-findings.md`'s new entry on why this file is not under `tests/unit/`).
+
+**Item 5h is deliberately preserved, not fixed here, per this session's own instruction.** The
+request schema does not require `loss_date`; an absent value flows to `Candidate.loss_date` unchanged
+as `date.min`, reaching `TRIAGED` carrying `0001-01-01` as today's date exactly as `ASSUMPTIONS.md`'s
+"An absent loss date is a domain blocker, not a schema refusal" describes. Requiring the field at the
+schema boundary would have silently decided that reopening the opposite way. Asserted directly by
+`test_an_absent_loss_date_flows_through_unchanged_item_5h_is_not_built_here`, so the preservation is
+verifiable, not just claimed.
+
+**Items 5g and 5i are not built; both raise rather than invent a status code, and both raises are
+unit-tested rather than left silently unreachable.** A carrier the identity reference recognizes
+whose rules entry cannot be resolved (`_resolve_rules`), and a `jurisdiction_timezone` this item
+receives but cannot resolve (`_resolve_today`), each raise `NotImplementedError` naming the queue item
+that owns the decision. No scenario in `features/notice_intake.feature` reaches either path.
+`jurisdiction_timezone` itself is received as a plain caller-supplied parameter, not derived from a
+map or `property_state` — item 5g's map-keyed generalization and swappability proofs are untouched.
+Items 5d (idempotency), 5e (the resolution endpoint), and 5f (SIU) have no code anywhere in this
+branch.
+
+**One design decision flagged as following from the code and the vocabulary already in place, not
+from an independent reading of a document that decides it:** the identity reference is a baked-in
+domain constant, not a parameter threaded through `submit_notice` the way the six carrier-rules
+values are. `PHASE2_DESIGN.md` calls the reference "a static, version-controlled file," structurally
+different from the six values `ASSUMPTIONS.md` calls "caller-supplied configuration with no
+default," and `RECOGNIZED_LOSS_TYPES`/`RECOGNIZED_NOTICE_TYPES` are the same shape already, baked
+into `validation.py`. Item 5g's carrier-set swap proof will need the reference to be swappable at
+the shell boundary; that plumbing is left for 5g to add rather than built ahead of need here.
+
+**One harness finding recorded in `docs/harness-findings.md`, found while getting the mutation gate
+green:** `[tool.mutmut]`'s `source_paths` (`domain/` only) and its `tests/unit/` test selection
+disagree, and a new `tests/unit/` file importing outside `claimgate.domain` breaks mutmut's
+collection for the whole run with an unhelpful captured error. Moved this item's shell-layer unit
+tests to `tests/shell/` instead; `gauntlet`'s own `tests`/`coverage` gates are unaffected by the
+directory name.
