@@ -136,6 +136,15 @@ Feature: Notice intake
     # the same ones the notice itself does, and the swap between those two
     # rows is what proves the receipt entry is not merely a second copy of
     # the determination one.
+    #
+    # The last line - no entry beyond the two named above - is a fixed
+    # assertion, true identically on both rows, and generates no mutant:
+    # there is no sibling row where a third entry would be correct, so the
+    # engine has nothing to swap it against. Kept anyway, because it is a
+    # domain fact worth asserting even where mutation cannot check it: an
+    # append-only log that is the statutory system of record for a claim
+    # communication should never tolerate a spurious extra write, and
+    # nothing else in this rule would notice one.
     Scenario Outline: Each audit entry for a notice that satisfies no domain rule names its own state, actor, and identity, in order
       Given the notice reports a policy number of "absent"
       When the notice is submitted for intake
@@ -143,6 +152,7 @@ Feature: Notice intake
       And that entry is entered by <actor>
       And that entry carries <identity>
       And that entry's blockers are <blockers>
+      And the audit trail holds no entry beyond those two
 
       Examples:
         | ordinal | state    | actor    | identity              | blockers                                 |
@@ -155,10 +165,16 @@ Feature: Notice intake
     # schema-valid and reaches PENDED, because intake can still parse and
     # hold it for the reporter to complete. A loss date that is not a date
     # at all cannot be evaluated by any domain rule and cannot be held for
-    # correction the way a missing field can - there is nothing here to
-    # acknowledge, so the acknowledgment clock this item exists to protect
-    # never starts, and nothing is persisted. PHASE2_DESIGN.md's status-code
-    # table: "schema-invalid, nothing persisted" - 400.
+    # correction the way a missing field can, so no notice is ever created
+    # for it. That is not the same as nothing having arrived: a submission
+    # naming a carrier, a policy number, and a loss type, with only the loss
+    # date unusable, is still a received communication, and refusing to
+    # create a notice does not mean refusing to keep a record of the attempt
+    # - intake keeps one, and hands the reporter a reference to it, so the
+    # same submission can be named again later even though it never became a
+    # notice. ASSUMPTIONS.md, "A refused submission is still a received
+    # communication." PHASE2_DESIGN.md's status-code table: "schema-invalid,
+    # no notice created, submission recorded" - 400.
     #
     # Both rows sit in one table, a real date against one that is not a
     # date at all, rather than each in a same-outcome scenario of its own -
@@ -172,12 +188,25 @@ Feature: Notice intake
     # scenario's quoted literal would only have reached vacuously, at step
     # resolution (docs/harness-findings.md, "A one-row outline forfeits its
     # own step literals").
+    #
+    # Whether a notice exists and whether a record of the submission exists
+    # are two columns, not one compound phrase, because they are two
+    # independent facts now that they can disagree - PHASE2_DESIGN.md's own
+    # status-code table states the decision the same way, as two clauses
+    # joined by a comma, not one. Splitting them doubles the outcome
+    # columns' own mutants, 2 to 4, over the single-column version this
+    # amendment replaced, raising this rule's total from 4 to 6: each column
+    # now carries its own swap between rows, so an implementation that gets
+    # the notice half right and the record half wrong - or the reverse - is
+    # still caught, where one compound column could only fail or pass as a
+    # whole.
     Scenario Outline: A notice is received only if its loss date is a real date
       Given the notice reports a loss date of "<loss_date>"
       When the notice is submitted for intake
-      Then intake <outcome>
+      Then intake <notice_outcome>
+      And a record of the submission <record_outcome>
 
       Examples:
-        | loss_date  | outcome                               |
-        | 2026-06-01 | creates the notice                    |
-        | not-a-date | refuses the request, creating nothing |
+        | loss_date  | notice_outcome     | record_outcome                              |
+        | 2026-06-01 | creates the notice | is kept, and reachable through the notice   |
+        | not-a-date | creates no notice  | is kept anyway, with a reference of its own |
