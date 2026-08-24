@@ -49,6 +49,14 @@ Feature: Notice intake
   # eventually resolved.
 
   Background:
+    # The claimant-name requirement below never fires anywhere in this file:
+    # it applies only to a Section II loss - an injury or a liability claim,
+    # where there is a specific person to name - and every notice below
+    # reports wind_hail, a Section I property peril. A TRIAGED notice below
+    # therefore carries no claimant name despite the carrier requiring one,
+    # and that is consistent with the rule, not a gap in it -
+    # validation.feature is where the requirement's own behavior, by loss
+    # type, is specified.
     Given the carrier "AAAA" requires the claimant name
     And "AAAA" does not require the claimant contact
     And "AAAA" recognizes the policy-number prefixes "HO;DP"
@@ -92,42 +100,54 @@ Feature: Notice intake
     # section calls the two-write design deliberate, "not an inefficiency,"
     # because the Fla. Stat. 627.70131(1)(a) acknowledgment clock starts at
     # the receipt timestamp and must not depend on whether rule evaluation
-    # succeeds, is correct, or runs at all. The sharpest place to prove it
-    # holds is the row where every rule finds a blocker - reusing Rule
-    # 1's PENDED case rather than its TRIAGED one, because a receipt that
-    # only shows up when validation goes well is exactly the failure this
-    # design exists to prevent, and the TRIAGED case alone could not tell
-    # the two apart.
+    # succeeds, is correct, or runs at all. The notice used throughout is the
+    # one every rule finds a blocker on - reusing Rule 1's PENDED case rather
+    # than its TRIAGED one, because a receipt that only shows up when
+    # validation goes well is exactly the failure this design exists to
+    # prevent, and the TRIAGED case alone could not tell the two apart.
     #
-    # A plain scenario, not an outline, so every value below - both
-    # entries' actor type, both entries' unauthenticated state, the
-    # determination's outcome and blockers - is independently reachable by
-    # mutation without needing a second row (docs/harness-findings.md,
-    # "Mutation cannot see a fixed Given"; carrier_configuration.feature's
-    # first rule uses the same reasoning).
+    # An outline over the two audit entries themselves, one row per entry,
+    # rather than a plain scenario naming both: a plain scenario's first
+    # draft here had seven Then steps and exactly one mutant, because a fixed
+    # step inside either shape is never mutated and nothing in this rule had
+    # a second row to place a value beside. The ordinal column is what makes
+    # the swap real - substituting first for second (or the reverse) asks
+    # for the wrong entry's state, actor, and blockers together, so an
+    # implementation that only gets one of the two entries right is still
+    # caught. Measured directly against the engine before this was written to
+    # disk: 10 mutants, all example-kind, none vacuous - up from the plain
+    # scenario's 1 (itself vacuous) and ahead of the other layout measured
+    # alongside it, which kept RECEIVED/EXTERNAL/SYSTEM as fixed text on
+    # named-not-columned steps and so never mutated them at all, missing the
+    # receipt entry's own actor and state entirely for 6 mutants, 4 of which
+    # duplicated Rule 1's own policy_number/state coverage rather than adding
+    # to it.
     #
     # occurred_at and ruleset_version are named in PHASE2_DESIGN.md's audit
     # schema but are not asserted with a literal value here: occurred_at is
     # real wall-clock time at the moment the acceptance run executes, which
     # cannot be stated as a spec literal at all, and ruleset_version is a
     # deployment-declared label with no agreed value yet. Both are recorded
-    # in this item's own report as assertions that could not be moved into
-    # an Examples column, not silently dropped. The blockers named on the
-    # audit entry are asserted relationally, against the notice's own
-    # blockers, rather than restated as a second quoted literal - the
-    # literal value itself is already a real, Examples-driven mutant on the
-    # rule above, and restating it here would only be checking the same
-    # fact a second time under a plain scenario's weaker reach.
-    Scenario: A notice that satisfies no domain rule is still received before it is pended
+    # in this item's own report as assertions that could not be moved into an
+    # Examples column, not silently dropped. The blockers column keeps the
+    # relational assertion rather than a second copy of the literal reason
+    # code Rule 1 already carries for real: the receipt entry's row asserts
+    # it carries none yet, the determination entry's row asserts it carries
+    # the same ones the notice itself does, and the swap between those two
+    # rows is what proves the receipt entry is not merely a second copy of
+    # the determination one.
+    Scenario Outline: Each audit entry for a notice that satisfies no domain rule names its own state, actor, and identity, in order
       Given the notice reports a policy number of "absent"
       When the notice is submitted for intake
-      Then the notice's audit trail records that it first moved to RECEIVED
-      And that entry is entered by the system that captured it
-      And that entry carries no verified identity
-      And the audit trail next records it moving to PENDED
-      And that entry is entered by the system's rules
-      And that entry also carries no verified identity
-      And that entry names the same blockers the notice itself carries
+      Then the audit trail's <ordinal> entry moves it to <state>
+      And that entry is entered by <actor>
+      And that entry carries <identity>
+      And that entry's blockers are <blockers>
+
+      Examples:
+        | ordinal | state    | actor    | identity              | blockers                                 |
+        | first   | RECEIVED | EXTERNAL | no verified identity  | none yet, since no rule has run          |
+        | second  | PENDED   | SYSTEM   | no verified identity  | the same ones the notice itself carries  |
 
   Rule: A notice is received only if its loss date is a real date
 
