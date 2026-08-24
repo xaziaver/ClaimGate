@@ -1189,3 +1189,80 @@ commits that did not contain it. The closure was on the branch, which is correct
 and the entry itself says so. The error was in the report only. Recorded because
 a status summary that names the wrong commit is indistinguishable from one that
 names the right commit until someone checks, and nothing in the harness checks it.
+
+**Items 5a and 5b are merged to `main`** (merge commit `9935461`, 2026-08-23), confirmed by
+`git show --stat` rather than assumed from this file, which never itself recorded the merge - the
+gap this correction closes. `main` carries `features/carrier_configuration.feature`,
+`features/jurisdiction_date.feature`, both domain modules, and both status sections above unchanged
+from the branches they merged from. `gauntlet check` on `main` post-merge: 274/274 tests, mutation
+100%/330 killed, acceptance 6 specs / 69 reviewed-equivalent / 0 stale.
+
+**Item 5c's first draft landed at `a5379c7`, spec-only, pushed, on `phase2/5c-notice-intake` off
+`main`.** `features/notice_intake.feature`: three rules - a schema-valid notice reaches `TRIAGED` or
+`PENDED` synchronously and is retrievable either way (a two-row outline mixing both outcomes); the
+receipt is its own audit entry, entered by `EXTERNAL` before the `SYSTEM` determination that follows,
+proved on the row where every rule finds a blocker rather than the row where none does, because a
+receipt that only shows up when validation goes well is exactly the failure the design exists to
+prevent; a notice whose loss date is not a date at all is refused before receipt, with nothing
+persisted (a two-row outline, a real date against one that is not a date at all, drafted as an outline
+from the start once a second, differing row made it free rather than costly). Measured directly
+against `gauntlet.acceptance.mutation.mutants()`: 13 mutants, 8 / 1 / 4 by rule, 12 of the 13
+`example`-kind and domain-reaching. The one `literal`-kind mutant is the second rule's reused "absent"
+policy number, restated as a plain-scenario quoted literal; the fact it represents is already real and
+Examples-driven on the first rule, so its own likely vacuousness (this project's established
+quoted-literal-in-a-plain-scenario defect) costs nothing beyond what the first rule already proves.
+Simulated survivors: 0 across all three rules, evaluated against the rule as drafted in each case -
+every mutant listed produces a mismatch against a correct implementation; none turns on a question the
+spec leaves open the way item 5a's field-name ambiguity did.
+
+**One phrasing defect was found and fixed while drafting, not shipped: paired possessive apostrophes
+read as a quoted literal to the mutation engine.** "the notice's audit trail's first entry" contains
+two apostrophes with `'s audit trail'` between them, which `gauntlet.acceptance.mutation` treated as a
+delimited literal exactly like a double-quoted one - appending a marker outside the second apostrophe
+and, since that step's text carried no other quotation, producing what would have been an additional
+vacuous mutant unrelated to anything the sentence actually asserts. Rephrased to at most one apostrophe
+per step line before drafting was finished, so this cost nothing in the delivered draft; recorded
+because it is a mutation-engine behavior stated nowhere in `docs/harness-findings.md`, and the next
+drafting session should know to check for it rather than rediscover it. Whether it belongs in that
+file too is left to whoever closes this out.
+
+**Four things this draft deliberately does not specify, each a named gap rather than a silent
+assumption:**
+
+- **The `400` on an unknown or malformed `carrier_code` validates against a disputed reference.** This
+  item's own entry above says "the reference file it validates against is 5a's" - read most naturally
+  as `carrier_configuration.py`'s rules loader. `features/carrier_configuration.feature`'s own comment,
+  written during item 5a, says the identity-only reference (`carrier_code` to NAIC company and group)
+  that `PHASE2_DESIGN.md`'s carrier-reference section describes "item 5c owns" - a different file with
+  a different purpose, and `PHASE2_DESIGN.md`'s own text ties the 400 to that identity list by name
+  ("validated against this reference list"). Nothing read while drafting settles which of the two the
+  check is meant to hit, and they are not interchangeable: a carrier could be a recognized identity
+  with a broken rules entry, or the reverse. A placement question per this session's own instructions -
+  escalated, not decided from either precedent.
+- **`GET /notices/{notice_id}/audit` and the not-found case on both `GET` endpoints sit outside
+  `PHASE2_DESIGN.md`'s closed status-code table.** That table lists codes only for `POST /notices` and
+  `POST .../resolution`. Nothing in items 5a-5g claims the audit-read endpoint or either `GET`'s 404.
+  Not drafted.
+- **Whether a `TRIAGED` notice carries a duplicate-candidate attribute is unsettled.** `PHASE2_DESIGN.md`
+  and this item's own entry are explicit that SIU is out of scope here (item 5f builds all of it);
+  neither says the same for duplicate detection, and neither claims it either. Not drafted, rather than
+  assumed silently in either direction.
+- **The zone a given notice's jurisdiction resolves to is still open, per `ASSUMPTIONS.md`'s own
+  entry** ("The jurisdiction timezone is a parameter of the conversion, not a constant in it") - risk
+  location, mailing address, and carrier configuration are named as candidates and none is chosen. This
+  draft states "today, in the jurisdiction" as an already-resolved fact, the same way
+  `validation.feature` already treats "today," rather than deciding the mechanism.
+- **What counts as "schema-invalid" versus a domain blocker is inferred, not confirmed.** The draft
+  treats a structurally wrong field (a loss date that is not a date at all) as the 400 case and an
+  absent-but-well-typed field (a blank policy number) as a domain blocker landing `PENDED`, on the
+  strength of `Candidate`'s own `str = ""` / `date.min` defaults in `models.py` - a recommendation that
+  follows from what the code currently does, not from an independent reading of `PHASE2_DESIGN.md`,
+  which does not draw this line itself.
+
+**Further-split trigger, fired.** This item's own entry above states the trigger: more than one Rule
+per endpoint. This draft carries three for one endpoint (`POST /notices`, with
+`GET /notices/{notice_id}` folded into the same scenarios as a retrieval check rather than a Rule of
+its own). Recommend splitting before locking, on the same reasoning item 4 was split on - each Rule
+already carries its own reason and its own measured cost, and one lock covering all three would put
+unrelated equivalence arguments behind a single `gauntlet mutant approve` reason the way item 4c's did
+at scale. Not decided here; the human's call.
