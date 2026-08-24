@@ -107,7 +107,7 @@ Four endpoints:
 
 | Case | Status |
 |---|---|
-| `POST /notices`, schema-invalid | `400`, nothing persisted |
+| `POST /notices`, schema-invalid | `400`, no notice created, submission recorded |
 | `POST /notices`, unknown/malformed `carrier_code` | `400`, nothing persisted |
 | `POST /notices`, schema-valid, lands straight in `TRIAGED` | **`201 Created`** |
 | `POST /notices`, schema-valid, lands in `PENDED` | **`201 Created`** — same code as the row above |
