@@ -12,6 +12,18 @@
       "approved_at": "2026-08-23T12:48:17+00:00",
       "digest": "sha256:73516701ad676a7c2e12b66006342ca168f41c5bb933e0bd15f8bab129b80ddc"
     },
+    "mutant:features/carrier_configuration.feature#A recognized carrier's rules load with neither SIU threshold configured|literal|And \"AAAA\" configures a duplicate match window of 60 days": {
+      "approved_at": "2026-08-23T23:56:39+00:00",
+      "digest": "sha256:f3714ebdc150db61eddaa11c84eefeba14d6f4d215b2f548c0920313cb1fd8f2",
+      "reason": "The duplicate match window is scaffolding in this scenario, which asserts only that both SIU thresholds are received as not configured. The value is set and asserted in \u2018A recognized carrier's rules resolve to every value the domain will receive\u2019: verified 2026-08-23 that it both configures 60 days and asserts the window is received as 60 days. This is not an inert value project-wide. If that scenario ever stops asserting it, this justification becomes false and nothing here will detect that.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/carrier_configuration.feature#A single value absent or malformed in a recognized carrier's entry refuses the load, naming it|example|value|||": {
+      "approved_at": "2026-08-24T00:06:20+00:00",
+      "digest": "sha256:cbe71612a0037828bfe774c7d67a03f9feaec0ceab82c4872c303136854220e8",
+      "reason": "The outline's final Examples row is blank in every cell. The step returns before reading the value cell when the field cell is blank, so appending the marker to the value cell cannot change behavior; the field-cell counterpart raises KeyError and is killed. The blank row is deliberate - it gives the engine a row differing in every column to swap against for the rows above it - and docs/harness-findings.md records the cost as 1 or 2 permanent approvals on a 33-mutant outline. Actual is 1.",
+      "reviewer": "xaziaver"
+    },
     "mutant:features/duplicates.feature#A follow-on notice type is never compared, regardless of timing|example|loss_date|REOPENED|2026-06-02": {
       "approved_at": "2026-08-11T22:49:19+00:00",
       "digest": "sha256:3c4be2973033162be3610d1674dbd7d0a0616261ed39508f8125ee572fb74c2e",
