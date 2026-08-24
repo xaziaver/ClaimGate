@@ -166,6 +166,23 @@ with one cell omitted produced 5 mutants instead of 6, and the short row's
 locator was well formed. A mutant count is this project's unit of blast-radius
 estimation, so check table widths when a count comes in lower than expected.
 
+**A pair of possessive apostrophes on one step line is parsed as a quoted
+literal, confirmed from source rather than from reproduced behavior.**
+`LITERAL_PATTERN` in `gauntlet/acceptance/mutation.py` is
+`"[^"]*"|'[^']*'|\b\d+\.\d+\b|\b\d+\b` — the single-quote alternative matches
+any span between two apostrophes, with no check that either one is actually a
+string delimiter rather than an English possessive. A step reading "the
+notice's audit trail's first entry" carries two apostrophes, in "notice's" and
+"trail's," and the pattern matches `'s audit trail'` as if it were a quoted
+value: the mutant appends the marker outside what it takes for the closing
+quote, producing a malformed line that binds to no step pattern — a vacuous
+kill by the same mechanism as a real quoted literal in a plain scenario, but
+on text nobody meant to quote at all. Found and rephrased before it shipped in
+`features/notice_intake.feature` (`QUEUE.md` item 5c); confirmed against this
+project's own `LITERAL_PATTERN` source on 2026-08-24 rather than left as an
+observed-but-unexplained pattern. **Rule: at most one apostrophe per step
+line.**
+
 ### Mutant counts are checkable directly, without a gate run or an approved spec
 
 The acceptance gate's approval stage skips mutation entirely on an unapproved
@@ -408,6 +425,16 @@ in this project's history was an agent-issued `gauntlet check` through `bash`,
 cut off at whatever that tool call's own timeout happened to be — that is the
 timeout that needs raising, not the hooks'.
 
+**Correction, 2026-08-24: the maximum is no longer 260.3s.** A run against
+`features/notice_intake.feature` approved with no bound step definitions took
+423.622s — every one of its 24 mutants ran a full suite pass before scoring
+surviving, not a bigger suite taking proportionally longer. Read this new
+maximum as the cost of that specific defect (see "An approved spec that no
+test module binds reports every mutant as surviving," above), not as ordinary
+growth continuing the trend the four runs above already showed. The 300s floor
+this entry recommends is now itself below the observed maximum; raise it, and
+keep rechecking the log rather than trusting either number as fixed.
+
 ### `scope = "changed"` in `gauntlet.toml` never reaches the mutation gate — but not because `--changed` goes unused
 
 `--changed` is passed constantly: `.claude/settings.json`'s `PostToolUse` hook
@@ -618,6 +645,43 @@ This first mattered at item 5a. Every item before it modified an already-approve
 spec; the four phase-1 features were added and approved together in one commit
 before the discipline existed, so 5a is the first spec in the project's history
 that no gate could see.
+
+### An approved spec that no test module binds reports every mutant as surviving
+
+Approval clears the gate past the short-circuit above, but binding is still a
+separate fact the approval stage never checks. Confirmed against
+`gauntlet/gates/acceptance.py`: `survivors_for`'s own docstring says it returns
+"mutants of one feature that the bound scenarios fail to kill," naming the
+concept without the code ever testing for it. `_survivors` writes each mutant
+into the feature file in place and calls `python_adapter.run_acceptance` over
+the whole steps directory, appending the mutant to `survived` whenever that run
+still passes. If no step module's `scenarios(...)` call collects the mutated
+file, the run is not exercising it at all, so it passes regardless of what was
+written — every mutant appended, unconditionally. `_baseline_stage`, run just
+before, only checks that the suite passes as a whole; it has no check that this
+feature's own scenarios were among what ran, so an approved-but-unbound file
+sails through it too.
+
+The tell, confirmed 2026-08-24: `tests` and code-mutation totals stay exactly
+what they were before the new spec existed — a spec's own scenario count never
+enters either figure, because pytest never collected it. Measured on
+`features/notice_intake.feature`, approved before any step definition existed:
+274/274 tests and 330 killed, identical to `main` pre-item-5c, against 24 of 24
+mutants scored surviving — not a partial figure, all of them, because nothing
+distinguishes "the assertion failed to catch this" from "nothing ran the
+assertion at all."
+
+`_scenario_diagnostic`'s own remedy text — "have a human review them with
+`gauntlet mutant approve`" — is the worst available action on this particular
+diagnostic: it stamps 24 equivalence judgments that were never made, over
+assertions nobody has verified even run.
+
+**Operational rule:** lock a spec at the start of the session that implements
+it, not at the end of the session that drafts it. The gap between the two is
+spent in this gate's expensive, misleading red state — a full mutation pass
+scoring everything as failing — rather than the cheap, honest one (`N unapproved
+or modified spec(s)` at the approval stage, ~0.001s). That inverts this file's
+own preference for the loop to repeat on its cheapest failure.
 
 ### How a specification value is actually mutated
 
