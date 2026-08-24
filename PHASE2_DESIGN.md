@@ -74,6 +74,7 @@ amendment below — keeping both would have been redundant):
 | `build_sha` | domain package commit SHA, captured once at process startup |
 | `outcome` | `APPLIED` or `REFUSED` — every transition *attempt* gets an entry, including refused ones |
 | `actor_authenticated` | boolean recording whether the actor's identity was verified by an authentication mechanism. **`false` on every entry, for every actor type, no exceptions — including `SYSTEM` and `SERVICE` actors, with no inferred trust on the grounds that they are deployed code.** Phase 2 has no authentication mechanism at all, so nothing has been verified; this is the same reasoning as "unevaluated is not negative," pointed the other way — never record something as verified when nothing verified it. Phase-2 rows must stay distinguishable from authenticated ones written later. |
+| `carrier_code` | attribution only — required by the Carrier reference section, omitted from this table until 2026-08-24; added in item 5d's schema |
 
 **Append-only. No update path and no delete path exist in this schema, in phase 2, at all.**
 Corrections are compensating entries, never edits to history.

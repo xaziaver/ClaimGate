@@ -1694,3 +1694,99 @@ notes for the implementing session: "that submission is remembered as the origin
 tolerate a 400 response with no notice identifier, and "identifies a new notice, not the
 original" must hold when there was no original notice. Next action is the human's: export at
 this ref, review, `gauntlet spec approve` at the start of the implementing session.
+
+**Item 5d is implemented and green on `phase2/5d-idempotency`, spec unchanged throughout.**
+`features/idempotency.feature` was approved by the human at `b08b416` (digest
+`sha256:f741ae2a6536`), re-confirmed against `gauntlet.lock.json` before any code was written and
+unchanged at the end. `gauntlet check` passes: **325/325 tests** (297 before; +13 acceptance
+scenarios, +15 shell unit tests), **coverage 100/100**, **code mutation 342 killed at 100%**
+(unmoved, as expected — `[tool.mutmut] source_paths` is `src/claimgate/domain/` and nothing in the
+domain changed), duplication 0, worst function 22 of 25 lines, and acceptance **8 specs, 69
+reviewed-equivalent** — the same 69 approvals the branch started with, so **all 40 of
+`idempotency.feature`'s mutants were killed and no new approval was created**. Mutant count
+re-measured directly against `gauntlet.acceptance.mutation.mutants()` at the implementing ref: 40,
+12/6/6/4/6/6 by rule, all `example`, matching the amendment session's figures exactly;
+`notice_intake.feature` re-measured at 48, unchanged. The advisor's simulation of 0 survivors held.
+
+Three commits, in the order the log should read them: the SQLite port with the receipt clock
+(`1952dc0`), the shared-step move the duplication gate forced (`d60fcdd`), and idempotency itself
+(`f740495`). **The port and the receipt clock are deliberately one commit, not two** —
+`ASSUMPTIONS.md`'s own "One receipt clock, not two" says to build the clock fix "during item 5d's
+port of the store to SQLite, since that port rewrites `receive_notice` and its callers anyway," so
+separating them would invent a boundary the ratified decision says is not there.
+
+**What was built.** `src/claimgate/shell/` is now six modules rather than two: `schema.py` (the DDL
+and the append-only triggers), `records.py` (the persisted shapes and the payload-reference recipe),
+`store.py` (SQLite), `messages.py` (what crosses the boundary), `idempotency.py` (the repeated-key
+rules), `notice_intake.py` (the order they run in). Four STRICT tables — notices, audit entries,
+payload records, idempotency keys — with `UNIQUE(carrier_code, idempotency_key)` on the key table,
+foreign keys to the notice from the other three, and `BEFORE UPDATE`/`BEFORE DELETE` triggers that
+`RAISE(ABORT)` on the audit and payload tables, so `PHASE2_DESIGN.md`'s "no update path and no
+delete path exist in this schema" is refused by the database rather than merely not offered. The
+database path is a constructor argument with no default; tests pass `":memory:"`. One `POST
+/notices` is one `BEGIN IMMEDIATE` transaction. `datetime.now` is called **0 times** anywhere under
+`src/claimgate/shell/` (counted, not assumed): the notice's receipt, both audit entries and the
+payload record are all `submitted_at`, and `received_at` is now readable on `NoticeRecord` and on
+`SubmitNoticeResponse` for `201` and `200` alike, which is what lets a replay report a timestamp at
+all.
+
+**Judgment calls, flagged rather than buried.**
+
+1. **The decision-4 correction, made before implementation, not discovered by it.**
+   `ASSUMPTIONS.md` decision 4 said the uniqueness constraint lives on the notice table. It cannot:
+   Rule 1's third row requires a second notice under the same `(carrier_code, idempotency_key)`
+   once the first has expired, which a `UNIQUE` there forbids. The key record is its own table, one
+   row per pair, written inside the notice-creating transaction and replaced — not duplicated —
+   when an expired key is reused. Annotated in place in `ASSUMPTIONS.md`; the decision's substance
+   (a refused submission writes no key row and blocks nothing) is unchanged and is asserted by a
+   unit test.
+2. **`carrier_code` on audit entries** — `PHASE2_DESIGN.md`'s "Carrier reference" requires it
+   persisted on every audit entry and its own audit-log entry-schema table omits it. Column and
+   field added, attribution only, never branched on; the entry-schema table gains a dated row-note.
+   Found by tracing design to code, which no gate can do.
+3. **`payload_records.arrival_index` exists now, for item 5e.** Position 0 is the payload the
+   notice was created from; 5e appends resolution payloads after it. `UNIQUE(notice_id,
+   arrival_index)` keeps the sequence from acquiring two occupants of one position, and SQLite's
+   distinct-NULL rule exempts the unlinked refusal records, which have no sequence.
+4. **The one-transaction rule narrows what the two-write receipt protects against, and this
+   follows from the instruction rather than from a document.** `PHASE2_DESIGN.md` justifies writing
+   `RECEIVED` before any rule runs so that "a bug in rule evaluation must never be able to erase or
+   delay the fact that a notice was received." Inside one transaction, a raise between the receipt
+   and the decision rolls the receipt back too. No such path is reachable today — both raising
+   helpers run before the receipt — and atomicity is the stronger guarantee for the failure that
+   does exist, a receipt stranded with no decision. Recorded in `store.py`'s docstring for whoever
+   adds a raise between those two writes.
+5. **The shared-step move follows from the duplication gate, not from a preference.**
+   `idempotency.feature` restates `notice_intake.feature`'s Background verbatim and both specs are
+   locked, so neither rewording nor copying was available; `max_duplicate_blocks = 0` at six lines
+   left `tests/acceptance/conftest.py` as the only place the definitions could go. Verified
+   empirically before relying on it: a module's own step definition overrides one of the same text
+   in `conftest.py`, which is what keeps `test_carrier_configuration_acceptance.py`'s identically
+   worded carrier-rules steps pointed at its own vocabulary.
+6. **The concurrency path is unreachable in this deployment and is built and proven anyway.**
+   `BEGIN IMMEDIATE` takes the write lock before the key lookup, so with one process and one
+   database no writer can commit between the lookup and the insert. The constraint and its
+   resolution are `PHASE2_DESIGN.md`'s mandated mechanism, so both exist: `remember_key` is a plain
+   `INSERT` (an upsert would silence the constraint), and losing to it rolls the submission back
+   whole and re-reads the key to answer as a replay. `tests/shell/` proves the constraint fires by
+   asserting the raised error's `__cause__` is `sqlite3.IntegrityError` — the database refusing,
+   not Python — and stages the resolution by making the lookup miss a key that is already
+   remembered.
+
+**Shell unit tests carry more weight here than usual, and that is why they exist.**
+`docs/harness-findings.md` records that mutmut's `source_paths` is `src/claimgate/domain/`, so code
+mutation reaches no shell code at all; for `src/claimgate/shell/` the acceptance suite and
+`tests/shell/` are the whole of the protection. They cover what no scenario reaches: the constraint
+firing, the four triggers refusing `UPDATE` and `DELETE`, a notice's own row still being allowed to
+move state, no key row after a `400`, an expired key row replaced by the notice that reused it, the
+`409`'s payload record and its reference, the half-open boundary at one-second resolution rather
+than the spec's one-minute rows, the single receipt clock, and `carrier_code` on every audit entry.
+
+**Scope walls held.** No HTTP layer. Items 5e, 5f, 5g, 5h, 5i untouched; both `NotImplementedError`
+raises stay and stay tested; no SIU table, no field named `tolling`, and no persistence for anything
+outside this item's four tables. Item 5e's carried requirement — that a replay of a notice moved
+`PENDED → TRIAGED` reports `TRIAGED` — is still 5e's; Rule 4 here proves only the half that is
+reachable, that a `PENDED` original replays as `PENDED`.
+
+**Next action is the human's: review and merge to `main`.** Nothing about this item is waiting on an
+agent, and no `gauntlet` command from the human's list was run.

@@ -1242,3 +1242,27 @@ silently accepted `_gauntlet` as a valid blockers rendering would be a real step
 this is the mechanism that would have caught it. It does mean the 100% figure overstates how many of
 the 48 mutants were caught by a domain assertion actually being wrong, for exactly the three that
 were never real row-swaps to begin with.
+
+### Two locked specs sharing a Background can only share step definitions through `conftest.py`
+
+`features/idempotency.feature` restates `features/notice_intake.feature`'s Background word for word.
+Neither rewording is available once both are approved, and copying the definitions into a second
+step module is a duplicate block well past `min_lines = 6`, which `max_duplicate_blocks = 0`
+refuses. `tests/acceptance/conftest.py` is the only remaining place, and two pytest-bdd behaviours
+that make that work were confirmed by running them in an isolated project, not inferred:
+
+- **A step definition in a test module overrides one of the same text in `conftest.py`.** Ordinary
+  pytest fixture precedence — pytest-bdd registers each step as a fixture keyed by its parsed text,
+  so the nearer definition wins. This is what lets `test_carrier_configuration_acceptance.py` keep
+  its own `"{carrier}" requires the claimant name` pointed at `context["rules_source"]` while the
+  shared one in `conftest.py` writes `context["carrier_rules_source"]` for everyone else. Without
+  it, moving a step to `conftest.py` would silently redirect every other spec that says the same
+  words.
+- **`@given` and `@when` stack on one function.** A step whose text appears under `Given` in one
+  scenario and under `When` in another needs both decorators; pytest-bdd matches on keyword, so a
+  `@given`-only definition is invisible to a `When` line with identical text. `idempotency.feature`
+  needs this for six steps, including `the notice is submitted for intake`, which its rules use as
+  a `Given` to set up the original submission and as a `When` for the replay.
+
+The isolated-project check cost about two minutes and would have cost a debugging session had
+either assumption been wrong in the direction of "quietly does something else."

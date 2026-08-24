@@ -329,7 +329,13 @@ or data. Nothing below was confirmed against a live book.
      notice table. A submission refused at the schema boundary creates no notice and its key is not
      remembered against the refusal; the next use of that key is judged on its own. Keeping a
      separate table of attempts would make a refused submission's key block the corrected
-     resubmission the caller is most likely to send next.
+     resubmission the caller is most likely to send next. *Corrected 2026-08-24, advisor,
+     before implementation: not the notice table. A `UNIQUE(carrier_code, idempotency_key)`
+     there would refuse the post-expiry fresh notice that Rule 1's third row requires. The key
+     record is its own table, one row per pair, written only inside the transaction that
+     creates a notice, and replaced — not duplicated — when an expired key is reused, so the
+     new notice holds the key and the old one no longer does. The substance stands: a refused
+     submission writes no key row and can block nothing.*
   5. **The 24-hour window is half-open.** A replay is within the window while
      `replay_submitted_at - submitted_at < 24h`, and past it at equality. Basis: RFC 9111 §4.2 —
      a stored response is fresh only while `freshness_lifetime > current_age`, stale at equality
