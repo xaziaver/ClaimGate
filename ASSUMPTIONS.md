@@ -194,6 +194,43 @@ or data. Nothing below was confirmed against a live book.
   spec describes. The obligation is item 5c's, where the instant is obtained,
   and it is recorded there rather than left implicit in this exclusion.
 
+- **A refused submission is still a received communication — advisor-recommended,
+  human-ratified, 2026-08-23.** Item 5c's draft refuses a notice whose loss date is
+  not a date, "creating nothing". `PHASE2_DESIGN.md`'s own audit section is why that
+  is wrong: it records that Fla. Stat. 627.70131(4)(b) requires the insurer to
+  maintain claim records, including dates, of any claim-related communication, that
+  an FNOL is such a communication under (4)(b)1, and that this audit log is the
+  system of record for that duty. Verified against the Florida Legislature's
+  published text on 2026-08-23: 627.70131(1)(a) requires review and acknowledgment
+  of receipt within 7 calendar days of receiving a communication with respect to a
+  claim — the trigger is receipt of a communication, not receipt of a well-formed
+  one. A submission naming a carrier, a policy number and a loss type, with an
+  unusable loss date, is such a communication. The entry schema already carries
+  `outcome: APPLIED or REFUSED`, "every transition attempt gets an entry, including
+  refused ones"; "creating nothing" contradicts a field added for exactly this.
+
+  The decision is narrow. A refused submission persists its raw payload record —
+  the verbatim, immutable, hash-referenced record this design already defines — with
+  its receipt timestamp. It does not create a notice: no notice identifier is
+  allocated, no state is written, no audit entry is made, and nothing becomes
+  retrievable through the notice endpoints. The 400 response carries the payload
+  hash as an intake reference, so the reporter and the carrier can name the same
+  communication.
+
+  Why not the two obvious alternatives. Creating a notice would put a phantom claim
+  into claim counts, reserving and regulatory reporting — worse than the problem it
+  solves, and not what carriers do: intake keeps a submission record and issues a
+  claim number only on acceptance. Extending the audit log would require an entry
+  with no `notice_id`, which the schema makes mandatory and whose `from_state` is
+  meaningful only against a notice; loosening that weakens the log for the case it
+  was designed for.
+
+  Cost. Refused payloads accumulate with no notice referencing them, so retention
+  must cover them explicitly rather than by reachability from a notice — item 5g's
+  problem, recorded here rather than solved. And the 400 path now writes, so it is
+  no longer free under a submission flood; rate limiting is outside phase 2's scope
+  and this entry does not pretend otherwise.
+
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
   recorded as `NOT_EVALUATED` with a reason code. It is never defaulted to false, absent, or any
