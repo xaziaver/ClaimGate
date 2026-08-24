@@ -37,16 +37,18 @@ Feature: Notice intake
   # not been triaged and so carries neither - proven below as its own
   # assertion, not left to silence.
 
-  # "Today, in the jurisdiction" is stated as a fact throughout, exactly as
-  # validation.feature already treats "today" as an already-resolved date
-  # the domain receives - deriving it from a request's UTC instant and a
-  # jurisdiction's timezone is jurisdiction_date.feature's job one layer
-  # down. Which zone a given notice's jurisdiction resolves to (risk
-  # location, mailing address, or carrier configuration) is recorded in
-  # ASSUMPTIONS.md, "The jurisdiction timezone is a parameter of the
-  # conversion, not a constant in it," as arriving with this item and still
-  # open - not decided here, and nothing below depends on how it is
-  # eventually resolved.
+  # The jurisdiction's timezone and the notice's submission instant are
+  # stated directly, not folded into an opaque "today" the way an earlier
+  # draft of this file did: converting an instant and a timezone into a
+  # calendar date is jurisdiction_date.feature's job, proven there in
+  # isolation, but nothing before Rule 4 proved this file's own shell
+  # actually calls that conversion rather than deriving a date some other
+  # way. Rule 4 is where that wiring is proven. Which input resolves the
+  # timezone for a given notice (risk location, mailing address, or carrier
+  # configuration) is still open, per ASSUMPTIONS.md, "The jurisdiction
+  # timezone is a parameter of the conversion, not a constant in it" -
+  # stating a fixed timezone as a Background fact holds it steady for
+  # Rules 1-3's scenarios without deciding that question.
 
   Background:
     # The claimant-name requirement below never fires anywhere in this file:
@@ -64,7 +66,8 @@ Feature: Notice intake
     And "AAAA" configures a recent policy inception threshold of 30 days
     And "AAAA" configures a duplicate match window of 60 days
     And the notice is submitted by carrier "AAAA"
-    And today, in the jurisdiction, is "2026-08-24"
+    And the jurisdiction observes "America/New_York"
+    And the notice is submitted at "2026-08-24T16:00Z"
     And the notice reports a policy number of "HO-1234567"
     And the notice reports a loss date of "2026-06-01"
     And the notice reports a loss type of "wind_hail"
@@ -81,18 +84,29 @@ Feature: Notice intake
     # ordinary MISSING_REQUIRED_FIELD:policy_number from validation.feature
     # - reused, not reinvented, since this item calls that same rule and
     # does not get its own blocker vocabulary.
+    #
+    # Both rows are 201, not 200/201 or 201/202: PHASE2_DESIGN.md's HTTP
+    # surface section is explicit that a notice is created and addressable
+    # at its own address in both cases, which is what 201 means: 202 would
+    # falsely imply processing is incomplete, when the state is final and
+    # present the moment the response is sent. Caller-observable status is
+    # behavior, not implementation, and asserting it here is what protects
+    # this deliberate design choice from a future 202 someone adds because
+    # PENDED "sounds" incomplete - state is read from the body, always,
+    # never inferred from status.
     Scenario Outline: A schema-valid notice is triaged or pended depending on whether a domain rule finds a blocker
-      Given the notice reports a policy number of <policy_number>
+      Given the notice reports a policy number of "<policy_number>"
       When the notice is submitted for intake
-      Then the notice's state is <state>
+      Then the response is <response>
+      And the notice's state is <state>
       And the notice's blockers are <blockers>
       And the notice's severity and queue are <severity_and_queue>
       And the notice can be retrieved afterward, showing state <state>
 
       Examples:
-        | policy_number | state   | blockers                              | severity_and_queue      |
-        | HO-1234567    | TRIAGED |                                       | standard, standard      |
-        | absent        | PENDED  | MISSING_REQUIRED_FIELD:policy_number  | not yet assigned        |
+        | policy_number | response | state   | blockers                             | severity_and_queue |
+        | HO-1234567    | 201      | TRIAGED |                                      | standard, standard |
+        | absent        | 201      | PENDED  | MISSING_REQUIRED_FIELD:policy_number | not yet assigned   |
 
   Rule: The notice's receipt is recorded before any rule runs, and does not depend on what those rules find
 
@@ -145,7 +159,7 @@ Feature: Notice intake
     # append-only log that is the statutory system of record for a claim
     # communication should never tolerate a spurious extra write, and
     # nothing else in this rule would notice one.
-    Scenario Outline: Each audit entry for a notice that satisfies no domain rule names its own state, actor, and identity, in order
+    Scenario Outline: Each audit entry for a pended notice names its own state, actor, and identity, in order
       Given the notice reports a policy number of "absent"
       When the notice is submitted for intake
       Then the audit trail's <ordinal> entry moves it to <state>
@@ -159,7 +173,7 @@ Feature: Notice intake
         | first   | RECEIVED | EXTERNAL | no verified identity  | none yet, since no rule has run          |
         | second  | PENDED   | SYSTEM   | no verified identity  | the same ones the notice itself carries  |
 
-  Rule: A notice is received only if its loss date is a real date
+  Rule: A notice is created only if its loss date is a real date
 
     # Distinct from the rule above: a notice with a blank policy number is
     # schema-valid and reaches PENDED, because intake can still parse and
@@ -186,8 +200,8 @@ Feature: Notice intake
     # to place beside it; here a second, differing row exists, so an
     # outline costs nothing and reaches a real mutant that a plain
     # scenario's quoted literal would only have reached vacuously, at step
-    # resolution (docs/harness-findings.md, "A one-row outline forfeits its
-    # own step literals").
+    # resolution (docs/harness-findings.md, "Acceptance mutation does not see
+    # everything").
     #
     # Whether a notice exists and whether a record of the submission exists
     # are two columns, not one compound phrase, because they are two
@@ -199,14 +213,90 @@ Feature: Notice intake
     # now carries its own swap between rows, so an implementation that gets
     # the notice half right and the record half wrong - or the reverse - is
     # still caught, where one compound column could only fail or pass as a
-    # whole.
-    Scenario Outline: A notice is received only if its loss date is a real date
+    # whole. The response column adds two more, 6 to 8: caller-observable
+    # status is behavior, not implementation, and this is the boundary case
+    # that draws the line where it belongs - 400 here, unlike the two 201s
+    # in the rule above, because refusing the notice is the correct,
+    # deliberate outcome and there is nothing to protect from being read as
+    # incomplete.
+    Scenario Outline: A notice is created only if its loss date is a real date
       Given the notice reports a loss date of "<loss_date>"
       When the notice is submitted for intake
-      Then intake <notice_outcome>
+      Then the response is <response>
+      And intake <notice_outcome>
       And a record of the submission <record_outcome>
 
       Examples:
-        | loss_date  | notice_outcome     | record_outcome                              |
-        | 2026-06-01 | creates the notice | is kept, and reachable through the notice   |
-        | not-a-date | creates no notice  | is kept anyway, with a reference of its own |
+        | loss_date  | response | notice_outcome     | record_outcome                              |
+        | 2026-06-01 | 201      | creates the notice | is kept, and reachable through the notice   |
+        | not-a-date | 400      | creates no notice  | is kept anyway, with a reference of its own |
+
+  Rule: A notice is judged against the jurisdiction's calendar date at the instant it was submitted
+
+    # This is where item 5c discharges the obligation it inherited from item
+    # 5b: ASSUMPTIONS.md's "An instant that is not a timezone-aware UTC
+    # instant is out of scope for item 5b" entry puts that defense out of
+    # jurisdiction_date.feature's reach - the violation is silent there,
+    # since datetime.astimezone() on a naive value assumes server local time
+    # rather than raising - and records that the obligation moves to item
+    # 5c, "where the instant is obtained." This rule is that defense: it
+    # proves the shell actually calls the conversion this file's Background
+    # states as fact everywhere above, rather than deriving "today" some
+    # other way that happens to agree with it on every row those rules use.
+    #
+    # Two scenarios, not one three-row table combining both axes. Measured
+    # directly against the engine before either was written to disk: the
+    # combined shape produces exactly 2 simulated survivors, not 0.
+    # Chicago's local date, for any given UTC instant, is never ahead of New
+    # York's - Chicago sits further behind UTC, never closer to it - so a
+    # row already PENDED from an early UTC instant stays PENDED if its zone
+    # is swapped for a zone further behind, and a row already PENDED from a
+    # zone further behind UTC stays PENDED if its instant is swapped for
+    # another row's earlier one: each survivor borrows a row that only
+    # exists because both axes shared one table. Splitting removes the
+    # borrowed row from each scenario's own table - the instant-only
+    # scenario below has no zone column to supply an alternative, and the
+    # zone-only scenario has no instant column to supply one - so neither
+    # surviving mutant is even generated.
+    #
+    # The honest limit of what these two scenarios prove: that the
+    # conversion is wired into this file's own shell, and that the timezone
+    # is read as a parameter rather than assumed. They cannot prove the
+    # instant itself is read as timezone-aware rather than naive on a server
+    # whose own local zone happens to be UTC - astimezone() on a naive value
+    # assumes server local time, and if that local time already is UTC, the
+    # naive and the aware reading of the same instant coincide, so no row
+    # here would fail either way. On any other server zone, at least one row
+    # fails if the instant is not actually read as aware. The second
+    # scenario's instant, both zones, and both resulting dates are exactly
+    # jurisdiction_date.feature's own "The jurisdiction's timezone is a
+    # parameter" proof, reused rather than re-derived; the first scenario's
+    # early instant is new, because that file never varies an instant
+    # against a domain rule watching the result - proving that requires a
+    # rule to watch, which is this file's job, not that one's.
+
+    Scenario Outline: The submission instant, not the calendar date it falls on in UTC, decides whether a loss date is in the future
+      Given the jurisdiction observes "America/New_York"
+      And the notice is submitted at <submitted_at>
+      And the notice reports a loss date of "2026-06-11"
+      When the notice is submitted for intake
+      Then the notice's state is <state>
+      And the notice's blockers are <blockers>
+
+      Examples:
+        | submitted_at      | state   | blockers                       |
+        | 2026-06-11T04:30Z | TRIAGED |                                |
+        | 2026-06-11T02:30Z | PENDED  | LOSS_DATE_IN_FUTURE:loss_date  |
+
+    Scenario Outline: The same submission instant is judged differently under each of the jurisdictions the book writes in
+      Given the jurisdiction observes <jurisdiction_timezone>
+      And the notice is submitted at "2026-06-11T04:30Z"
+      And the notice reports a loss date of "2026-06-11"
+      When the notice is submitted for intake
+      Then the notice's state is <state>
+      And the notice's blockers are <blockers>
+
+      Examples:
+        | jurisdiction_timezone | state   | blockers                       |
+        | America/New_York      | TRIAGED |                                |
+        | America/Chicago       | PENDED  | LOSS_DATE_IN_FUTURE:loss_date  |
