@@ -1,9 +1,11 @@
-"""The SQLite schema phase 2 writes into: the tables and the triggers that
+"""The SQLite schema phase 2 writes into: four tables and the triggers that
 make PHASE2_DESIGN.md's audit-log rule enforceable.
 
 STRICT tables and schema-declared constraints, per ASSUMPTIONS.md's
-"Persistence engine": a constraint this project relies on is declared here and
-enforced by the database, never checked in Python and hoped for.
+"Persistence engine" - the point of choosing an engine at all was that
+`PHASE2_DESIGN.md`'s Idempotency section requires uniqueness on
+`(carrier_code, idempotency_key)` "enforced by a database constraint, not a
+check-then-write". That constraint is declared here, not checked in Python.
 
 Two design statements become enforced facts rather than conventions:
 
@@ -66,6 +68,14 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
         notice_id TEXT REFERENCES notices (notice_id),
         arrival_index INTEGER NOT NULL,
         UNIQUE (notice_id, arrival_index)
+    ) STRICT
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS idempotency_keys (
+        carrier_code TEXT NOT NULL,
+        idempotency_key TEXT NOT NULL,
+        notice_id TEXT NOT NULL REFERENCES notices (notice_id),
+        UNIQUE (carrier_code, idempotency_key)
     ) STRICT
     """,
     """

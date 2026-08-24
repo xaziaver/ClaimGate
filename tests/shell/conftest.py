@@ -18,7 +18,8 @@ from typing import Any
 
 import pytest
 
-from claimgate.shell.notice_intake import NoticeFields, SubmitNoticeResponse, submit_notice
+from claimgate.shell.messages import NoticeFields, SubmitNoticeResponse
+from claimgate.shell.notice_intake import submit_notice
 from claimgate.shell.store import NoticeStore
 
 VALID_RULES: dict[str, Any] = {
@@ -53,6 +54,7 @@ def submit(store: NoticeStore) -> Submitter:
         jurisdiction_timezone: str = "America/New_York",
         carrier_rules_source: dict[str, Any] | None = None,
         fields: NoticeFields = DEFAULT_FIELDS,
+        idempotency_key: str | None = None,
     ) -> SubmitNoticeResponse:
         source = carrier_rules_source if carrier_rules_source is not None else {"AAAA": VALID_RULES}
         return submit_notice(
@@ -62,6 +64,7 @@ def submit(store: NoticeStore) -> Submitter:
             jurisdiction_timezone=jurisdiction_timezone,
             carrier_rules_source=source,
             fields=fields,
+            idempotency_key=idempotency_key,
         )
 
     return _submit

@@ -1,14 +1,14 @@
-"""SQLite persistence for notices, their audit trails and their payload records.
+"""SQLite persistence for notices, audit trails, payload records, and keys.
 
 Engine decided 2026-08-24, ASSUMPTIONS.md "Persistence engine": stdlib sqlite3,
-STRICT tables, constraints declared in the schema, no ORM. Item 5d's uniqueness
-constraint is what forced the decision; this port is what gives it somewhere to
-live.
+STRICT tables, constraints declared in the schema, no ORM. The constraint that
+forced the decision - uniqueness on (carrier_code, idempotency_key) "enforced
+by a database constraint, not a check-then-write" - lives in schema.py.
 
 **One POST /notices is one transaction.** `submission()` opens BEGIN IMMEDIATE
-and commits once, so a refusal, or a receipt with its decision, lands whole or
-not at all. That turns "the raw payload and the RECEIVED write are one
-statutory fact" from a comment describing call order into a guarantee.
+and commits once, so a refusal, or a receipt with its decision and its key,
+lands whole or not at all. That turns "the raw payload and the RECEIVED write
+are one statutory fact" from a comment describing call order into a guarantee.
 
 *Noted rather than resolved:* PHASE2_DESIGN.md calls the receipt "a deliberate
 two-write design" so "a bug in rule evaluation must never be able to erase or
@@ -48,6 +48,14 @@ from claimgate.shell.schema import SCHEMA_STATEMENTS
 UNVERIFIED_ACTOR_ID = "no verified identity"
 
 
+class IdempotencyKeyAlreadyRememberedError(Exception):
+    """The (carrier_code, idempotency_key) UNIQUE constraint refused a second
+    row, so a concurrent identical submission committed first. PHASE2_DESIGN.md
+    asks for exactly this - "Concurrent identical requests must resolve by
+    constraint violation, not by a race condition" - so it is the mechanism
+    working, not a defect. notice_intake.py resolves it by re-reading the key."""
+
+
 class NoticeStore:
     def __init__(self, database_path: str) -> None:
         # No default path: a store that silently picks its own database is a
@@ -61,8 +69,8 @@ class NoticeStore:
     @contextmanager
     def submission(self) -> Iterator[None]:
         """One submission, one transaction. IMMEDIATE takes the write lock at
-        BEGIN rather than at the first write, so a read this transaction makes
-        cannot be overtaken by a writer committing after it."""
+        BEGIN, so the read that decides whether this is a replay cannot be
+        overtaken by a writer committing after it."""
         self._connection.execute("BEGIN IMMEDIATE")
         try:
             yield
@@ -126,6 +134,49 @@ class NoticeStore:
             "SELECT * FROM audit_entries WHERE notice_id = ? ORDER BY entry_id", (notice_id,)
         ).fetchall()
         return tuple(audit_entry_from_row(row) for row in rows)
+
+    def find_key(self, carrier_code: str, idempotency_key: str) -> NoticeRecord | None:
+        """The notice a remembered key names, or None if this pair has never
+        created one. A key is remembered only by the notice it created."""
+        row = self._connection.execute(
+            "SELECT notices.* FROM idempotency_keys"
+            " JOIN notices ON notices.notice_id = idempotency_keys.notice_id"
+            " WHERE idempotency_keys.carrier_code = ?"
+            " AND idempotency_keys.idempotency_key = ?",
+            (carrier_code, idempotency_key),
+        ).fetchone()
+        return None if row is None else notice_from_row(row)
+
+    def remember_key(
+        self, carrier_code: str, idempotency_key: str, notice_id: str, *, replacing_expired: bool
+    ) -> None:
+        """A plain INSERT, deliberately: the UNIQUE constraint is the mechanism
+        that resolves concurrent identical submissions, and an upsert would
+        silence it. An expired row is deleted first, so the key ends up held by
+        the notice it just created and by no other."""
+        if replacing_expired:
+            self._connection.execute(
+                "DELETE FROM idempotency_keys WHERE carrier_code = ? AND idempotency_key = ?",
+                (carrier_code, idempotency_key),
+            )
+        try:
+            self._connection.execute(
+                "INSERT INTO idempotency_keys (carrier_code, idempotency_key, notice_id)"
+                " VALUES (?, ?, ?)",
+                (carrier_code, idempotency_key, notice_id),
+            )
+        except sqlite3.IntegrityError as violation:
+            raise IdempotencyKeyAlreadyRememberedError(carrier_code, idempotency_key) from violation
+
+    def get_notice_payload_reference(self, notice_id: str) -> str:
+        """The reference of the payload the notice was created from - position
+        0 of its arrival sequence, the one item 5e's resolution records append
+        after."""
+        row = self._connection.execute(
+            "SELECT reference FROM payload_records WHERE notice_id = ? AND arrival_index = 0",
+            (notice_id,),
+        ).fetchone()
+        return str(row["reference"])
 
     def count_notices(self) -> int:
         row = self._connection.execute("SELECT COUNT(*) AS total FROM notices").fetchone()

@@ -1,12 +1,7 @@
 """Thin, stable test API over the notice-intake shell."""
 
-from claimgate.shell.notice_intake import (
-    NoticeFields,
-    NoticeView,
-    SubmitNoticeResponse,
-    get_notice,
-    submit_notice,
-)
+from claimgate.shell.messages import NoticeFields, NoticeView, SubmitNoticeResponse
+from claimgate.shell.notice_intake import get_notice, submit_notice
 from claimgate.shell.store import NoticeStore
 
 # Acceptance steps open one database per scenario. ":memory:" keeps a scenario's

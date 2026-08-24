@@ -24,7 +24,7 @@ DEFAULT_TODAY = date(2026, 8, 2)
 
 @pytest.fixture
 def context() -> dict[str, Any]:
-    return {"today": DEFAULT_TODAY, "fields": {}}
+    return {"today": DEFAULT_TODAY, "fields": {}, "idempotency_key": None}
 
 
 @given(parsers.parse('today is "{value}"'))
@@ -150,6 +150,7 @@ def submit(context: dict[str, Any]) -> None:
         jurisdiction_timezone=context["jurisdiction_timezone"],
         carrier_rules_source=context["carrier_rules_source"],
         fields=NoticeFields(**context["fields"]),
+        idempotency_key=context["idempotency_key"],
     )
 
 

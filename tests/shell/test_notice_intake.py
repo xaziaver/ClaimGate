@@ -11,7 +11,8 @@ from dataclasses import asdict
 
 import pytest
 
-from claimgate.shell.notice_intake import NoticeFields, get_notice
+from claimgate.shell.messages import NoticeFields
+from claimgate.shell.notice_intake import get_notice
 from claimgate.shell.records import payload_reference
 from claimgate.shell.store import NoticeStore
 from tests.shell.conftest import DEFAULT_FIELDS, DEFAULT_SUBMITTED_AT, Submitter
