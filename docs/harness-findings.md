@@ -91,6 +91,28 @@ conditions, so the wrong command isn't specific to a spec that changed after
 approval — any spec the acceptance gate hasn't approved, new or modified,
 carries this same incorrect instruction.
 
+**Corrected 2026-08-24: "generated from one code path covering both conditions" is wrong; the
+operational conclusion above it is not.** Verified against `registry.describe` in the gauntlet
+repo itself (`src/gauntlet/registry.py`), not reproduced from the harness's own output:
+`describe()` is a three-way branch on `Finding.status` — `MODIFIED`, `MISSING`, and everything else
+(the not-approved case) — and each branch returns its own distinct prose, not a shared one.
+`MODIFIED` and not-approved both happen to end by naming `gauntlet lock`, which is why the two
+observations above read as "identical" at the level of "which command it wrongly tells you to
+run" — but they are two separate branches producing two different sentences, not one code path
+producing one. The quoted text above already shows this, read closely: the not-approved sentence
+("is not approved. A human must review it and run `gauntlet lock`...") is not the modified
+sentence ("changed since it was approved... revert the change, or explain why it should change and
+let the human re-approve it with `gauntlet lock`") word for word. A third branch, `MISSING`, was
+never checked before this correction and is not like either: "was approved but no longer exists.
+Restore it, or ask the human to remove its approval" — no mention of `gauntlet lock` at all,
+because there is nothing to re-lock.
+
+**What stands, unchanged:** the operational advice — the acceptance gate's remedy names the wrong
+command for a human to approve a spec with, in both the modified and the not-approved case, and
+the correct command is `gauntlet spec approve`. What's corrected is only the reasoning for why the
+two observations matched: two branches that happen to share a word, reasoned here from two
+observations, not one branch producing one text.
+
 ### `pyproject.toml` is verified, not protected — an escalation that said otherwise was wrong
 
 An escalation during item 5b's session asserted that `pyproject.toml` could not be edited because it
