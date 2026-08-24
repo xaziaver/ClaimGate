@@ -231,6 +231,45 @@ Feature: Notice intake
         | 2026-06-01 | 201      | creates the notice | is kept, and reachable through the notice   |
         | not-a-date | 400      | creates no notice  | is kept anyway, with a reference of its own |
 
+  Rule: A notice is accepted only from a carrier this deployment administers
+
+    # Settled by ASSUMPTIONS.md, "Item 5c's 400 validates against the
+    # identity reference, not the rules source" - this rule is that
+    # decision's scenario. PHASE2_DESIGN.md's carrier-reference section:
+    # an unknown or malformed carrier_code returns 400 and persists
+    # nothing.
+    #
+    # A malformed code gets no row of its own: it is definitionally absent
+    # from the identity reference, so it is the same boundary as an
+    # unrecognized one, not a second boundary needing its own proof. A
+    # third row for it would be same-outcome with the row below, and its
+    # swap against that row would survive as an equivalent mutant
+    # (.claude/skills/gherkin-specs, "Prefer one table mixing outcomes over
+    # separate same-outcome tables").
+    #
+    # "is not kept" is the opposite of Rule 3's refused row, which keeps a
+    # receipted payload record: the Fla. Stat. 627.70131(1)(a)
+    # acknowledgment duty attaches to the insurer, and for a carrier this
+    # deployment does not administer there is no insurer here for a duty
+    # to arise to. This check runs before the receipt write, ahead of
+    # every other rule in this file, and Rule 2 - whose notice is AAAA's -
+    # is untouched by it.
+    #
+    # Not this rule's case: a carrier present in the identity reference
+    # whose rules entry cannot be resolved. That is item 5i, deliberately
+    # unbuilt here.
+    Scenario Outline: A carrier absent from the identity reference is refused before any record is made
+      Given the notice is submitted by carrier "<carrier_code>"
+      When the notice is submitted for intake
+      Then the response is <response>
+      And intake <notice_outcome>
+      And a record of the submission <record_outcome>
+
+      Examples:
+        | carrier_code | response | notice_outcome     | record_outcome                            |
+        | AAAA         | 201      | creates the notice | is kept, and reachable through the notice |
+        | ZZZZ         | 400      | creates no notice  | is not kept                               |
+
   Rule: A notice is judged against the jurisdiction's calendar date at the instant it was submitted
 
     # This is where item 5c discharges the obligation it inherited from item
