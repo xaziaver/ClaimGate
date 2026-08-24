@@ -503,6 +503,26 @@ Ordered by domain severity, not by effort. One line each on why that position.
     to carry them. **If either test is hard to write, the difficulty is the finding — do not bend
     the test to make it pass.**
 
+5h. **An absent loss date passes validation and reaches `TRIAGED` carrying `0001-01-01` as
+    today's date.** `validate()` has no presence check for `loss_date`: `_check_loss_date` tests
+    only the future bound, and `Candidate.loss_date` defaults to `date.min`. No scenario anywhere
+    covers it. A phase-1 reopening — `validation.feature`, `validation.py`, `models.py` — not item
+    5c's, even though item 5c's own Rule 3 title ("A notice is created only if its loss date is a
+    real date") implies an answer its table does not contain: an absent date is neither "a real
+    date" nor tested as "not a real date" there. See `ASSUMPTIONS.md`, "An absent loss date is a
+    domain blocker, not a schema refusal," for the resolution — `PENDED` with
+    `MISSING_REQUIRED_FIELD:loss_date`, the blank-policy-number case one field over.
+
+5i. **The status code for a carrier present in the identity reference whose rules entry resolves
+    `CARRIER_NOT_CONFIGURED` or malformed has no row in `PHASE2_DESIGN.md`'s closed status-code
+    table.** Found while drafting item 5c: the table's two `400` rows cover an unknown/malformed
+    `carrier_code` and a schema-invalid body, neither of which is this case — a carrier this
+    deployment's identity reference recognizes but whose rules were never onboarded, or were
+    onboarded wrongly. See `ASSUMPTIONS.md`, "A carrier this deployment administers but cannot
+    configure is our defect, not the reporter's" — 5xx, not 400, still with a receipted payload
+    record. Sequenced as its own item because it adds a row to a table item 5c inherited as closed,
+    not a change item 5c's own spec should make.
+
 ## What to read
 
 `CLAUDE.md`, this file, and `docs/harness-findings.md` every session. The rest is
@@ -527,6 +547,8 @@ later.
 | 5e | `PHASE2_DESIGN.md` — "Pending resolution and tolling"; `STATUTORY_REGISTER.md` |
 | 5f | `PHASE2_DESIGN.md` — "SIU handling"; `ASSUMPTIONS.md` — "Data we do not have at intake" and the continuous-coverage entry dated 2026-08-22 |
 | 5g | `PHASE2_DESIGN.md` — "Jurisdiction axis" and "Swappability proofs" |
+| 5h | `ASSUMPTIONS.md` — "An absent loss date is a domain blocker, not a schema refusal"; `validation.feature`, `validation.py`, `models.py` |
+| 5i | `PHASE2_DESIGN.md` — the status-code table; `ASSUMPTIONS.md` — "A carrier this deployment administers but cannot configure is our defect, not the reporter's" |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
 
@@ -1375,3 +1397,76 @@ reference. Retention for these unreferenced payload records is named as item 5g'
 solved here. `PHASE2_DESIGN.md`'s status-code table entry for the schema-invalid case corrected
 from "nothing persisted," which this decision supersedes, to "no notice created, submission
 recorded."
+
+
+**`gauntlet spec approve` landed on `features/notice_intake.feature` before any step definition
+existed, and the acceptance gate's mutation stage cannot tell the difference between that and a
+locked, tested spec — it just runs the whole suite and asks whether it still passes.** Nothing in
+this project binds the file to a test module. `gauntlet.gates.acceptance._survivors` mutates the
+spec in place and demands `run_acceptance` over the whole steps directory fail; if no `scenarios()`
+call collects this file, the run is unaffected by the mutation and every mutant it tries scores as
+surviving. `survivors_for`'s own docstring says "the bound scenarios" — the concept is named in the
+code and enforced nowhere. The tell: `tests` stayed 274/274 passing and code mutation 330 killed,
+both figures identical to `main` before this item existed. A spec's own scenario count never
+entered either total.
+
+**The gate reported 24 surviving mutants against the pre-amendment draft. All 24 were vacuous —
+binding artifacts, not real survivors — and none is to be approved.** `gauntlet mutant approve`
+would stamp 24 judgments that were never made, over a rule this item's own comments call the one
+carrying the most statutory weight in the file. A future session reading the survivor count alone,
+without this entry, would have every reason to try.
+
+**The acceptance gate took 423.622s scoring that state — a project maximum, above the 260.3s on
+record and above the 300s timeout floor `docs/harness-findings.md` currently advises.** Corrected
+there too, in the same section, with the cause named so the figure is not read as ordinary growth:
+24 full-suite runs, one per vacuous mutant, not a bigger suite taking proportionally longer.
+
+**The spec is amended, landed at `edb5abd` on `phase2/5c-notice-intake`, spec-only, still
+unapproved — moving the digest is what returns the gate to its cheap approval-stage failure.** Five
+changes: the Background states the jurisdiction's timezone and the notice's actual submission
+instant directly rather than an opaque "today"; Rule 1 gains a response column (both rows `201`,
+per `PHASE2_DESIGN.md`'s own reasoning for the two identical status codes); Rule 2's scenario title
+is corrected — exactly one rule in this file's fixture finds a blocker, not none, and the old title
+was false about its own data; Rule 3's titles read "created," not "received," matching cells that
+already did, and gains a response column (`201`/`400`); a new Rule 4 proves the shell actually
+calls `jurisdiction_date.feature`'s conversion with a timezone-aware instant and a
+caller-supplied timezone rather than assuming either — the defense item 5c inherited from item 5b,
+per `ASSUMPTIONS.md`'s "An instant that is not a timezone-aware UTC instant is out of scope for
+item 5b." Rule 4's two scenarios are split rather than combined into one three-row table: measured
+directly against the engine and confirmed by full hand-simulation before either shape was written
+to disk, the combined shape carries exactly 2 real survivors — a zone swap and an instant swap can
+each borrow the other axis's row to stay `PENDED`, since Chicago's local date for any UTC instant
+is never ahead of New York's — while the split shape has 0, because neither scenario's own table
+has the other axis's column to supply the borrowed row.
+
+**Re-measured after the last amendment: 40 mutants, 10 / 10 / 8 / 6 / 6 by scenario, all
+`example`-kind, zero overlap with the pre-amendment draft's 24 locators** (compared directly,
+not assumed from the rewrite). All 40 hand-simulated against a correct implementation: 0 survivors,
+across every scenario in the file.
+
+**Correction to record: the response column does not produce a `_gauntlet` marker.** Predicted
+as a marker substitution before this was measured; `201` and `400` are parsed as numbers, and the
+engine's numeric rule increments them at matching precision — the real mutants are `201`→`202` and
+`400`→`401`, both real, both killed by the design's own two-`201`s and one-`400` decisions.
+
+**The further-split trigger this item recorded at `6ef20ff` — "revisit if this file passes roughly
+40 mutants, or the moment any rule here accumulates a survivor" — is reached on the mutant-count
+half by this amendment (40) and not on the survivor half: the 24 the gate reported were binding
+artifacts, and the hand-simulated count is 0.** Consciously re-examined rather than left silently
+unaddressed, and the decision is: still unsplit. What the original trigger protects against —
+approval scope coarser than the judgments it records — is realized when a file accumulates
+survivors needing separate equivalence arguments; that has not happened, and Rule 4 shares this
+file's Background more thoroughly than the first three rules alone did, since it uses the same
+jurisdiction-and-instant facts rather than an unrelated setup — splitting it out would duplicate
+that Background rather than isolate an unrelated concern. Revised reversal condition, since the old
+one's mutant-count half is now behind: revisit if this file passes roughly 60 mutants, or the
+moment a mutant survives that still needs a human equivalence judgment once step definitions exist
+and actually bind the file — a real survivor, not a gate artifact of the kind this session found.
+
+**Two new queue items, 5h and 5i, added above after 5g** — an absent loss date reaching `TRIAGED`
+with no presence check anywhere in `validate()`, and the missing status-code row for a carrier this
+deployment's identity reference recognizes but cannot configure. Both found while drafting this
+item; neither is this item's to build. See `ASSUMPTIONS.md` for both resolutions, ratified
+2026-08-24, along with the settled placement of item 5c's `400` on an unknown or malformed
+`carrier_code` — the identity reference, not item 5a's rules source, closing an escalation this
+drafting session raised that turned out to be decidable from documents already in hand.

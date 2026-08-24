@@ -231,6 +231,34 @@ or data. Nothing below was confirmed against a live book.
   no longer free under a submission flood; rate limiting is outside phase 2's scope
   and this entry does not pretend otherwise.
 
+- **Item 5c's 400 validates against the identity reference, not the rules source —
+  advisor-recommended, human-ratified, 2026-08-24.** Settled, not open:
+  `features/carrier_configuration.feature`'s own comment at `f19317e` says so verbatim
+  ("this is not item 5c's 400 on an unknown or malformed carrier_code against the identity
+  reference, either: that is a different file, a different check, owned there"), and
+  `PHASE2_DESIGN.md`'s carrier-reference section ties the 400 to the identity list by name.
+  `QUEUE.md` item 5c's shorthand "the reference file it validates against is 5a's" is the only text
+  pointing the other way and is the loosest of the three. The drafting session escalated this as
+  undecided; it was decidable from documents already in hand.
+
+- **A carrier this deployment administers but cannot configure is our defect, not the reporter's —
+  advisor-recommended, human-ratified, 2026-08-24.** A `carrier_code` present in the identity
+  reference whose rules entry resolves `CARRIER_NOT_CONFIGURED` or malformed returns 5xx, not 400,
+  and still persists a receipted payload record with its hash as an intake reference - the same
+  shape as "A refused submission is still a received communication," above. An identity-recognized
+  carrier is one this deployment claims to administer, so a statutory duty arises under
+  627.70131(1)(a); a 4xx would tell a reporter their notice was refused for a defect on this
+  deployment's own side, which is exactly what the no-rejected-state rule exists to prevent. Cost,
+  stated rather than hidden: `PHASE2_DESIGN.md`'s status-code table is no longer closed and needs a
+  new row. Sequenced as its own queue item, not built inside item 5c.
+
+  **The response column added to `features/notice_intake.feature`'s Rules 1 and 3 this session
+  makes the same decision this entry's cost paragraph names, applied one layer up.**
+  Caller-observable status is behavior, not implementation, and asserting it is what protects
+  `PHASE2_DESIGN.md`'s deliberate two-201s design from a future 202 someone adds because a `PENDED`
+  notice "sounds" incomplete. Reversible before this spec is locked, at a measured cost of 4 mutants
+  and every locator in Rules 1 and 3 - free now, not free later.
+
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
   recorded as `NOT_EVALUATED` with a reason code. It is never defaulted to false, absent, or any
@@ -781,6 +809,24 @@ or data. Nothing below was confirmed against a live book.
   `RECOGNIZED_LOSS_TYPES`, `_HIGH_SEVERITY_LOSS_TYPES`, `validate`, and `triage_and_route` are
   current as of that date; the argument above is about the sets these symbols locate, not the
   symbols themselves, and survives their renaming.
+
+- **An absent loss date is a domain blocker, not a schema refusal — advisor-recommended,
+  human-ratified, 2026-08-24.** `validate()` has no presence check for `loss_date`:
+  `_check_loss_date` tests only the future bound, and `Candidate.loss_date` defaults to `date.min`.
+  A notice submitted with no loss date at all reaches `TRIAGED` carrying `0001-01-01` as today's
+  date, and no scenario anywhere covers it. Found while drafting item 5c's Rule 3 - "A notice is
+  created only if its loss date is a real date" implies an answer its own table does not contain, an
+  absent date being neither "a real date" nor tested as "not a real date" by anything in that rule.
+
+  **Resolution: it resolves `PENDED` with `MISSING_REQUIRED_FIELD:loss_date`, not `400`.** A
+  reporter genuinely may not know when a loss began - water under a sink, a roof that has been
+  leaking - and carriers pend for the date rather than refusing the call. Item 5c's own Rule 3 draws
+  its boundary on whether a value can be held for correction, and an absent date can be; it is the
+  blank-policy-number case one field over. 627.70131(4)(b) makes the claim record, including dates,
+  the statutory duty - recording a date nobody supplied is worse than recording its absence.
+  Implementation shape: `loss_date` becomes `date | None`, mirroring `continuous_coverage_date`, and
+  `_check_loss_date` gains a presence check. A phase-1 reopening -
+  `validation.feature`, `validation.py`, `models.py` - sequenced separately, not built inside item 5c.
 
 ## Data we do not have at intake
 
