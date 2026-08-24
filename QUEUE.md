@@ -1478,3 +1478,31 @@ the Feature-level comment naming `validate()` survived two advisor review rounds
 same defect class item 4f cost its own queue item over, once that spec was already locked. Both
 caught at the pre-lock review of the exported file, not by any gate. Re-measured against `edb5abd`:
 40 mutants, every locator and every signature byte-identical, both as multisets and pairwise.
+
+**A third advisor miss was found and closed at the pre-lock export review, not by any gate: the
+item's own 400 on an unknown or malformed `carrier_code` still had no scenario.** It was flagged in
+the first advisor review of the draft — the disputed-reference finding, above — but only as an open
+question of which reference file the check validates against, not as a missing scenario, and it was
+dropped again from both amendment prompts that followed (`bce47a6`, `edb5abd`), each of which fixed
+other things and never added it. This is the third advisor miss recorded against item 5c, after the
+two already recorded at `0d955af` (Rule 4's unquoted placeholders, the dead-`validate()` comment
+surviving two review rounds), and is recorded as such.
+
+**Closed by adding `Rule: A notice is accepted only from a carrier this deployment administers`,
+between Rule 3 and Rule 4** — a two-row Scenario Outline (`AAAA`/201/kept, `ZZZZ`/400/not kept) that
+introduces no new step vocabulary: it reuses the Background's `the notice is submitted by carrier`
+step and Rule 3's `intake <notice_outcome>` and `a record of the submission <record_outcome>` steps
+verbatim. A malformed code gets no third row — it is definitionally absent from the identity
+reference, the same boundary as `ZZZZ`, and a third row would be same-outcome with `ZZZZ` and
+equivalent under swap. Measured directly against `gauntlet.acceptance.mutation.mutants()` and
+compared to `0d955af`: 48 mutants, the existing 40 byte-identical (locator, kind, original, and
+mutated value all compared, not locator alone), 8 new, all `example`-kind. Hand-simulated against a
+correct implementation: 0 survivors among the 8 — every substitution flips an outcome, matching this
+session's own prediction with nothing to reconcile.
+
+`features/notice_intake.feature` now specifies everything item 5c's own queue entry above says it
+owns — schema validity and the two-write receipt, the loss-date schema boundary, the
+jurisdiction-instant wiring, and now the carrier-identity 400, with 5a's reference file it validates
+against settled and cited by name. Still unapproved; file count against the revisit threshold
+recorded at `edb5abd` ("revisit if this file passes roughly 60 mutants, or the moment a mutant
+survives that still needs a human equivalence judgment"): 48 of ~60.
