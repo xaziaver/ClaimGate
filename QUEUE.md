@@ -1610,3 +1610,60 @@ both on `phase2/5c-notice-intake`, `gauntlet check` green with the spec's digest
 throughout (re-verified before this fix's own gate run, not assumed). Items 5d (idempotency), 5e
 (the resolution endpoint), 5f (SIU), 5g (jurisdiction-map generalization), and 5h (the absent-loss-
 date presence check) remain open, each its own queue item, none built or fixed here.
+
+**Item 5c is merged to `main`** (merge commit `afb35a0`). Confirmed by `git log --oneline -1` on
+`main` at the start of this session, not assumed from the prior entry.
+
+**Item 5d's prep decisions are recorded, drafting-session work only, on branch
+`phase2/5d-idempotency` off `main`, three commits pushed.** Persistence engine (SQLite via the
+stdlib `sqlite3` module, STRICT tables, schema-declared constraints) and one receipt clock
+(`submitted_at`, not `now()`, for every receipt-adjacent timestamp) are both advisor-recommended,
+human-ratified 2026-08-24 — see `ASSUMPTIONS.md`'s "Open decisions" and "Carried requirements"
+sections and `PHASE2_DESIGN.md`'s new "Persistence engine" section. Neither is built yet; both are
+flagged for item 5d's own implementing session, which ports `store.py` to SQLite regardless. The
+size gate's zero headroom on `receive_notice` (25 of 25 lines) is noted in this item's own entry
+above so that port doesn't discover it mid-change. Separately, `docs/harness-findings.md`'s
+"Command ownership" entry is corrected: `registry.describe` branches three ways by spec status
+(`MODIFIED`, `MISSING`, not-approved), not one code path as previously claimed — verified against
+`src/gauntlet/registry.py` in the gauntlet repo itself. The operational advice (the acceptance
+gate's remedy names the wrong command) is unchanged; only the mechanism claim is corrected.
+
+**Item 5d's first draft landed, spec-only, on the same branch.** `features/idempotency.feature`:
+three rules — a replay within its 24-hour window returns the original notice, response, and
+receipt timestamp, and adds nothing to its audit trail; a replay past that window creates a fresh
+notice, exactly as a first-ever submission would; the same key from two different carriers is not
+a collision; a submission that omits the key it used the first time is never treated as a replay.
+Measured directly against `gauntlet.acceptance.mutation.mutants()`: 20 mutants, 8 / 6 / 6 by rule,
+all `example`-kind, zero `literal`. `features/notice_intake.feature` re-measured alongside it and
+confirmed unchanged: 48 mutants, 48 unique locators, untouched by this branch.
+
+**One redesign, caught by simulation before the draft was written to disk, not after.** The third
+rule's first attempt varied both the original and the replay submission's key together over an
+`absent`/`absent` row alongside a `K-300`/`K-300` row. Hand-simulated: 2 survivors, both on the
+`absent` row — once either call's key is absent, the other call's key value stops mattering to the
+outcome, so a mutant swapping either column in that row left the actual result unchanged, the same
+symmetric-blank-row shape item 5a's refusal outline found. Fixed by holding the original
+submission's key constant (a `Given`, not a column) and varying only the replay's key across the
+two rows; re-measured at 6 mutants for that rule (down from 8, since one column was removed), 0
+simulated survivors. **Hand-simulated total: 0 survivors across all 20 mutants, in all three
+rules**, evaluated against each rule as currently drafted.
+
+**One gap is named in the file and escalated here rather than drafted.** `PHASE2_DESIGN.md`'s
+status-code table lists a fourth idempotency outcome — "idempotency key reused with a different
+payload" → `409`, distinct from an ordinary replay's `200` — that its Idempotency section never
+explains how to detect: whether by comparing the submitted content against what the key already
+has on file, and if so by what rule. Nothing this session read decides that comparison, and
+drafting a scenario for it would mean inventing one, which is exactly what `CLAUDE.md`'s standing
+constraint against defaulting a status code forbids. Every scenario in this draft resubmits the
+Background's own notice content unchanged for that reason; the `409` case is not built.
+
+**Not decided by this session, deliberately:** the exact-24-hour tie (whether a replay landing at
+precisely `submitted_at + 24h` counts as within the window or past it). Both boundary rows sit a
+full minute either side of the mark rather than on it, so the tie is untested rather than guessed.
+
+**`gauntlet check` is expected to report one unapproved spec on this branch** — the guaranteed
+state between a spec draft and its approval, not a defect (`docs/harness-findings.md`, "Command
+ownership"). Not run this session beyond `gauntlet spec list`, which confirms no other spec's state
+has drifted. **The next action is a human review and `gauntlet spec approve`, not an agent
+action** — per this session's own instruction, no implementation, no approval, and no `gauntlet`
+command beyond `spec list` were run.
