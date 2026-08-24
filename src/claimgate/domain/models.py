@@ -77,3 +77,49 @@ class SiuIndicators:
 class TriageOutcome:
     severity: str
     queue: str
+
+
+JurisdictionDateValue = Literal["RESOLVED", "REFUSED"]
+
+
+@dataclass(frozen=True)
+class JurisdictionDateResult:
+    # Same convention as DuplicateMatchResult: reason is set only when value
+    # is REFUSED, and resolved_date is only ever populated when value is
+    # RESOLVED - a refusal, not a missing input, but "unevaluated is not
+    # negative" (ASSUMPTIONS.md) applies the same way: a result that was not
+    # computed is never reported as a date.
+    value: JurisdictionDateValue
+    resolved_date: date | None = None
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class CarrierRules:
+    claimant_name_required: bool
+    claimant_contact_required: bool
+    recognized_policy_number_prefixes: frozenset[str]
+    late_reporting_threshold_days: int | None
+    recent_inception_threshold_days: int | None
+    window_days: int
+
+
+@dataclass(frozen=True)
+class ConfigurationRejection:
+    code: str
+    # "" for CARRIER_NOT_CONFIGURED, which names no single value - every other
+    # code names the business-language field it was raised against.
+    field: str = ""
+
+
+CarrierConfigurationValue = Literal["RESOLVED", "REFUSED"]
+
+
+@dataclass(frozen=True)
+class CarrierConfigurationResult:
+    # Same convention as JurisdictionDateResult: rules is set only when value
+    # is RESOLVED, rejections only when REFUSED - "unevaluated is not
+    # negative" (ASSUMPTIONS.md) applies here as "a refusal carries no rules."
+    value: CarrierConfigurationValue
+    rules: CarrierRules | None = None
+    rejections: tuple[ConfigurationRejection, ...] = ()

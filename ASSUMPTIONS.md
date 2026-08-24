@@ -116,6 +116,26 @@ or data. Nothing below was confirmed against a live book.
   can never land in the gap — the tzdata mapping skips it entirely — and both readings of the
   ambiguous hour fall on the same calendar date, 2026-11-01. They matter for timestamps, which is
   item 5c's problem, not this one.
+  **Corrected 2026-08-23: the conversion is a domain function, not a shell one —
+  advisor-recommended, human-ratified.** This entry's original wording places the
+  conversion in the shell, "before calling any domain function". That placement is
+  what makes the shell compute a date and hand a date to the domain, which is
+  nearer the thing this entry exists to forbid than the alternative. The
+  conversion takes a timezone-aware UTC instant and an IANA timezone name, both
+  supplied by the caller, reads no clock and no ambient state, and returns a
+  calendar date or refuses with `JURISDICTION_TIMEZONE_UNRECOGNIZED`. It lives at
+  `src/claimgate/domain/jurisdiction.py`. The shell's remaining job is unchanged
+  and is item 5c's: obtain the instant, resolve which zone applies, pass both. The
+  shell never computes a date. The principle stands verbatim — the domain never
+  receives a date derived from server local time — and is now met literally,
+  because the domain never receives a date at all. Cost: `zoneinfo` enters the
+  domain, so the domain depends on the platform IANA database, and ClaimGate
+  declares no runtime dependencies today. The dependency is specified rather than
+  hidden, since an absent zone is the refusal path this item builds — but a
+  runtime image with no tz database refuses every notice rather than none. Whether
+  to pin `tzdata` is a `pyproject.toml` change and a human re-lock; recorded here
+  as open, and settled with item 5c's deployment work rather than now.
+
 
 - **The jurisdiction timezone is a parameter of the conversion, not a constant in it.**
   Advisor-recommended, human-ratified, 2026-08-22. Florida spans two timezones: the western
@@ -158,6 +178,22 @@ or data. Nothing below was confirmed against a live book.
   genuinely does arrive from configuration, and named rather than left silent because two of the
   timezone-parameter scenario's mutants depend on the answer and an equivalent-mutant approval will
   need something to point at.
+
+  **Annotated 2026-08-23, measured: the violation is silent, which is why the
+  obligation moves to item 5c rather than disappearing.** A naive `datetime`
+  is not rejected by anything. `datetime.astimezone()` on a value with no
+  `tzinfo` assumes *server local time* and returns a plausible wrong date
+  rather than raising: with the server clock on `America/Chicago`, a naive
+  `2026-06-11T01:00` resolves to `2026-06-11` where the correct answer for the
+  aware UTC instant is `2026-06-10`. `[tool.mypy] strict = true` cannot catch
+  it, because aware and naive datetimes share one type. So this caller-contract
+  violation does not fail loudly at first integration - it produces exactly the
+  wrong `LOSS_DATE_IN_FUTURE` determination this item exists to prevent, from a
+  code path with no error and a green gate. Item 5b is still the wrong place to
+  defend against it: a guard here would be behavior no scenario in the locked
+  spec describes. The obligation is item 5c's, where the instant is obtained,
+  and it is recorded there rather than left implicit in this exclusion.
+
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
   recorded as `NOT_EVALUATED` with a reason code. It is never defaulted to false, absent, or any
@@ -341,6 +377,19 @@ or data. Nothing below was confirmed against a live book.
   engine only swaps between values a column already contains. Whatever loads a carrier
   configuration needs its own rejection of unrecognized values, specified where that loading
   happens. Recorded here so it is a known gap rather than a discovered one.
+
+  **Annotated 2026-08-23: this entry's substance holds, its boundary language no longer does.**
+  Item 5a placed `carrier_configuration.py` in `src/claimgate/domain/`, so the domain package now
+  contains a module that parses configuration, refuses an unrecognized carrier code, and refuses
+  absent or malformed values by name. The sentence above - parsing, validating and rejecting a
+  malformed configuration value is the caller's job, above the domain boundary - is still true of
+  the six domain rules, which have no unrecognized-configuration branch and should never grow one.
+  It is no longer true of the domain package. The placement was ratified for the same reason item
+  5b's was: the module is a pure function of caller-supplied inputs carrying named refusal
+  outcomes, and `[tool.mutmut] source_paths` scopes the code-mutation gate to
+  `src/claimgate/domain/` only, so a sibling package would have exempted 98 killed mutants from
+  that gate with no visible signal. Read "above the domain boundary" here as a statement about
+  which code interprets configuration, not about which directory it lives in.
 - **The per-carrier rules file moves from phase 3 into phase 2 — advisor-recommended,
   human-ratified, 2026-08-22.** `PHASE2_DESIGN.md`'s carrier-reference section describes a static
   identity-only file in phase 2 and a per-carrier rules file "eventually," in phase 3. That was

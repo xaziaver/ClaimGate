@@ -1127,3 +1127,65 @@ this change gave the before-state as 24 nominal and 18 real; both figures
 were two high, and the correction is recorded rather than silently fixed
 because the point of counting real separately from nominal is that the two
 diverge.
+
+**Item 5b's implementation is blocked on an unresolved module-home question,
+escalated rather than decided, 2026-08-23.** Neither `PHASE2_DESIGN.md` nor
+`ASSUMPTIONS.md` names a `src/` path for the shell layer both documents
+describe — "the phase-2 API shell must receive a timezone-aware UTC instant
+and convert it to a calendar date... before calling any domain function"
+(`ASSUMPTIONS.md`, "Timezone-correct 'now'") states the *responsibility* but
+not a location, and no shell package exists yet: `src/claimgate/` holds only
+`domain/`; everything else — 5c's endpoints, 5a's carrier/config loader — is
+unbuilt.
+
+The choice has a measured consequence, not just a style preference.
+`pyproject.toml`'s `[tool.mutmut] source_paths = ["src/claimgate/domain/"]` —
+a protected path this session cannot edit — is what the code-mutation gate
+scopes to. Placing the resolution function inside `domain/` puts it under
+that gate automatically, but contradicts the design's own framing that
+timezone conversion is explicitly *not* a domain concern ("the domain never
+receives a date derived from server local time"). Placing it anywhere else
+keeps that separation but silently exempts it from code-mutation coverage —
+mutmut will never generate a mutant against it, and there is no
+session-writable way to extend `source_paths` to reach it. The other
+structural gates (size, complexity, coverage, crap, duplication, static) run
+over all of `src/` per `gauntlet.toml`'s `src = "src/"`, so those are
+unaffected either way; only the mutmut-scoped code-mutation gate is.
+
+Not decided here. Item 5b's own entry already says this is a shell concern;
+this is the missing second half — where in `src/` the shell lives — and it
+is genuinely unset, not merely undocumented.
+**Corrected 2026-08-23: the constraint this entry records does not exist.**
+`pyproject.toml` is not a protected path. Gauntlet's `DEFAULT_PROTECTED_PATHS`
+(`src/gauntlet/config.py`) is `gauntlet.toml`, `.gauntlet/`,
+`.claude/settings.json` and the lock file; those are what the PreToolUse guard
+blocks. `pyproject.toml` appears only in `DEFAULT_VERIFIED_PATHS`, which the
+protect gate hashes against the lock — "content-verified rather than blocked". An
+agent may write it; the protect gate then fails with `N-1/N paths unchanged` until
+a human runs `gauntlet lock`. Extending `[tool.mutmut] source_paths` was therefore
+available as a proposal routed through a human, not blocked. The placement
+decision was made on the merits and not on this constraint, but the false fact is
+corrected here rather than the entry silently fixed.
+
+
+**Item 5b is done.** Spec locked at `aafd66c`, implementation at `cefe8ec`, documentation
+corrections at `12dbb48`, on `phase2/5b-jurisdiction-date`, all pushed. Not merged to `main` on its
+own — per the 5a/5b split above, the two merge together once 5a is green.
+
+`features/jurisdiction_date.feature` carries 20 acceptance mutants, 4 / 4 / 4 / 8 across its four
+scenarios, every one `kind == "example"` — measured directly against
+`gauntlet.acceptance.mutation.mutants()`, not read off a gate summary. Zero survivors, independently
+re-measured against the locked spec rather than taken on trust from the implementing session's own
+report: the branch's most recent full gate run (`20260823T184121-20922`, a stop-check run with no
+`run.started`/`run.finished` bracket but a complete `gate.finished` sequence — see
+`docs/harness-findings.md`) shows 236/236 tests passing and the acceptance gate passing at "5 spec(s),
+67 reviewed-equivalent" — the same reviewed-equivalent count as before this item, confirming its 20
+new mutants added zero new approvals. Code mutation: 100% / 232 killed project-wide, of which 15 are
+`domain/jurisdiction.py` — agent-measured, in isolation, and recorded as such rather than independently
+re-verified here.
+
+A session report on 2026-08-23 attributed item 5b's status closure to two `main`
+commits that did not contain it. The closure was on the branch, which is correct,
+and the entry itself says so. The error was in the report only. Recorded because
+a status summary that names the wrong commit is indistinguishable from one that
+names the right commit until someone checks, and nothing in the harness checks it.
