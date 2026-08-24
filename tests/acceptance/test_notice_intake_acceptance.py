@@ -5,7 +5,13 @@ from typing import Any
 
 from pytest_bdd import given, parsers, scenarios, then, when
 
-from tests.api.notice_intake import NoticeFields, NoticeStore, get_notice, submit_notice
+from tests.api.notice_intake import (
+    IN_MEMORY_DATABASE,
+    NoticeFields,
+    NoticeStore,
+    get_notice,
+    submit_notice,
+)
 
 scenarios("../../features/notice_intake.feature")
 
@@ -81,7 +87,7 @@ def set_notice_type(context: dict[str, Any], value: str) -> None:
 
 @when("the notice is submitted for intake")
 def submit(context: dict[str, Any]) -> None:
-    store = context.setdefault("store", NoticeStore())
+    store = context.setdefault("store", NoticeStore(IN_MEMORY_DATABASE))
     context["response"] = submit_notice(
         store,
         carrier_code=context["carrier_code"],
@@ -185,12 +191,12 @@ def check_record_outcome(context: dict[str, Any], value: str) -> None:
     elif value == "is kept anyway, with a reference of its own":
         assert response.notice_id is None
         assert response.reference is not None
-        assert len(store.payloads) == 1
+        assert len(store.list_payloads()) == 1
     elif value == "is not kept":
         assert response.notice_id is None
         assert response.reference is None
-        assert len(store.notices) == 0
-        assert len(store.payloads) == 0
+        assert store.count_notices() == 0
+        assert len(store.list_payloads()) == 0
     else:
         raise ValueError(f"unrecognized record outcome: {value!r}")
 

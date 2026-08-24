@@ -1,18 +1,27 @@
 """Orchestration for POST /notices and GET /notices/{notice_id}.
 
-PHASE2_DESIGN.md's "Record state model" and "HTTP surface"; STATUTORY_REGISTER.md
-for the duties discharged here. RECEIVED is written durably, with its receipt
-timestamp, before any domain rule runs - a deliberate two-write design, because
-that timestamp starts the Fla. Stat. 627.70131(1)(a) seven-calendar-day
-acknowledgment clock and must not depend on whether rule evaluation succeeds, is
-correct, or even runs at all. There is no rejected, invalid, or discarded state
-(CLAUDE.md): once a submission clears the carrier-identity and loss-date schema
-checks below, it always reaches RECEIVED and then TRIAGED or PENDED in the same
-request. The raw payload is persisted in that same RECEIVED write
-(PHASE2_DESIGN.md's audit log section, "the raw inbound payload is stored once,
-verbatim, immutable, and referenced by hash") - the receipt and the payload are
-one statutory fact, not two, and item 5e's resolution design appends later
-payload records to the same per-notice sequence this write starts.
+PHASE2_DESIGN.md's "Record state model" and "HTTP surface";
+STATUTORY_REGISTER.md for the duties discharged here. RECEIVED is written
+durably, with its receipt timestamp, before any domain rule runs - a deliberate
+two-write design, because that timestamp starts the Fla. Stat. 627.70131(1)(a)
+seven-calendar-day acknowledgment clock and must not depend on whether rule
+evaluation succeeds, is correct, or even runs at all. There is no rejected,
+invalid, or discarded state (CLAUDE.md): once a submission clears the
+carrier-identity and loss-date schema checks below, it always reaches RECEIVED
+and then TRIAGED or PENDED in the same request. The raw payload is persisted in
+that same RECEIVED write - the receipt and the payload are one statutory fact,
+not two, and item 5e's resolution design appends later payload records to the
+same per-notice sequence this write starts.
+
+**The receipt instant is `submitted_at`, and nothing here reads a clock.** Every
+timestamp a submission writes - the notice's receipt, both audit entries, the
+payload record - is the instant the caller supplied. Decided 2026-08-24,
+ASSUMPTIONS.md "One receipt clock, not two": two clock reads for one statutory
+receipt event are invisible while calls are synchronous and wrong the moment a
+transport layer or a queue sits between them.
+
+**The whole submission is one transaction** (`store.submission()`): a refusal,
+or a receipt with its decision, commits once.
 
 Two refusals happen before that receipt write, and persist differently, both by
 decision recorded in ASSUMPTIONS.md:
@@ -33,13 +42,11 @@ Two further states are reachable only through decisions this item does not
 build, and raise rather than invent a status code for them: a carrier the
 identity reference recognizes but whose rules entry cannot be resolved (item
 5i), and a jurisdiction_timezone this item receives but cannot resolve (item
-5g owns deriving and validating it). No scenario in features/notice_intake.feature
-reaches either path.
+5g owns deriving and validating it). No scenario reaches either path.
 
-Out of scope here, per QUEUE.md item 5c's own entry: idempotency (5d), the
-resolution endpoint (5e), SIU computation and storage (5f), jurisdiction-map
-generalization (5g), and duplicate-candidate detection, left unsettled rather
-than assumed.
+Out of scope here: idempotency (5d), the resolution endpoint (5e), SIU
+computation and storage (5f), jurisdiction-map generalization (5g), and
+duplicate-candidate detection, left unsettled rather than assumed.
 """
 
 import uuid
@@ -80,6 +87,10 @@ class SubmitNoticeResponse:
     blockers: tuple[ValidationBlocker, ...] = ()
     severity: str | None = None
     queue: str | None = None
+    # The receipt instant, readable by the caller: item 5d's replay has to be
+    # able to report the original notice's, and it cannot report what nothing
+    # returns.
+    received_at: datetime | None = None
     # Populated only on the schema-invalid refusal: the persisted payload's
     # hash, so the reporter and the carrier can name the same communication.
     reference: str | None = None
@@ -103,19 +114,32 @@ def submit_notice(
     carrier_rules_source: Mapping[str, Mapping[str, Any]],
     fields: NoticeFields,
 ) -> SubmitNoticeResponse:
+    with store.submission():
+        return _submit(store, carrier_code, submitted_at, jurisdiction_timezone,
+                       carrier_rules_source, fields)
+
+
+def _submit(
+    store: NoticeStore,
+    carrier_code: str,
+    submitted_at: datetime,
+    jurisdiction_timezone: str,
+    carrier_rules_source: Mapping[str, Mapping[str, Any]],
+    fields: NoticeFields,
+) -> SubmitNoticeResponse:
     if resolve_carrier_identity(carrier_code, CARRIER_IDENTITY_REFERENCE).value == "REFUSED":
         return SubmitNoticeResponse(status=400)
 
     raw_payload = asdict(fields)
     loss_date = _parse_loss_date(fields.loss_date)
     if loss_date is None:
-        reference = store.refuse_payload(carrier_code, raw_payload)
+        reference = store.refuse_payload(carrier_code, raw_payload, submitted_at)
         return SubmitNoticeResponse(status=400, reference=reference)
 
     rules = _resolve_rules(carrier_code, carrier_rules_source)
     today = _resolve_today(submitted_at, jurisdiction_timezone)
     candidate = _build_candidate(fields, loss_date)
-    return _create_notice(store, carrier_code, candidate, today, rules, raw_payload)
+    return _create_notice(store, carrier_code, candidate, today, rules, raw_payload, submitted_at)
 
 
 def _create_notice(
@@ -125,20 +149,18 @@ def _create_notice(
     today: date,
     rules: CarrierRules,
     raw_payload: Mapping[str, Any],
+    received_at: datetime,
 ) -> SubmitNoticeResponse:
     notice_id = str(uuid.uuid4())
-    store.receive_notice(notice_id, carrier_code, raw_payload)
+    store.receive_notice(notice_id, carrier_code, raw_payload, received_at)
     state, blockers, severity, queue = _apply_domain_rules(candidate, today, rules)
     store.record_decision(
-        notice_id, state=state, blockers=blockers, severity=severity, queue=queue
+        notice_id, state=state, blockers=blockers, severity=severity, queue=queue,
+        occurred_at=received_at,
     )
     return SubmitNoticeResponse(
-        status=201,
-        notice_id=notice_id,
-        state=state,
-        blockers=blockers,
-        severity=severity,
-        queue=queue,
+        status=201, notice_id=notice_id, state=state, blockers=blockers, severity=severity,
+        queue=queue, received_at=received_at,
     )
 
 
