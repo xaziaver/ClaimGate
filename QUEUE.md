@@ -1567,3 +1567,39 @@ disagree, and a new `tests/unit/` file importing outside `claimgate.domain` brea
 collection for the whole run with an unhelpful captured error. Moved this item's shell-layer unit
 tests to `tests/shell/` instead; `gauntlet`'s own `tests`/`coverage` gates are unaffected by the
 directory name.
+
+**Close-out review found one gap: the accepted path never persisted the raw payload.** A green
+`gauntlet check` could not see it, because every scenario in `features/notice_intake.feature` that
+reaches an accepted notice asserts the notice and its state, never the payload record — the gap is
+against a design decision (`PHASE2_DESIGN.md`'s audit log section, "the raw inbound payload is
+stored once, verbatim, immutable, and referenced by hash," cited to 627.70131(4)(b)) that no
+scenario describes at all, so the gate's green run and 0-survivor mutation score were both correct
+about what they checked and silent about what they didn't. Found by tracing the spec's own Rule
+comments against `PHASE2_DESIGN.md`'s text and then against the code, not by any gate. **The
+implementing session's own "judgment calls flagged" list named the payload-reference hash recipe as
+a choice worth recording, and missed that the accepted path never called it at all** — the list
+caught the "how" of a decision it never noticed the "whether" of.
+
+**Fixed**: `NoticeStore.receive_notice` now persists a `PayloadRecord` (same `_hash_payload` recipe
+`refuse_payload` uses, extracted to remove the duplication) linked to the notice via
+`PayloadRecord.notice_id`, in the same call that writes the `RECEIVED` `NoticeRecord` and its audit
+entry — before `_apply_domain_rules` runs, matching the receipt-before-any-rule ordering the rest of
+this item already holds to. `submit_notice` builds the raw payload dict once and threads it through
+both the refusal and acceptance paths, so the two persist by the identical recipe rather than two
+implementations that could drift. Asserted by a new unit test,
+`test_the_accepted_path_persists_the_raw_payload_linked_to_the_notice`, the same way the item 5h
+preservation is asserted — proving the fix rather than only claiming it. `ASSUMPTIONS.md` gains "The
+payload reference recipe" recording the hash recipe itself as a decision (SHA-256, JSON,
+`sort_keys=True`, `default=str`) and flagging that it will need revisiting once a literal HTTP layer
+exists and "verbatim" can mean raw request bytes rather than a shell-parsed field mapping.
+`docs/harness-findings.md` gains two entries found while re-verifying: a mutant killed by a step
+definition's own parse error (three of `notice_intake.feature`'s 48 marker mutants, all on empty
+blockers cells) is scored identically to one killed by a real assertion, and the acceptance gate's
+wall-time maximum moved again, to 472.803s, this time from ordinary growth rather than the
+unbound-spec defect the prior maximum recorded.
+
+**Item 5c is closed.** Spec approved at `59b58a4` (commit `9ebaeb6`), implementation and this fix
+both on `phase2/5c-notice-intake`, `gauntlet check` green with the spec's digest unchanged
+throughout (re-verified before this fix's own gate run, not assumed). Items 5d (idempotency), 5e
+(the resolution endpoint), 5f (SIU), 5g (jurisdiction-map generalization), and 5h (the absent-loss-
+date presence check) remain open, each its own queue item, none built or fixed here.

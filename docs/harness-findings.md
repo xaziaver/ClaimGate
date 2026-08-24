@@ -435,6 +435,16 @@ growth continuing the trend the four runs above already showed. The 300s floor
 this entry recommends is now itself below the observed maximum; raise it, and
 keep rechecking the log rather than trusting either number as fixed.
 
+**Second correction, 2026-08-24: 472.803s, and this one is ordinary growth, not
+the unbound-spec defect.** Item 5c's implementation commit bound
+`features/notice_intake.feature` to real step definitions and merged clean:
+7 specs, 69 reviewed-equivalent, no unreviewed survivors. Unlike the 423.622s
+run above, every mutant here ran against a genuinely bound, passing suite —
+the time is the cost of one more fully-exercised spec file (48 mutants) on top
+of the six already there, not a full-suite re-run per mutant. Both figures are
+real; they measure different things. Budget past 480s now, and keep
+rechecking rather than anchoring on either number.
+
 ### `scope = "changed"` in `gauntlet.toml` never reaches the mutation gate — but not because `--changed` goes unused
 
 `--changed` is passed constantly: `.claude/settings.json`'s `PostToolUse` hook
@@ -1179,3 +1189,34 @@ a category. This item's shell-layer tests moved to a sibling `tests/shell/` dire
 (confirmed by the passing-test count, which included every new test in both locations), so nothing
 was lost by moving them, and mutmut's internal `tests/unit/` selection stopped choking on an import
 it was never going to reach anyway.
+
+### A mutant killed by a step definition's own parse error is scored identically to one killed by an assertion
+
+The mutation gate's kill/survive verdict comes from the test run's exit status, not from which line
+raised. A mutant that reaches an `assert` and fails it is indistinguishable, in the gate's report,
+from a mutant that never reaches an assert at all because a helper function it flows through raises
+first. `features/notice_intake.feature`'s marker mutants are the concrete case: an empty Examples
+cell has no sibling row value to swap against, so the engine appends `_gauntlet` instead (see "How a
+specification value is actually mutated," above). `the notice's blockers are <blockers>`'s step
+reads
+
+    expected = _parse_compact_blockers(value)
+    actual = [(b.code, b.field) for b in context["response"].blockers]
+    assert actual == expected
+
+and `_parse_compact_blockers("_gauntlet")` raises `ValueError: not enough values to unpack (expected
+2, got 1)` inside `pair.split(":", 1)`, on the first line, before `actual` is ever computed —
+confirmed by calling the function directly, not inferred from the gate's report. The mutant is
+killed without `context["response"].blockers` ever being read, so this particular kill proves
+nothing about whether the implementation's blockers are correct; it only proves the marker string
+doesn't parse as `CODE:field`. Three of `notice_intake.feature`'s 48 mutants are this exact case —
+Rule 1's and both of Rule 4's empty-blockers cells, the only cells in the file with no differing
+sibling value in their column.
+
+**Read a mutation score of 100% as "nothing survived," not as "every assertion fired."** A
+parse-error kill and an assertion kill count identically toward the total, and only reading the step
+code — not the score — tells them apart. This doesn't make the marker mutants worthless: a step that
+silently accepted `_gauntlet` as a valid blockers rendering would be a real step-definition bug, and
+this is the mechanism that would have caught it. It does mean the 100% figure overstates how many of
+the 48 mutants were caught by a domain assertion actually being wrong, for exactly the three that
+were never real row-swaps to begin with.
