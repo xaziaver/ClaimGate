@@ -123,3 +123,22 @@ class CarrierConfigurationResult:
     value: CarrierConfigurationValue
     rules: CarrierRules | None = None
     rejections: tuple[ConfigurationRejection, ...] = ()
+
+
+@dataclass(frozen=True)
+class CarrierIdentity:
+    name: str
+    naic: int
+    naic_group: int | None
+
+
+CarrierIdentityValue = Literal["RESOLVED", "REFUSED"]
+
+
+@dataclass(frozen=True)
+class CarrierIdentityResult:
+    # Same convention as CarrierConfigurationResult: identity is set only
+    # when value is RESOLVED - "unevaluated is not negative" applies here as
+    # "a refusal carries no identity."
+    value: CarrierIdentityValue
+    identity: CarrierIdentity | None = None
