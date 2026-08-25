@@ -39,6 +39,10 @@ information actually satisfies what was missing — that's a human call, not a r
 deterministic rules that produced the pend in the first place. A `SYSTEM`-actor attempt at this
 transition is a **refused** attempt, not an invalid request — it still gets an audit entry with
 `outcome=REFUSED`, because "attempted and refused" is itself a fact worth keeping.
+**Annotated 2026-08-25:** phase 2 has no producer for a `SYSTEM` attempt at this transition —
+`actor_type` is not a caller input on the resolution endpoint, which stamps `USER` — so this sentence
+describes a guard on the transition for a future system re-evaluation path, not phase-2 behaviour.
+Carried, not built, and not to be built as unreachable code. See `ASSUMPTIONS.md`, item 5e decision 4.
 
 **Why `RECEIVED` is persisted, durably, with its receipt timestamp, *before* any domain rule
 runs — a deliberate two-write design, not an inefficiency:** the receipt timestamp is the
@@ -121,6 +125,7 @@ Four endpoints:
 | `POST /notices/{id}/resolution`, notice not currently `PENDED` | `409` |
 | `POST /notices/{id}/resolution`, blockers cleared | **`200 OK`** |
 | `POST /notices/{id}/resolution`, blockers still present | `422` |
+| `POST /notices/{id}/resolution`, body schema-invalid, including an absent or blank `actor_id` | `400`, nothing persisted — row added 2026-08-25, ratified; `ASSUMPTIONS.md` item 5e decision 4 |
 
 The two `201`s being identical is deliberate, not an oversight: a notice is created and
 addressable at `GET /notices/{notice_id}` in both cases, which is what `201` means. `202` would
@@ -130,6 +135,9 @@ same two-sources-of-truth problem that removed the standalone `valid` assertion 
 `validation.feature` — and a caller branching on status instead of reading the body breaks the
 moment a new state is added. `POST /notices` always includes a `Location` header pointing at the
 new notice; **state is read from the body, always, never inferred from status.**
+**Annotated 2026-08-25:** this is also why the resolution `409` needs no second row for a notice at
+rest in `RECEIVED` — its body carries the notice's current state, and a reviewer's client reads that.
+The `RECEIVED` scenario is item 5i's.
 
 The idempotency replay is `200`, not `201`, for the same reason in reverse: nothing was created, so
 `201` would be a false statement about what happened. Its body is identical in shape to the original
@@ -353,6 +361,13 @@ values, an optional note.
   resolution attempt is itself an audit event, not a non-event.
 - Unlike `POST /notices`, this endpoint *does* return 4xx on failure — see the asymmetry note under
   HTTP Surface for why that's the correct, deliberate difference and not an inconsistency.
+
+**Decided 2026-08-25** (`ASSUMPTIONS.md`, item 5e decisions 1–3): a resolution may supply any
+notice-content field, overlaid field by field in arrival order, never blanking; the full validation
+runs over the merged current view, on the jurisdiction date of the resolution's own caller-supplied
+instant, and a blocker the resolution introduces is simply among "the current blockers"; a refused
+resolution's payload record is kept in sequence and is part of the current view, because the release
+was refused, not the data; the `409` persists nothing.
 
 **Supplemental data never mutates the stored payload.** Each resolution writes its own immutable
 payload record with its own hash, linked to the notice in arrival order; the "current" view of a

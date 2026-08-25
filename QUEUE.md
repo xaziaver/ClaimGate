@@ -533,6 +533,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     configure is our defect, not the reporter's" — 5xx, not 400, still with a receipted payload
     record. Sequenced as its own item because it adds a row to a table item 5c inherited as closed,
     not a change item 5c's own spec should make.
+    **Carried from item 5e, 2026-08-25:** the scenario for a resolution against a notice at rest in
+    `RECEIVED` — `409`, body carrying state `RECEIVED`, nothing persisted — belongs here, because
+    this item is what makes that state reachable by a specified path. It reopens
+    `resolution.feature`'s first rule; cheap while that rule carries no approvals.
 
 ## What to read
 

@@ -1167,6 +1167,68 @@ or data. Nothing below was confirmed against a live book.
   row — a correct answer rather than a gap, but one reached by composing two rules rather than one
   the design states, which is why it is written here instead of assumed.
 
+  **Decided 2026-08-25, advisor-recommended, human-ratified — all five, in the numbering above.**
+
+  1. **A resolution may supply any notice-content field, not only the fields its blockers name.**
+     Field-level overlay in arrival order: a field absent from a resolution keeps its prior value,
+     and there is no way to blank a field in phase 2, only to replace it. This is what an intake desk
+     does on the callback — the reporter who left the policy number off also had the peril wrong —
+     and the narrow reading would carry a value a human knew was wrong through triage and into the
+     adapter. Cost, accepted: a reviewer can move severity and queue. That is what makes
+     `PENDED → TRIAGED` a `USER` transition — a human judgment, attributed, with the payload
+     immutable and hashed.
+
+  2. **(a) The full validation runs over the merged current view.** One definition of "no blocker",
+     the same one intake uses; a second definition for this endpoint would be two meanings of
+     `TRIAGED`. It is also forced by decision 1: claimant-field requirements depend on loss type, so
+     a blockers-only recheck cannot be evaluated once loss type can change. A resolution that
+     introduces a blocker the notice never had is not a new outcome — it is the `422` "with the
+     current blockers" row, and the notice's stored blockers are replaced by that full set, so body
+     and record agree. **(b) The calendar date is the jurisdiction date of the resolution's own
+     caller-supplied instant**, through the same lookup intake performs. The frozen alternative makes
+     a future-loss-date pend permanently unresolvable, and a notice that can never leave `PENDED` is
+     a discarded state under another name. Nothing clears by the passage of time: nothing runs
+     without a `USER` resolution, and a reviewer submitting an empty resolution is a human asserting
+     on the record that the notice is acceptable as it stands. Consequence: an empty resolution
+     (`actor_id` only) is valid input.
+
+  3. **A refused resolution's data is kept, in sequence, and is part of the current view.** The
+     release was refused, not the data: what the reviewer supplied is the reporter's answer to a
+     request for information under 627.70131(4)(b)3 and is received the moment it arrives. A reviewer
+     who fixed one of two problems does not re-supply the fixed one, and "`422` with the current
+     blockers" only means something if the current view includes what was just supplied. No
+     applied/unapplied marker on payload records: the sequence is the notice, and the audit entry's
+     `APPLIED`/`REFUSED` records whether the state moved. The `409` persists nothing — no pend, no
+     request, nothing to answer; content goes to the operational log as the unknown-carrier `400`
+     does. Correcting a `TRIAGED` notice is a phase-2 non-goal.
+
+     **Correction to the entry above and to the draft's header:** the draft at `6a7e1fc` had already
+     decided this point in this direction. Rule 2's refused row asserts the notice's blockers as
+     `NOTICE_TYPE_UNRECOGNIZED:notice_type` alone, which is true only if the refused resolution's
+     policy number entered the current view. "Nothing drafted against any of them" was wrong for
+     point 3.
+
+  4. **`actor_type` is not an input; the endpoint stamps `USER`.** `actor_id` is a required
+     caller-asserted string; absent or blank is schema-invalid → `400`, nothing persisted,
+     operational log only. An unauthenticated caller asserting `SYSTEM` means nothing, and a table
+     row for a refused actor would be a row for a claim nobody can check. `PHASE2_DESIGN.md`'s "a
+     `SYSTEM`-actor attempt is refused and audited" describes a guard on the transition for a future
+     system re-evaluation path; phase 2 has no producer for it, and a guard with no reachable caller
+     would be uncovered code no scenario describes. It stays a carried requirement, annotated there.
+     The `400` row is one addition to the closed status-code table, ratified.
+
+  5. **A `RECEIVED` notice gets the existing `409`, and the `409` body carries the notice's current
+     state.** No new row. The design already answers "one code tells the reviewer nothing": state is
+     read from the body, never inferred from status. A notice at rest in `RECEIVED` is this
+     deployment's defect, not a pend, and no reviewer input can cure it. Its scenario is owed to item
+     5i, the item that makes that state reachable by a specified path; today the only way to produce
+     it is an exception from unbuilt code, and a spec whose setup depends on that is not a spec.
+
+  Statutory citations in this entry and in `resolution.feature`'s header were re-verified 2026-08-25
+  by the advisor against flsenate.gov's 2024 statutes text of 627.70131 (history ending s. 15 ch.
+  2022-271, matching `STATUTORY_REGISTER.md`): (1)(a), (4)(b)1–7, (5)(b), (7)(a), (8)(b), (9) all as
+  stated. The 2025 statutes page was not separately fetched.
+
 ## Synthetic data
 
 - No real policy numbers, names, addresses, phone numbers, or claim numbers appear anywhere in
