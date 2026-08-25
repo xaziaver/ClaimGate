@@ -2135,3 +2135,17 @@ candidate item, not as 5f scope. **Next: draft `features/siu_separation.feature`
 implementation, no approval, and no command from the human's list. The acceptance gate will report
 one unapproved spec for as long as the draft is unlocked, which is guaranteed by the
 separate-commits rule and is not a defect to retry.
+
+**One point of item 5f's is escalated and undecided:** what `ruleset_version` names on an indicator
+event row, and what its value is. Decision 3 settles that the field is carried; `PHASE2_DESIGN.md`'s
+audit schema calls it a label for the domain rules while decision 6's wording reads as a version of
+the carrier configuration, and the carrier configuration model has no version in it at all. No
+agreed value exists either — `records.py` leaves the audit entry's own copy unset and
+`notice_intake.feature` deliberately asserts no literal for it. Full reasoning in `ASSUMPTIONS.md`
+under "Item 5f, one point the six decisions do not cover". The draft stays inside the intersection:
+it asserts that one evaluation's two event rows record the same ruleset version as each other and
+names no literal, and asserts nothing about which version it is or how it relates to the audit
+entry's. **This is the human's call and blocks nothing else in 5f.** Two other things were checked
+rather than assumed and needed no decision: `carrier_configuration.feature` already carries both
+carrier phrases for a configured and an unconfigured late reporting threshold, so the draft reuses
+them; and the restricted read of a notice with no events is determinate under decision 3.

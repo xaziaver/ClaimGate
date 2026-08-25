@@ -1308,6 +1308,43 @@ or data. Nothing below was confirmed against a live book.
   sensitivity review. The referral side (s. 626.9891 anti-fraud plan and SIU requirements) is
   unverified this session and is not 5f's.
 
+- **Item 5f, one point the six decisions do not cover — escalated 2026-08-25 while drafting
+  `features/siu_separation.feature`, undecided, nothing drafted against it.** Decision 3 settles that
+  an indicator event row carries a `ruleset_version`. Two things it does not settle, and a scenario
+  meets both the moment it asserts one.
+
+  1. **Which version the field names.** `PHASE2_DESIGN.md`'s audit-log schema defines
+     `ruleset_version` as a "hand-declared semantic label (e.g. `1.0.0`) for the domain rules that
+     produced a `SYSTEM` decision" — a version of the domain rules. Decision 6 reads "the carrier's
+     configuration as resolved at the triaging transaction, with `ruleset_version` on every event
+     row", which reads instead as a version of the carrier configuration. Nothing in the carrier
+     configuration model carries a version at all: `carrier_configuration.feature` resolves six
+     values and none of them is one. The readings differ in observable behaviour, not only in
+     wording — under the first the field does not move when a carrier edits a threshold, under the
+     second it must.
+
+  2. **What its value is.** No agreed value exists. `records.py` leaves `AuditEntry.ruleset_version`
+     unset on every entry written today, with a comment saying why, and `notice_intake.feature`'s
+     Rule 2 comment records that it deliberately asserts no literal for the same reason — "a
+     deployment-declared label with no agreed value yet". A scenario stating a literal would invent
+     the deployment's label; one asserting only that the field is populated would assert behaviour
+     no decision has authorized.
+
+  **Drafted inside the intersection:** `siu_separation.feature` asserts that the two event rows of
+  one evaluation record the same ruleset version as each other, and names no literal. That is true
+  under both readings, and it is the same restraint `notice_intake.feature` already applied to this
+  field. Nothing in the draft asserts which version it is, what it contains, or that it equals the
+  audit entry's.
+
+  **Two things checked rather than assumed while drafting, neither of which needed a decision.**
+  A carrier phrase configuring a late reporting threshold already exists in a locked spec —
+  `carrier_configuration.feature` carries both `"AAAA" configures a late reporting threshold of 45
+  days` and `"AAAA" has no late reporting threshold configured`, so the draft reuses them verbatim
+  rather than inventing a variant that could hold the unconfigured state in an `Examples` cell.
+  And the restricted read of a notice with no events is determinate under decision 3 alone: one row
+  per indicator per evaluation, so a notice that has never transitioned into `TRIAGED` has none, and
+  the read returns nothing rather than a pair of absent values.
+
 ## Synthetic data
 
 - No real policy numbers, names, addresses, phone numbers, or claim numbers appear anywhere in
