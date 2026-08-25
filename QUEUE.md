@@ -2156,8 +2156,9 @@ relationally with no literal. Full reasoning in `ASSUMPTIONS.md` under "Item 5f,
 decisions do not cover", in the entry's closing paragraph.
 
 **Item 5f's spec is drafted, not approved.** `features/siu_separation.feature`, on
-`phase2/5f-siu-separation` — blob sha256 `9e3beed49521`, 388 lines, exported from the ref rather
-than read out of the working tree. Five Rules, seven scenarios: what a notice triaged at intake
+`phase2/5f-siu-separation` — blob sha256 `cfe5494ea8b8`, 440 lines, exported from the ref rather
+than read out of the working tree (the first draft was `9e3beed49521`, 388 lines, before the
+ruleset-version decision landed). Five Rules, seven scenarios: what a notice triaged at intake
 records for each indicator (an outline over the carrier's threshold and the loss date, with the
 unconfigured threshold as a sibling scenario because "no threshold" has no numeral to share a
 column with 45 and 44); that nothing is recorded until the notice reaches `TRIAGED`, so a pend and a
@@ -2165,13 +2166,26 @@ refused resolution record none and the resolution that releases it records two; 
 is counted from the receipt date and not the resolution date, while the events are still stamped
 with the resolution's own instant; that a replay records nothing while a resubmission past the
 idempotency window records its own pair; and that nothing about SIU reaches the intake response, the
-resolution response, the notice's view, or any audit entry.
+resolution response, the notice's view, or any audit entry. Since the ruleset-version decision, an
+evaluation's two events are also tied relationally to the audit entry that moved the notice — on the
+intake path, on the resolution path, and, for a resubmission past the idempotency window, to the new
+notice's own entry rather than the original's — and the late reporting event records the threshold
+it applied, or no threshold where none was configured, never a zero.
 
 **Measured** against `gauntlet.acceptance.mutation.mutants()` at the committed blob:
-`siu_separation.feature` **44 mutants**, 29 `example` and 15 `literal`, by scenario 9/3/8/4/8/4/8.
+`siu_separation.feature` **44 mutants**, 29 `example` and 15 `literal`, by scenario 9/3/8/4/8/4/8 —
+identical to the first draft's totals, because every assertion the amendment added is a fixed step
+in an outline or an unquoted, digit-free step in a plain scenario, and neither is a mutation target.
 The four files the item touches nothing in re-measure unchanged at the same ref:
 `resolution.feature` **97**, `idempotency.feature` **40**, `notice_intake.feature` **48**,
-`siu_indicators.feature` **39**. **Simulated** — hand-run against each rule, not measured, because
+`siu_indicators.feature` **39**. The amendment's blast radius inside the file was measured by
+dumping every `locator :: signature` at both refs and diffing element for element, not inferred from
+the matching totals (`docs/harness-findings.md`, "Comment inertness is confirmed by locator
+identity, not count parity"): **six of the seven scenarios are byte-identical**, and the seventh —
+the resolution outline — has 5 of its 8 lines moved, all of them the ones whose locator or signature
+embeds the applied row's `events` cell, which the amendment lengthened. Slot-for-slot the two lists
+pair 1:1 on scenario, kind, column and order, so those five moved rather than being replaced by
+five different ones. **Simulated** — hand-run against each rule, not measured, because
 survivors cannot be measured before the spec is approved and step definitions exist: **2 survivors
 of 44**, both in the intake outline and both in one scenario, so one approval reason covers them.
 The first is the threshold increment on the row where the interval equals the threshold: that row
@@ -2187,13 +2201,24 @@ the `_gauntlet` marker and binds to no step pattern. The unconfigured-threshold 
 stated and executed but not protected by mutation, and that is recorded in the file rather than left
 to be inferred from a count.
 
-**Thirteen step phrases in the draft have no definition anywhere**, all of them the restricted read
+The five scenarios the amendment touched were re-simulated rather than assumed unchanged, and the
+two untouched leak scenarios keep the first draft's simulation because their mutants are
+byte-identical. Same **2 survivors of 44**, same two rows, same two reasons: the relational
+threshold tie reuses the input placeholder, so a threshold mutant now moves the configured value and
+the recorded one together and its verdict is still decided by the outcome column. **No new survivor
+appeared.** The tie is what makes the 44-day row bite against an implementation recording a
+hardcoded number, which is a property of the assertion rather than of a mutant.
+
+**Eighteen step phrases in the draft have no definition anywhere**, all of them the restricted read
 and the leak negatives: the two `... indicator recorded for the notice is ...` assertions, the three
 event-count forms (`exactly two ... are recorded`, `the SIU indicator events recorded for the notice
 <compact>`, `<count> ... recorded in all`), `no SIU indicator event is recorded for the notice`,
 `the original notice still has exactly two ...`, the two stamp assertions, `those two events record
-the same ruleset version as each other`, and the four negatives (`the response`, `the notice's own
-view`, `every entry in the audit trail`, `the blockers in that response`). Six more phrases exist but
+the same ruleset version as each other`, the four negatives (`the response`, `the notice's own
+view`, `every entry in the audit trail`, `the blockers in that response`), and the five the
+ruleset-version decision added — the three audit-entry ties (`... as the audit entry that triaged
+the notice`, `... that released the notice`, `... that triaged its own notice`) and the two
+threshold assertions (`records a threshold of <threshold> days`, `records no threshold`). Six more phrases exist but
 only as module-local definitions another module cannot see — the four reviewer phrases and the
 `the notice's state is` `@given` override in `test_resolution_acceptance.py`, and `"AAAA" configures
 a late reporting threshold of N days` in `test_carrier_configuration_acceptance.py`, which writes to
