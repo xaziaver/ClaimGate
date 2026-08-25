@@ -2150,6 +2150,11 @@ rather than assumed and needed no decision: `carrier_configuration.feature` alre
 carrier phrases for a configured and an unconfigured late reporting threshold, so the draft reuses
 them; and the restricted read of a notice with no events is determinate under decision 3.
 
+**That point is now decided** — 2026-08-25, advisor-recommended, human-ratified: `ruleset_version`
+names the domain rule set's own version, never the carrier's numbers, and the spec asserts it
+relationally with no literal. Full reasoning in `ASSUMPTIONS.md` under "Item 5f, one point the six
+decisions do not cover", in the entry's closing paragraph.
+
 **Item 5f's spec is drafted, not approved.** `features/siu_separation.feature`, on
 `phase2/5f-siu-separation` — blob sha256 `9e3beed49521`, 388 lines, exported from the ref rather
 than read out of the working tree. Five Rules, seven scenarios: what a notice triaged at intake
