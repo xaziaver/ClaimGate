@@ -533,6 +533,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     configure is our defect, not the reporter's" — 5xx, not 400, still with a receipted payload
     record. Sequenced as its own item because it adds a row to a table item 5c inherited as closed,
     not a change item 5c's own spec should make.
+    **Carried from item 5e, 2026-08-25:** the scenario for a resolution against a notice at rest in
+    `RECEIVED` — `409`, body carrying state `RECEIVED`, nothing persisted — belongs here, because
+    this item is what makes that state reachable by a specified path. It reopens
+    `resolution.feature`'s first rule; cheap while that rule carries no approvals.
 
 ## What to read
 
@@ -1828,3 +1832,245 @@ the coverage from `gauntlet.toml`'s `tests = "tests/"` key rather than from sour
 repeated it. The move stands on design grounds — two locked specs sharing a Background should
 share one definition per phrase — but no gate would have refused the alternative, and none will
 catch a future duplicated step module. Recorded in `gauntlet-findings.md` as a proposed change.
+
+**Item 5e's prep decisions are recorded, drafting-session work only, on branch `phase2/5e-resolution`
+off `main`.** Five points `PHASE2_DESIGN.md` leaves open are escalated in `ASSUMPTIONS.md`'s "Open
+decisions" rather than defaulted, and no scenario is drafted against any of them: what a resolution
+payload may contain ("the supplemental field values" is never given a set); what a resolution is
+evaluated against, both which rules run and which calendar date they run on; what happens to the
+payload of a resolution that is not applied, which the item's own required payload-sequence scenario
+turns on; whether `actor_type` is a caller input at all, and what status a refused actor or an
+absent `actor_id` gets, neither of which the closed status-code table has a row for; and whether the
+`409` for "not currently `PENDED`" covers a notice standing at `RECEIVED`, a state item 5d's
+two-transaction receipt made observable after that row was written. Three of the five would widen a
+table `PHASE2_DESIGN.md` calls closed, which is the human's call. Separately, `ASSUMPTIONS.md`'s "One
+receipt clock" entry gains a dated extension to the resolution path — every timestamp this endpoint
+writes is the caller-supplied instant for that call, and the notice's receipt instant is untouched by
+a resolution — stated by the instruction that opened this item, not inferred here. Recorded as read
+rather than escalated: this endpoint has no idempotency key, so a network retry of a resolution that
+already succeeded is answered by the `409` row above.
+
+**Item 5e's first draft landed, spec-only, on the same branch.** `features/resolution.feature`, five
+rules: a resolution is acted on only while the notice is still pended (`200` against a `409` on a
+notice already `TRIAGED`, with the trail proving the `409` wrote nothing); the notice moves only when
+the resolution clears every blocker, and either way the attempt is audited (`200`/`APPLIED` against
+`422`/`REFUSED`, the notice staying `PENDED` on the refusal); what a reviewer supplies is added in
+arrival order and never written over what is already there (the first record still reports the policy
+number absent after a resolution supplied one); a replay of the original submission reports `TRIAGED`
+after an applied resolution and `PENDED` after a refused one — item 5d's carried requirement, and the
+half `idempotency.feature` could not reach; and a resolution is recorded at the instant its caller
+gave it while the notice's pend instant is untouched. **Measured** directly against
+`gauntlet.acceptance.mutation.mutants()`: **40 mutants, 10 / 14 / 6 / 4 / 6 by rule, all `example`
+kind, zero `literal`.** `idempotency.feature` and `notice_intake.feature` re-measured alongside it at
+**40** and **48**, unchanged by this branch. **Simulated**, and recorded as a simulation rather than a
+measurement: **0 survivors of 40**, each mutant walked individually against the rule it belongs to.
+
+**Every scenario is written to sit inside the intersection of the five open points, so none of them
+has to be decided before the spec can be locked.** Every resolution supplies only fields the notice's
+own blockers name; no row introduces a blocker the notice did not already have, and none is pended
+for `LOSS_DATE_IN_FUTURE`, so re-checking only the recorded blockers and re-running the whole
+validation agree on every row; only an applied resolution's payload record is asserted; every audited
+attempt is a reviewer's, so every one is `USER`; and the `409` row is a `TRIAGED` notice, never a
+`RECEIVED` one. The file names all five in its own header comment rather than leaving the omissions to
+be inferred from what is absent.
+
+**One shape decision worth the human's eye, taken against `notice_intake.feature`'s precedent
+deliberately.** Rule 2 asserts the audit entry's blockers as a literal set rather than relationally
+against the notice's, which is the opposite of what that file's Rule 2 chose. Hand-simulated before
+the file was written to disk: here the entry and the notice carry the same set on both rows, so "the
+same ones the notice still carries" is true on the applied row as well and its own mutant survives.
+Two literal columns are redundant on their face and are kept anyway — an implementation that gets the
+`422` body right and the audit entry wrong, or the reverse, is caught by exactly one of them.
+
+**Two step-definition notes for the implementing session.** `the notice's state is <state>` is used in
+Rule 1 as both a precondition and an assertion, so it needs `@given` and `@then` on one function — the
+same stacking `docs/harness-findings.md` records for `@given`/`@when`, one position further along.
+And `the <ordinal> record kept for the notice ...` appears in two `Then` steps of Rule 3, so a mutant
+on the ordinal column moves both together; that is intended and is what makes the swap ask the wrong
+record for both its content and its origin at once.
+
+**`gauntlet check` is expected to report one unapproved spec on this branch** — the guaranteed state
+between a spec draft and its approval, not a defect. Not run this session beyond `gauntlet spec list`,
+which confirms `features/resolution.feature` is the only unapproved spec and that no other spec's
+state has drifted. **The next action is a human review and `gauntlet spec approve`, not an agent
+action** — and, before that, the five escalated points, three of which would widen a status-code table
+`PHASE2_DESIGN.md` calls closed. No implementation, no approval, and no `gauntlet` command beyond
+`spec list` were run.
+
+**Item 5e's five points are decided at `809e783` and the draft is amended in the commit that carries
+this paragraph, spec-only, pushed to `phase2/5e-resolution`.** The amendment names no ref of its own
+because a commit cannot carry its own hash and the spec and this record are deliberately one commit;
+the stable identity, and the one to lock against, is `features/resolution.feature` at sha256
+`2b014521a1bc`, 589 lines — export it with `git show <branch tip>:features/resolution.feature` and
+check the digest before approving.
+Advisor-recommended, human-ratified 2026-08-25; all five recorded in full in `ASSUMPTIONS.md`'s "Open
+decisions" under the item 5e entry, which is the source for every line below. **1.** A resolution may
+supply any notice-content field, not only the ones its blockers name — a field-level overlay in
+arrival order, an omitted field keeping its prior value, and no way to blank a field in phase 2, only
+to replace it. **2.** The full validation re-runs over the merged current view, on the jurisdiction
+date of the resolution's own caller-supplied instant; a blocker the resolution introduces is not a new
+outcome but simply among "the current blockers" the `422` reports, and an empty resolution (`actor_id`
+only) is valid input. **3.** A refused resolution's data is kept, in sequence, and is part of the
+current view — the release was refused, not the data — while the `409` persists nothing at all.
+**4.** `actor_type` is not a caller input; the endpoint stamps `USER`, and a body with an absent or
+blank `actor_id` is schema-invalid — the single row this adds to the closed status-code table, `400`,
+nothing persisted. **5.** A `RECEIVED` notice gets the existing `409` whose body carries its current
+state; no new row, and the scenario is carried to item 5i, annotated in that item's entry.
+
+**One correction the ratification forced, recorded where the wrong claim was made.** The escalation
+entry and the draft's own header both said this file decided none of the five. That was false for
+point 3: Rule 2's refused row asserts the notice's blockers as `NOTICE_TYPE_UNRECOGNIZED:notice_type`
+alone, which is true only if the refused resolution's policy number had already entered the current
+view. The draft had decided point 3, in the direction since ratified, without saying so. Annotated in
+`ASSUMPTIONS.md` under decision 3 and in the feature file's replacement header.
+
+**Four rules added, two amended.** Added: a resolution with no reviewer behind it is refused before
+anything is written (`400`, nothing persisted, against the identified reviewer's `200`); a reviewer
+may correct a field the notice already had, not only supply one it was missing (an omitted loss type
+keeping `standard`/`standard` against a supplied `fire` moving the notice to `high`/`complex` — the
+accepted cost of decision 1, in the spec rather than only in the record of it, and since extended by a
+third row that is decision 2(a)'s only real proof anywhere in the file: a reviewer who corrects the
+peril to `injury` leaves the notice held for `claimant_name` and `incident_description`, fields nobody
+supplied and the notice was never pended for, which only a full run of the whole validation over the
+merged view can reach — every other refusal here is caught by validating the supplied field alone); a resolution is judged
+on the calendar date it arrives, one minute either side of the boundary; and what a refused resolution
+supplied is kept, in sequence, and counts toward what the notice says — three records for one
+submission and two resolutions, the second clearing the pend only because the first attempt's policy
+number is already part of the current view. Amended: Rule 1 gains a records column, so the `409`'s "no
+state change, no audit entry" is a complete claim rather than half of one; Rule 2 gains a third row
+where the resolution introduces a blocker the notice never had, which a blockers-only recheck would
+have answered `200`.
+
+**Measured** directly against `gauntlet.acceptance.mutation.mutants()`: **97 mutants, all `example`
+kind, zero `literal`** — 12 / 10 / 24 / 18 / 8 / 6 / 9 / 4 / 6 in file order, up from 40 at the first
+draft. Re-measured alongside: `idempotency.feature` **40**, `notice_intake.feature` **48**, both
+unchanged by this branch. **Simulated**, and recorded as a simulation rather than a measurement:
+**0 survivors of 97**, each substitution dumped from the engine and walked individually against the
+rule its row belongs to rather than predicted from the table's shape. The 79 mutants outside the
+corrected-field outline were shown byte-identical to the set already walked — same scenario, column,
+original and substitution — rather than re-walked, and only that outline's 18 were simulated afresh.
+
+**The arithmetic in the arrival-date rule was recomputed rather than carried over.** America/New_York
+is UTC−4 in August 2026, so `2026-08-26T03:59Z` is 23:59 on the 25th there and `2026-08-26T04:00Z` is
+00:00 on the 26th; against a loss date of `2026-08-26`, the first is still in the future and the
+second is not. Verified against `zoneinfo` at the two instants plus the Background's own.
+
+**Nineteen step phrases in this file have no definition yet, and two existing definitions need a
+second keyword** — `the notice's state is <state>` and `the response is <response>` are both used in
+`Given` position as well as `Then`, the same stacking `docs/harness-findings.md` records for
+`@given`/`@when`. Two phrasings were changed during drafting to avoid shadowing: a records assertion
+reading `the notice <phrase>` would have captured `the notice is submitted for intake`, and a second
+`the <ordinal> record kept for the notice <phrase>` would have shadowed the first, so they are now
+`the notice's records <phrase>` and `that record <phrase>`. **One requirement the implementing session
+cannot get wrong without silently losing two mutants:** `the notice's blockers are <blockers>` must
+assert the exact set, never containment — Rule 2's second and third rows are killed only because a
+mutated row produces two blockers where one is asserted.
+
+**`gauntlet check` still expects exactly one unapproved spec.** Not run this session beyond `gauntlet
+spec list`. **The next action is the human's: review and lock.** No implementation, no approval, and
+no `gauntlet` command from the human's list were run.
+
+**Item 5e is implemented and green on `phase2/5e-resolution`, spec unchanged throughout.**
+`features/resolution.feature` was approved by the human at `187244d` (blob sha256 `2b014521a1bc`,
+589 lines), re-confirmed against the working tree after the acceptance run and unchanged at the end.
+`gauntlet check` **passes**: **363/363 tests** (327 at the 5d merge; +21 acceptance scenarios, +15
+shell unit tests), **coverage 100/100** line and branch, **code mutation 342 killed at 100%**
+(unmoved, as expected - `[tool.mutmut] source_paths` is `src/claimgate/domain/` and nothing in the
+domain changed), duplication 0, crap 5.0 of 15, boundary 11 step files with 0 direct imports, worst
+function 23 of 25, largest module `store.py` 243 of 250, and acceptance **9 specs, 69
+reviewed-equivalent** - the same 69 the branch started with, so **all 97 of `resolution.feature`'s
+mutants were killed and no new approval was created**. No survivor, so no `mutant approve` was
+run or needed. The acceptance gate took **759s**, up from the ~500s range 5d left it at; it is still
+growing and still the only gate that costs anything. Mutant counts re-measured directly against
+`gauntlet.acceptance.mutation.mutants()` at the implementing ref: `resolution.feature` **97**,
+12/10/24/18/8/6/9/4/6 by rule, all `example`, zero `literal` - identical to the amendment session's
+figures; `idempotency.feature` **40** and `notice_intake.feature` **48**, both unchanged. The
+drafting session's simulation of 0 survivors of 97 held.
+
+Five commits, in the order the log should read them: the two implementation decisions (`5bedbdf`),
+the schema and the two extractions it forced (`295ff64`), the resolution path with its steps and
+tests (`2702f7f`), the scope-wall citation fix (`6c64893`), and this paragraph.
+
+**What was built.** `src/claimgate/shell/` is now nine modules rather than six: `resolution.py` is
+the path itself, and `payloads.py` and `rules.py` are extractions the path forced rather than
+preferred (judgment call 2). `notices` gains `pended_at` and `resolved_at`; `payload_records` gains
+`content`. A resolution is one transaction after two checks that are deliberately outside it: the
+reviewer's identity is checked first, before the notice is read at all, so a caller who has not said
+who they are learns nothing about it; the state check is second and writes nothing, per decision 3.
+Inside the transaction the reviewer's payload record joins the arrival sequence, the current view is
+overlaid from that sequence field by field, the whole validation re-runs over it on the jurisdiction
+date of the resolution's own instant, the notice's blockers are replaced by that whole result, and
+one audit entry is written from `PENDED` to `TRIAGED` whether the outcome is `APPLIED` or `REFUSED`.
+`datetime.now` is still called **0 times** anywhere under `src/claimgate/shell/`.
+
+**Judgment calls, flagged rather than buried.**
+
+1. **The schema needed a third column the instruction did not name, and this was found by reading
+   the spec against the code rather than by any gate.** `payload_records` stored only the reference
+   hash. Rules 6 and 7 assert what each record *reports for a policy number*, and decision 1's
+   overlay derives the current view field by field - neither is computable from a hash.
+   `PHASE2_DESIGN.md` says the payload is stored "once, **verbatim**, immutable, and referenced by
+   hash"; item 5d stored the reference and not the verbatim half because nothing yet read it.
+   `content` was added and flagged before it was written.
+2. **Two extractions instead of a separate resolution store module.** The instruction offered either;
+   the size gate decided. `payloads.py` owns the arrival sequence, which is the thing this item
+   extends and which `store.py` had four lines of headroom for. `rules.py` owns the domain rules as
+   the shell runs them, and that one is forced by decision 2(a) rather than by size: a resolution
+   re-validates through *one* definition of "no blocker", the same one intake uses, and two copies
+   of that call would let it stop being true with no gate noticing. `store.py` ends at 243/250 and
+   absorbed the resolution's writes, so no third store module was needed; `notice_intake.py` drops
+   246 -> 187 and `receive_notice` was not touched.
+3. **`the notice's state is` overrides `conftest.py`'s definition rather than stacking `@given` on
+   it, against the instruction, because stacking cannot work.** The shared definition asserts
+   `response.state`, and Rule 2's `400` row asserts `PENDED` on a response that carries no state -
+   the identity check runs before the notice is read. The local definition asserts the stored notice
+   **and** the response wherever the response reports a state, which is what keeps Rule 6 a proof
+   about the replay rather than a second copy of Rule 3. `the response is` did just need `@given`,
+   as the instruction said.
+4. **Which arrival a record came from is checked against what arrived, never off `arrival_index`.**
+   A step that read the origin from the record's stored position would be asserting the index it
+   just indexed by. Each named arrival is rebuilt from the scenario's own steps and hashed with
+   `payload_reference`, so "the second record is the reviewer's first resolution" is a claim about
+   content that can fail.
+5. **Two escalations rather than invented status codes.** A resolution naming a notice this
+   deployment does not have, and one carrying a loss date that is not a date at all, both raise
+   `NotImplementedError`: the closed status-code table has a row for neither, routing an unknown
+   identifier belongs to the HTTP layer that does not exist, and intake answers the second at its own
+   schema boundary with no decision extending that row here. Both are tested.
+6. **Four phrases moved into `tests/acceptance/conftest.py`** - the blockers assertion from
+   `test_notice_intake_acceptance.py` and the three idempotency phrases - because
+   `resolution.feature` is the second locked spec to state each of them word for word, which is the
+   standing reason for that file rather than the duplication gate (which does not read `tests/`).
+   `tests/acceptance/support.py` is new and holds the compact-blockers parser, for the reason
+   `tests/shell/support.py` exists.
+7. **The replay rule passes with no change to the replay path - verified, not assumed.**
+   `answer_repeated_key` already reports `remembered.state` read fresh from the notice row, so a
+   notice a resolution moved replays `TRIAGED`. Not one line of `idempotency.py`, and no line of
+   `notice_intake.py`'s replay path, changed for it.
+8. **What the acceptance suite cannot see was measured, not guessed, and is why the shell tests
+   exist.** Stamping `resolved_at` on refusals as well as applications passes all 21 scenarios -
+   nothing in the spec can observe it - so that rule is asserted only under `tests/shell/`, along
+   with the transaction boundary, the two refusals that persist nothing, and the pend instant
+   surviving a resolution. Three other deliberate breakages were run to confirm the scenarios do
+   bite: disabling the identity check, ignoring later records in the overlay, and judging on the
+   receipt date instead of the resolution's instant each fail exactly the rows they should.
+9. **The scope wall on the word `tolling` was broken and then fixed rather than argued with.**
+   Four docstrings named the statutory interval by that word. Every one was a citation or a
+   disclaimer rather than an identifier, but `src/` had never contained the word and the wall says
+   nowhere, so `6c64893` cites Fla. Stat. 627.70131(8)(b) by number instead - which is the primary
+   source this project's citation rule asks for anyway.
+
+**One thing recorded rather than fixed, and it is `ASSUMPTIONS.md` decision (c).**
+`resolution.feature`'s injury row asserts `claimant_name` before `incident_description`, an order
+`validation.feature` does not state anywhere: canonical order is fixed by code there, and the
+within-code order is alphabetical by field, from `validation.py`'s sort key alone. A locked spec now
+depends on it. Stating it in `validation.feature` is a reopening of a locked spec and is a candidate
+queue item, not this item's defect to fix.
+
+**Scope walls held.** Items 5f, 5g, 5h, 5i untouched; both `NotImplementedError` raises stay and
+stay tested, moved into `rules.py` intact; `src/claimgate/domain/` is byte-identical to `origin/main`
+(`git diff origin/main HEAD -- src/claimgate/domain/` is empty); no HTTP layer; no SIU computation;
+no field, column, function or word `tolling` anywhere under `src/`.
+
+**Next action is the human's: review and merge to `main`.** Nothing about this item is waiting on an
+agent, and no `gauntlet` command from the human's list was run.

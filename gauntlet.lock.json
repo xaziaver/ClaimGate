@@ -446,6 +446,10 @@
       "approved_at": "2026-08-24T14:52:14+00:00",
       "digest": "sha256:fcf02e934fe8498be642bb0dc0fc5510fee519daa111c3d8b4a4e7f791fc71a4"
     },
+    "spec:features/resolution.feature": {
+      "approved_at": "2026-08-25T14:31:52+00:00",
+      "digest": "sha256:2b014521a1bce5c429883405dfa89de33dadb3fc5810bc2ad2149973915cc701"
+    },
     "spec:features/siu_indicators.feature": {
       "approved_at": "2026-08-21T20:09:42+00:00",
       "digest": "sha256:1e7f697ecbcd62cd7447f331f935e94369e9768dfa0a45e9e2cf990dd370fec9"

@@ -41,11 +41,13 @@ refused submission is still a received communication") while its key, if any,
 is not remembered against the refusal. A repeat carrying different content is a
 409 - see idempotency.py.
 
-Two further states raise rather than invent a status code: a carrier the
-identity reference recognizes but whose rules entry cannot be resolved (item
-5i), and a jurisdiction_timezone this item cannot resolve (item 5g). No
-scenario reaches either. Also out of scope: the resolution endpoint (5e), SIU
-(5f), and duplicate-candidate detection, left unsettled rather than assumed.
+The rules this module runs, and the translations they need, moved to rules.py
+in item 5e: the resolution path has to run the same validation over its merged
+current view, and decision 2(a) says that is because there is one definition of
+"no blocker" rather than one per endpoint. Both NotImplementedError raises moved
+with them, intact - item 5i's unresolvable rules entry and item 5g's
+unresolvable jurisdiction_timezone. Out of scope here: SIU (5f) and
+duplicate-candidate detection, left unsettled rather than assumed.
 """
 
 import uuid
@@ -53,12 +55,8 @@ from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Any
 
-from claimgate.domain.carrier_configuration import resolve_carrier_configuration
 from claimgate.domain.carrier_identity import CARRIER_IDENTITY_REFERENCE, resolve_carrier_identity
-from claimgate.domain.jurisdiction import resolve_jurisdiction_date
-from claimgate.domain.models import Candidate, CarrierRules, ValidationBlocker
-from claimgate.domain.triage import triage_and_route
-from claimgate.domain.validation import validate
+from claimgate.domain.models import Candidate, CarrierRules
 from claimgate.shell.idempotency import (
     answer_repeated_key,
     find_remembered_notice,
@@ -71,6 +69,13 @@ from claimgate.shell.messages import (
     NoticeView,
     Submission,
     SubmitNoticeResponse,
+)
+from claimgate.shell.rules import (
+    apply_domain_rules,
+    build_candidate,
+    parse_loss_date,
+    resolve_rules,
+    resolve_today,
 )
 from claimgate.shell.store import IdempotencyKeyAlreadyRememberedError, NoticeStore
 
@@ -125,15 +130,15 @@ def _first_submission(
     """Whatever the key situation was, this submission is now judged the way a
     first-ever one is: past its window there is no idempotency record left to
     find, and a key with no notice behind it never named anything."""
-    loss_date = _parse_loss_date(submission.fields.loss_date)
+    loss_date = parse_loss_date(submission.fields.loss_date)
     if loss_date is None:
         reference = submission.store.refuse_payload(
             submission.carrier_code, submission.raw_payload, submission.submitted_at
         )
         return SubmitNoticeResponse(status=400, reference=reference)
-    rules = _resolve_rules(submission.carrier_code, submission.carrier_rules_source)
-    today = _resolve_today(submission.submitted_at, submission.jurisdiction_timezone)
-    candidate = _build_candidate(submission.fields, loss_date)
+    rules = resolve_rules(submission.carrier_code, submission.carrier_rules_source)
+    today = resolve_today(submission.submitted_at, submission.jurisdiction_timezone)
+    candidate = build_candidate(submission.fields, loss_date)
     return _create_notice(submission, candidate, today, rules, expired_key=expired_key)
 
 
@@ -162,7 +167,7 @@ def _decide(submission: Submission, accepted: AcceptedNotice) -> SubmitNoticeRes
     raises, the exception propagates and the notice rests at RECEIVED with its
     receipt, its one audit entry and its key - so the client's retry replays
     that notice rather than creating a duplicate of it."""
-    state, blockers, severity, queue = _apply_domain_rules(
+    state, blockers, severity, queue = apply_domain_rules(
         accepted.candidate, accepted.today, accepted.rules
     )
     with submission.store.submission():
@@ -180,67 +185,3 @@ def get_notice(store: NoticeStore, notice_id: str) -> NoticeView | None:
     record = store.get_notice(notice_id)
     return None if record is None else NoticeView.of(record)
 
-
-def _parse_loss_date(raw: str | None) -> date | None:
-    """Absent (None) input is item 5h's gap, preserved deliberately: it flows
-    through as date.min, unchanged from today's behavior, because building 5h's
-    presence check here would decide that reopening the opposite way from what
-    is ratified. A present value that is not a date at all returns None, the
-    schema-invalid signal."""
-    if raw is None:
-        return date.min
-    try:
-        return date.fromisoformat(raw)
-    except ValueError:
-        return None
-
-
-def _build_candidate(fields: NoticeFields, loss_date: date) -> Candidate:
-    return Candidate(
-        policy_number=fields.policy_number,
-        loss_date=loss_date,
-        loss_type=fields.loss_type,
-        notice_type=fields.notice_type,
-        claimant_name=fields.claimant_name,
-        claimant_contact=fields.claimant_contact,
-        incident_description=fields.incident_description,
-    )
-
-
-def _resolve_rules(
-    carrier_code: str, rules_source: Mapping[str, Mapping[str, Any]]
-) -> CarrierRules:
-    result = resolve_carrier_configuration(carrier_code, rules_source)
-    if result.rules is None:
-        raise NotImplementedError(
-            "carrier is identity-recognized but its rules entry could not be "
-            "resolved - the status code for this is item 5i's to decide, not "
-            "built here"
-        )
-    return result.rules
-
-
-def _resolve_today(submitted_at: datetime, jurisdiction_timezone: str) -> date:
-    result = resolve_jurisdiction_date(submitted_at, jurisdiction_timezone)
-    if result.resolved_date is None:
-        raise NotImplementedError(
-            "an unrecognized jurisdiction_timezone reaching item 5c is not "
-            "handled here - deriving and validating it is item 5g's job"
-        )
-    return result.resolved_date
-
-
-def _apply_domain_rules(
-    candidate: Candidate, today: date, rules: CarrierRules
-) -> tuple[str, tuple[ValidationBlocker, ...], str | None, str | None]:
-    result = validate(
-        candidate,
-        today,
-        claimant_name_required=rules.claimant_name_required,
-        claimant_contact_required=rules.claimant_contact_required,
-        recognized_policy_number_prefixes=rules.recognized_policy_number_prefixes,
-    )
-    if result.blockers:
-        return "PENDED", result.blockers, None, None
-    outcome = triage_and_route(candidate)
-    return "TRIAGED", (), outcome.severity, outcome.queue

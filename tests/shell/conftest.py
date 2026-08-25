@@ -15,17 +15,22 @@ docstring for why that separation is load-bearing rather than tidy.
 """
 
 from datetime import datetime
+from typing import Any
 
 import pytest
 
 from claimgate.shell import notice_intake
-from claimgate.shell.messages import NoticeFields, SubmitNoticeResponse
+from claimgate.shell.messages import NoticeFields, ResolutionResponse, SubmitNoticeResponse
 from claimgate.shell.notice_intake import submit_notice
+from claimgate.shell.resolution import resolve_notice
 from claimgate.shell.store import NoticeStore
 from tests.shell.support import (
     DEFAULT_FIELDS,
+    DEFAULT_RESOLVED_AT,
+    DEFAULT_REVIEWER,
     DEFAULT_SUBMITTED_AT,
     VALID_RULES,
+    Resolver,
     RuleEvaluationBugError,
     Submitter,
 )
@@ -64,8 +69,38 @@ def submit(store: NoticeStore) -> Submitter:
 
 
 @pytest.fixture
+def resolve(store: NoticeStore) -> Resolver:
+    """One resolution against the fixture's store, defaulted the way `submit` is
+    so each test states only what it varies."""
+
+    def _resolve(
+        notice_id: str,
+        actor_id: str | None = DEFAULT_REVIEWER,
+        resolved_at: datetime = DEFAULT_RESOLVED_AT,
+        jurisdiction_timezone: str = "America/New_York",
+        carrier_rules_source: dict[str, object] | None = None,
+        supplied: dict[str, Any] | None = None,
+    ) -> ResolutionResponse:
+        source = carrier_rules_source if carrier_rules_source is not None else {"AAAA": VALID_RULES}
+        return resolve_notice(
+            store,
+            notice_id,
+            actor_id=actor_id,
+            resolved_at=resolved_at,
+            jurisdiction_timezone=jurisdiction_timezone,
+            carrier_rules_source=source,
+            supplied=supplied if supplied is not None else {},
+        )
+
+    return _resolve
+
+
+@pytest.fixture
 def rule_evaluation_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Make _apply_domain_rules raise. Patched at module level on purpose: the
+    """Make apply_domain_rules raise. Patched on notice_intake rather than on
+    rules.py, where it now lives, because the name the intake path resolves is
+    the one this module imported - patching the definition would leave that
+    binding pointing at the original. Patched at module level on purpose: the
     point is that the receipt has already committed by the time anything in
     rule evaluation can go wrong, and only a real raise from inside that step
     proves the transaction boundary is where it is claimed to be."""
@@ -73,4 +108,4 @@ def rule_evaluation_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     def _raise(*_: object, **__: object) -> tuple[str, tuple[()], None, None]:
         raise RuleEvaluationBugError("rule evaluation is broken")
 
-    monkeypatch.setattr(notice_intake, "_apply_domain_rules", _raise)
+    monkeypatch.setattr(notice_intake, "apply_domain_rules", _raise)

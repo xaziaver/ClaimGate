@@ -17,9 +17,23 @@ for ref in "$@"; do
     done
   fi
   short="${ref#origin/}"
-  if git ls-remote --heads origin "$short" | grep -q .; then
-    echo "  on origin: yes  ($(git ls-remote --heads origin "$short" | cut -c1-8))"
+  if git show-ref --verify -q "refs/heads/$short" \
+     || git show-ref --verify -q "refs/remotes/origin/$short"; then
+    if git ls-remote --heads origin "$short" | grep -q .; then
+      echo "  on origin: yes  ($(git ls-remote --heads origin "$short" | cut -c1-8))"
+    else
+      echo "  on origin: NO — this work exists only locally"
+    fi
   else
-    echo "  on origin: NO — this work exists only locally"
+    # A commit SHA is not a head, so `ls-remote --heads` matches nothing and
+    # reports NO for a commit that is plainly pushed. Ask which remote branches
+    # contain it instead. A branch name still takes the branch path above.
+    contained=$(git branch -r --contains "$ref" --format='%(refname:short)' 2>/dev/null \
+                | paste -sd' ')
+    if [ -n "$contained" ]; then
+      echo "  on origin: yes  (contained in: $contained)"
+    else
+      echo "  on origin: NO — no remote branch contains this commit"
+    fi
   fi
 done
