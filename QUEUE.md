@@ -2267,3 +2267,129 @@ deliberately stacks a second phrasing on an existing concept:** `conftest.py` al
 approve the spec.** The acceptance gate will report `features/siu_separation.feature` as an
 unapproved spec until then — guaranteed by the separate-commits rule, not a defect. No
 implementation exists, `src/` is untouched, and no command from the human's list was run.
+
+**Item 5f is implemented on `phase2/5f-siu-separation`, awaiting two mutant approvals.** The spec
+was approved at `c82ee92` (`54a3d70` records the approval) and neither the file nor its digest
+moved: `features/siu_separation.feature` still hashes `cbde5f6ab716`, matching `gauntlet.lock.json`.
+Three implementation commits, in the order the log should read them: the domain label and its
+convention (`a897f4d`), the schema and the store (`cbe204e`), and the evaluation with its
+allow-lists, steps and tests (`16c2b34`). This paragraph is the fourth.
+
+**Gate figures from one full `gauntlet check` at `16c2b34`.** Everything green except acceptance,
+which fails on the two survivors below and on nothing else: protect 3/3, static 0 findings, size
+worst function 24 of 25 and largest module `store.py` 248 of 250, complexity 5 of 6, boundary 12
+step files and 0 direct imports, tests **397/397**, coverage **line 100.0 / branch 100.0**, crap
+5.0, duplication 0, and code mutation **score 100.0%, 342 killed**. That mutation figure is
+*identical* to the baseline this item started from, which is the measured answer to whether the
+domain addition disturbed it: `RULESET_VERSION` is a module-level string constant and the engine
+generates **no mutant for it at all**, so the score moved by zero rather than by its own mutants
+being killed. `tests/unit/test_ruleset.py` still asserts the label round-trips as an ISO date,
+because the convention is that it is date-stamped and nothing else would enforce that.
+
+**Acceptance: 10 specs, 2 surviving mutants, 69 reviewed-equivalent, 866.202s** - up from 5e's 759s
+and still the only gate that costs anything. The gate prints no killed count, so it was derived
+rather than read: `gauntlet.acceptance.mutation.mutants()` measured directly at the implementing ref
+gives **708 mutants across the ten specs**, so **637 were killed** (708 − 2 surviving − 69
+reviewed-equivalent). The 69 are the same 69 the branch started with - **no new approval was created
+by any other spec**. Per file, re-measured: `siu_separation.feature` **53**, exactly the drafting
+session's figure; and the four files this item touches nothing in are unchanged at
+`resolution.feature` **97**, `idempotency.feature` **40**, `notice_intake.feature` **48**,
+`siu_indicators.feature` **39**.
+
+**The two survivors are the two the spec header named, and no third appeared.** Both are in the
+intake outline's `Examples`, so one approval reason covers them.
+
+1. **`features/siu_separation.feature:198`, `45->46`** - the threshold cell on the row
+   `| 45 | 2026-07-10 | FALSE |`. That row is the non-firing side of the boundary, which
+   `gherkin-specs` requires a threshold to have: the interval is 45 days and late reporting fires
+   only when the interval is *more* than the threshold, so raising the threshold to 46 leaves 45
+   days still not more than it and the answer is still `FALSE`. My reading: equivalent, and
+   necessarily so - raising a threshold that an interval already fails to exceed cannot change the
+   outcome in any implementation, correct or not. Removing it would mean removing the non-firing
+   row, which is the one the boundary is proven by.
+2. **`features/siu_separation.feature:200`, `2026-07-10->2026-07-09`** - the loss-date cell on the
+   row `| 44 | 2026-07-10 | TRUE |`. That row exists to prove the boundary follows the carrier's
+   configured value rather than a constant, so it pairs the 44-day threshold with a 45-day interval.
+   Both dates in that column are more than 44 days before the receipt's jurisdiction date of
+   2026-08-24 - 45 days and 46 days - so a swap between them leaves the row `TRUE`. My reading:
+   equivalent. Killing it would need a third loss date inside 44 days, which would be a second
+   non-firing row proving nothing the first does not, and reshaping it away would mean dropping the
+   44-day row, which is the only proof in the file that the threshold is read from the carrier.
+
+Both were predicted by hand during drafting and both landed exactly where the simulation put them.
+**Nothing was run against them:** `gauntlet mutant approve` is the human's.
+
+**What was built.** `src/claimgate/shell/` is now twelve modules rather than nine. `siu.py` is the
+evaluation itself, called from both places a notice transitions into `TRIAGED` - the intake decision
+transaction and an applied resolution - so decision 1 is one rule rather than two implementations
+free to drift. `siu_events.py` owns the new append-only `siu_indicator_events` table: notice, an
+ordinal in that notice's own order, indicator, value, reason code, the threshold that evaluation
+applied, the ruleset version and `evaluated_at`, with `BEFORE UPDATE` / `BEFORE DELETE` triggers and
+no statement in the package that would attempt either. `serialization.py` holds the four allow-lists.
+`audit.py` is an extraction, and `domain/ruleset.py` is the label. No column was added to `notices`,
+and nothing reachable from a notice row reaches an event.
+
+**Judgment calls, flagged rather than buried.**
+
+1. **`store.py` had seven lines of headroom, so the audit table moved to `audit.py`** - the same
+   forced extraction `payloads.py` was in 5e, and this item both adds a column to every entry and a
+   table beside them. `store.py` ends at 248 of 250 with delegating methods, so every existing
+   caller of `get_audit_trail` and `append_audit_entry` is untouched.
+2. **The rule label goes on *every* audit entry, not only the `SYSTEM` ones.** `PHASE2_DESIGN.md`
+   describes `ruleset_version` as a label "for the domain rules that produced a SYSTEM decision",
+   but the entry that releases a pend is a `USER` entry and the full validation ran to produce it,
+   so actor type does not separate rule-driven entries from the rest. Writing it in one place also
+   makes the leak negative over "every entry in the audit trail" uniform. Verified by grep before
+   relying on it that no locked spec asserts the field is null - `notice_intake.feature:140-143`
+   only records that it declines to name a literal, for the same reason this spec does.
+3. **The events carry both indicators' thresholds, though only the late reporting one is asserted.**
+   The schema stores the number each evaluation was given; the recent policy inception event
+   therefore carries the Background's 30 even though its value is `NOT_EVALUATED` for a missing
+   coverage date. That is the input it was given, and no spec says otherwise.
+4. **`_judge` now returns the candidate and the carrier's rules alongside the outcome** (the new
+   `Judgement` in `messages.py`) rather than the resolution path resolving the rules a second time.
+   Decision 6 is that the rules are the ones *that transaction* resolved, and a second
+   `resolve_rules` call would be a second reading even inside the same transaction.
+5. **`the notice's state is` binds to a definition local to the new step module, and that was
+   checked rather than assumed.** A module-local step in `test_resolution_acceptance.py` is invisible
+   to any other module, and `conftest.py` defines the phrase `@then`-only, so this spec's `Given`
+   uses would have found nothing at all. The reading itself moved to `tests/acceptance/support.py`
+   and both modules call it, which is what keeps the duplication gate satisfied without either file
+   losing its own definition. It cannot move to `conftest.py`: three other specs assert the phrase on
+   responses to submissions that created no notice, and there would be no stored notice to read.
+6. **Five phrases moved into `tests/acceptance/conftest.py`** - the reviewer's identity, the field
+   the reviewer supplies, the resolution's instant, and the carrier's late reporting threshold -
+   because `siu_separation.feature` is the second locked spec to state each of them word for word.
+   The threshold phrase is written on `_rules_entry` rather than copied from
+   `test_carrier_configuration_acceptance.py`, whose definition writes to that module's own
+   `rules_source` key, and that module keeps its own. **This was verified rather than reasoned:**
+   pointing the conftest step at `rules_source` instead fails 8 of the 13 scenarios, including the
+   decision-6 one, which is precisely the "passes for the wrong reason" the drafting session warned
+   of.
+7. **The leak negatives were proved non-vacuous by planting a leak.** Adding a `late_reporting`
+   field to `NoticeView` and to its allow-list fails both leak scenarios and nothing else; the two
+   scenarios pass again when it is removed. The step reads the serialized surface as text rather
+   than any named field, and takes the forbidden names from the test API, which takes them from the
+   code that defines them.
+8. **The atomicity tests fail *after* the events are written, not before.** A fixture that raised
+   before the write would only prove the events were never made. `tests/shell/test_siu_evaluation.py`
+   patches `siu.record_evaluation` to write and then raise, so what it asserts is that the events
+   were rolled back with the transition they belong to - on both paths, leaving the notice at
+   `RECEIVED` and at `PENDED` respectively with no `TRIAGED` entry and no events.
+9. **One out-of-scope edit was made and reverted.** A `ruff check --fix` across the tree reordered
+   an import in `tests/unit/test_validation.py`, which this item does not touch and which the
+   project's own static gate does not ask for. Reverted with `git checkout --` before the commit;
+   the gates were run through `gauntlet check --gates ...` from then on.
+
+**Scope walls held.** No new indicator, value or reason code; no HTTP layer and no read route for
+events; items 5g, 5h and 5i untouched, with all four `NotImplementedError` escalations intact (two
+in `rules.py`, two in `resolution.py`). `src/claimgate/domain/` differs from `origin/main` by the
+addition of `ruleset.py` and by nothing else - `git diff --name-only origin/main HEAD --
+src/claimgate/domain/` prints that one path. No `tolling` and no `suspicious` anywhere under `src/`;
+the single occurrence of `fraud` is the prohibition's own wording in `domain/siu.py:4`, byte-
+identical to `origin/main` and predating this item. `datetime.now` is still called **0 times** under
+`src/claimgate/shell/`.
+
+**Next action is the human's: `gauntlet mutant approve` for the two survivors above, then review and
+merge to `main`.** The acceptance gate stays red until then, which is guaranteed by there being
+survivors at all rather than a defect, and no command from the human's list was run.
