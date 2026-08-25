@@ -30,6 +30,38 @@ by inference — several earlier claims in this document written from reasoning
 about how a tool must work turned out to be wrong, and those retractions are
 the reason this section exists.
 
+### The Stop hook's timeout is now shorter than a green acceptance run, and the failure it produces is misdiagnosed
+
+The acceptance gate re-mutates every approved spec on every stop and takes 693–759s at nine specs
+and 655 mutants (measured 2026-08-25, item 5e). The Stop hook's timeout was the scaffolded 600s.
+A stop-check killed mid-mutation leaves the spec being mutated with a `_gauntlet` line in the
+working tree — the restore is a Python `finally`, which a signal skips — and because specs are
+mutated in path order the corrupted file is always `validation.feature`. The next stop-check
+then fails `tests` on the marker and reports the spec as "changed since it was approved", which
+is false and prescribes the wrong remedy.
+
+**Diagnosis, in order:** `git status -s` shows one modified spec; `git diff --stat` shows one line;
+`.gauntlet/mutation-backup/<spec>` is newer than the commit and differs from the working tree; in
+`.gauntlet/events.jsonl` a run id has `gate.finished` events for every gate before `acceptance`
+and none for it. **Do not count `run.started` against `run.finished`** — stop-check emits neither,
+so a killed one leaves the counts balanced (237/237 on the day). **Remedy:** `git checkout -- <spec>`,
+confirm the sha256 against `gauntlet.lock.json`, then report. Never edit the spec; never run
+`gauntlet lock`.
+
+Technique that follows: the start-up check in `CLAUDE.md` now looks for this before anything
+else, and the hook timeout is raised. Neither removes the cause, which is Gauntlet's and recorded
+for it; they make the symptom visible and rare.
+
+### What a locked spec cannot see is found by breaking the implementation on purpose
+
+Item 5e had a rule no phrase in its spec could read — the notice's resolution timestamp must stay
+null after a refused resolution — and a decision asserted only in a fixed `Given` inside an
+outline, which the engine never mutates. The implementing session stamped the timestamp on
+refusals deliberately and counted which scenarios noticed: **none of 21.** That number is the
+evidence that the rule needs a unit test, and three other deliberate breakages confirmed the
+scenarios do bite where they should. Do this for every rule the design states that the spec's
+step vocabulary cannot express, and record the count.
+
 ### A mutation score is only meaningful from a cold run when the commit adds or removes code
 
 Gauntlet re-executes `mutmut run` as a fresh subprocess on every invocation, but
