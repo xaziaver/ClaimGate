@@ -3,9 +3,10 @@
 The Background steps, the submission step, and the response-status and state
 assertions this file used to own now live in conftest.py: item 5d's
 features/idempotency.feature restates them verbatim and both specs are locked,
-so sharing was the only way to keep the duplication gate green. What stays here
-is what only this spec asserts - blockers, severity and queue, retrieval, and
-the audit trail.
+so sharing was the only way to keep the duplication gate green. The blockers
+assertion joined them with item 5e's features/resolution.feature, the second
+locked spec to state that phrase word for word. What stays here is what only
+this spec asserts - severity and queue, retrieval, and the audit trail.
 """
 
 from typing import Any
@@ -15,13 +16,6 @@ from pytest_bdd import parsers, scenarios, then
 from tests.api.notice_intake import get_notice
 
 scenarios("../../features/notice_intake.feature")
-
-
-@then(parsers.re(r"^the notice's blockers are (?P<value>.*)$"))
-def check_blockers(context: dict[str, Any], value: str) -> None:
-    expected = _parse_compact_blockers(value)
-    actual = [(b.code, b.field) for b in context["response"].blockers]
-    assert actual == expected
 
 
 @then(parsers.re(r"^the notice's severity and queue are (?P<value>.*)$"))
@@ -108,14 +102,3 @@ def check_record_outcome(context: dict[str, Any], value: str) -> None:
         assert len(store.list_payloads()) == 0
     else:
         raise ValueError(f"unrecognized record outcome: {value!r}")
-
-
-def _parse_compact_blockers(value: str) -> list[tuple[str, str]]:
-    value = value.strip()
-    if not value:
-        return []
-    pairs: list[tuple[str, str]] = []
-    for pair in value.split(";"):
-        code, field = pair.split(":", 1)
-        pairs.append((code, field))
-    return pairs

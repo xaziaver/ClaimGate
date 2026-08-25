@@ -9,6 +9,9 @@ gate refuses, and rewording them is not available - both specs are locked.
 A module's own step definition overrides one of the same text here (ordinary
 pytest fixture precedence, confirmed by test_carrier_configuration_acceptance.py,
 which keeps its own carrier-rules steps and its own rules-source vocabulary).
+features/resolution.feature (item 5e) uses that override for one phrase and
+shares the rest: the blockers assertion and the three idempotency phrases below
+moved here when it became the second locked spec to state them word for word.
 """
 
 from datetime import date, datetime
@@ -17,6 +20,7 @@ from typing import Any
 import pytest
 from pytest_bdd import given, parsers, then, when
 
+from tests.acceptance.support import parse_compact_blockers
 from tests.api.notice_intake import IN_MEMORY_DATABASE, NoticeFields, NoticeStore, submit_notice
 
 DEFAULT_TODAY = date(2026, 8, 2)
@@ -139,6 +143,14 @@ def set_notice_type(context: dict[str, Any], value: str) -> None:
     context["fields"]["notice_type"] = value
 
 
+@given(parsers.parse('the notice is submitted with the idempotency key "{value}"'))
+@when(parsers.parse('the notice is submitted with the idempotency key "{value}"'))
+def set_idempotency_key(context: dict[str, Any], value: str) -> None:
+    # "absent" is the same cell convention notice_intake.feature already uses
+    # for a policy number that was never supplied.
+    context["idempotency_key"] = None if value == "absent" else value
+
+
 @given("the notice is submitted for intake")
 @when("the notice is submitted for intake")
 def submit(context: dict[str, Any]) -> None:
@@ -152,13 +164,46 @@ def submit(context: dict[str, Any]) -> None:
         fields=NoticeFields(**context["fields"]),
         idempotency_key=context["idempotency_key"],
     )
+    # The notice a later step addresses, kept here because a resolution is a
+    # second call against the same notice and the response it leaves behind is
+    # its own, not the submission's. A refusal that created nothing leaves None,
+    # which no spec that refuses then addresses the notice exists to read.
+    context["notice_id"] = context["response"].notice_id
 
 
+@given("that submission is remembered as the original")
+def remember_the_original(context: dict[str, Any]) -> None:
+    context["original"] = context["response"]
+
+
+@given(parsers.re(r"^the response is (?P<value>\d+)$"))
 @then(parsers.re(r"^the response is (?P<value>\d+)$"))
 def check_response_status(context: dict[str, Any], value: str) -> None:
     assert context["response"].status == int(value)
 
 
+@then(parsers.re(r"^the response identifies (?P<phrase>.*)$"))
+def check_notice_relation(context: dict[str, Any], phrase: str) -> None:
+    identified = context["response"].notice_id
+    original = context["original"].notice_id
+    if phrase == "the original notice":
+        assert identified is not None
+        assert identified == original
+    elif phrase == "a new notice, not the original":
+        assert identified is not None
+        assert identified != original
+    elif phrase == "no notice at all":
+        assert identified is None
+    else:
+        raise ValueError(f"unrecognized notice relation: {phrase!r}")
+
+
 @then(parsers.re(r"^the notice's state is (?P<value>.*)$"))
 def check_state(context: dict[str, Any], value: str) -> None:
     assert context["response"].state == value
+
+
+@then(parsers.re(r"^the notice's blockers are (?P<value>.*)$"))
+def check_blockers(context: dict[str, Any], value: str) -> None:
+    actual = [(b.code, b.field) for b in context["response"].blockers]
+    assert actual == parse_compact_blockers(value)

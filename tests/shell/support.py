@@ -11,7 +11,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from claimgate.shell.messages import NoticeFields, SubmitNoticeResponse
+from claimgate.shell.messages import NoticeFields, ResolutionResponse, SubmitNoticeResponse
 
 VALID_RULES: dict[str, Any] = {
     "claimant_name_required": False,
@@ -22,13 +22,26 @@ VALID_RULES: dict[str, Any] = {
     "window_days": 60,
 }
 DEFAULT_SUBMITTED_AT = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+DEFAULT_RESOLVED_AT = datetime(2026, 6, 2, 9, 0, tzinfo=UTC)
 DEFAULT_FIELDS = NoticeFields(
     policy_number="HO-1234567", loss_date="2026-06-01", loss_type="wind_hail", notice_type="INITIAL"
 )
+# Lands PENDED on MISSING_REQUIRED_FIELD:policy_number and nothing else, so a
+# resolution against it has exactly one thing to clear.
+PENDING_FIELDS = NoticeFields(
+    policy_number="", loss_date="2026-06-01", loss_type="wind_hail", notice_type="INITIAL"
+)
+DEFAULT_REVIEWER = "adjuster-4471"
 
 Submitter = Callable[..., SubmitNoticeResponse]
+Resolver = Callable[..., ResolutionResponse]
 
 
 class RuleEvaluationBugError(RuntimeError):
     """Stands in for a bug in domain rule evaluation - the failure
     PHASE2_DESIGN.md's two-write receipt exists to survive."""
+
+
+class AuditWriteError(RuntimeError):
+    """Stands in for whatever could go wrong on the last write a resolution
+    makes, so the rollback has something to roll back."""
