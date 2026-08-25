@@ -1901,7 +1901,7 @@ action** — and, before that, the five escalated points, three of which would w
 this paragraph, spec-only, pushed to `phase2/5e-resolution`.** The amendment names no ref of its own
 because a commit cannot carry its own hash and the spec and this record are deliberately one commit;
 the stable identity, and the one to lock against, is `features/resolution.feature` at sha256
-`ad983390d37d`, 555 lines — export it with `git show <branch tip>:features/resolution.feature` and
+`2b014521a1bc`, 589 lines — export it with `git show <branch tip>:features/resolution.feature` and
 check the digest before approving.
 Advisor-recommended, human-ratified 2026-08-25; all five recorded in full in `ASSUMPTIONS.md`'s "Open
 decisions" under the item 5e entry, which is the source for every line below. **1.** A resolution may
@@ -1928,7 +1928,11 @@ view. The draft had decided point 3, in the direction since ratified, without sa
 anything is written (`400`, nothing persisted, against the identified reviewer's `200`); a reviewer
 may correct a field the notice already had, not only supply one it was missing (an omitted loss type
 keeping `standard`/`standard` against a supplied `fire` moving the notice to `high`/`complex` — the
-accepted cost of decision 1, in the spec rather than only in the record of it); a resolution is judged
+accepted cost of decision 1, in the spec rather than only in the record of it, and since extended by a
+third row that is decision 2(a)'s only real proof anywhere in the file: a reviewer who corrects the
+peril to `injury` leaves the notice held for `claimant_name` and `incident_description`, fields nobody
+supplied and the notice was never pended for, which only a full run of the whole validation over the
+merged view can reach — every other refusal here is caught by validating the supplied field alone); a resolution is judged
 on the calendar date it arrives, one minute either side of the boundary; and what a refused resolution
 supplied is kept, in sequence, and counts toward what the notice says — three records for one
 submission and two resolutions, the second clearing the pend only because the first attempt's policy
@@ -1937,12 +1941,14 @@ state change, no audit entry" is a complete claim rather than half of one; Rule 
 where the resolution introduces a blocker the notice never had, which a blockers-only recheck would
 have answered `200`.
 
-**Measured** directly against `gauntlet.acceptance.mutation.mutants()`: **85 mutants, all `example`
-kind, zero `literal`** — 12 / 10 / 24 / 6 / 8 / 6 / 9 / 4 / 6 in file order, up from 40. Re-measured
-alongside: `idempotency.feature` **40**, `notice_intake.feature` **48**, both unchanged by this branch.
-**Simulated**, and recorded as a simulation rather than a measurement: **0 survivors of 85**, each
-substitution dumped from the engine and walked individually against the rule its row belongs to rather
-than predicted from the table's shape.
+**Measured** directly against `gauntlet.acceptance.mutation.mutants()`: **97 mutants, all `example`
+kind, zero `literal`** — 12 / 10 / 24 / 18 / 8 / 6 / 9 / 4 / 6 in file order, up from 40 at the first
+draft. Re-measured alongside: `idempotency.feature` **40**, `notice_intake.feature` **48**, both
+unchanged by this branch. **Simulated**, and recorded as a simulation rather than a measurement:
+**0 survivors of 97**, each substitution dumped from the engine and walked individually against the
+rule its row belongs to rather than predicted from the table's shape. The 79 mutants outside the
+corrected-field outline were shown byte-identical to the set already walked — same scenario, column,
+original and substitution — rather than re-walked, and only that outline's 18 were simulated afresh.
 
 **The arithmetic in the arrival-date rule was recomputed rather than carried over.** America/New_York
 is UTC−4 in August 2026, so `2026-08-26T03:59Z` is 23:59 on the 25th there and `2026-08-26T04:00Z` is

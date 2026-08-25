@@ -299,25 +299,59 @@ Feature: Resolving a pended notice
     # reviewer-supplies step means omitted and never means cleared.
     #
     # fire is a Section I peril, so no claimant-field requirement enters
-    # with it and this rule stays about the overlay rather than borrowing
-    # validation.feature's Section II rules. Both severities and both
-    # queues are triage.feature's own values, reused rather than restated
-    # here as new behaviour.
+    # with it and the second row stays about the overlay alone. Both
+    # severities and both queues on those rows are triage.feature's own
+    # values, reused rather than restated here as new behaviour, and "not
+    # yet assigned" on the third is notice_intake.feature's own vocabulary
+    # for what a pended notice carries instead of them.
+    #
+    # The third row is decision 2(a)'s proof, and it is the only thing in
+    # this file that has one. Every other refusal here is caught by
+    # validating what the reviewer supplied: Rule 2's third row supplies a
+    # malformed policy number and the malformed policy number is what
+    # blocks it, so "validate the supplied fields, then re-check the
+    # recorded blockers" would answer every one of them identically. Here
+    # the reviewer supplies a policy number and a loss type, both of them
+    # individually fine, and the two blockers that hold the notice are on
+    # claimant_name and incident_description - fields the reviewer never
+    # touched, which the notice was never pended for, and which no amount
+    # of checking the supplied values or the recorded blockers would ever
+    # reach. Only a full run of the whole validation over the merged
+    # current view finds them. That is the difference between decision
+    # 2(a) and the cheaper reading it was chosen over, and without this row
+    # the file states the decision without testing it.
+    #
+    # The callback that produces it is the ordinary one. The peril went
+    # down as wind, the notice pended for a missing policy number, and when
+    # the reviewer rings back for the policy number the reporter mentions
+    # that a guest was hurt. That is a liability loss, not a wind one, and
+    # a liability loss needs the claimant named and the incident described
+    # before anyone can act on it - so correcting the peril is exactly what
+    # opens the two requirements that now hold the notice. The reviewer has
+    # made the notice more blocked than it was and has done the right
+    # thing; PENDED is where a notice waits for what is missing, and it is
+    # still not a rejection.
+    #
+    # The blockers are in validation.feature's canonical order - code
+    # order first, then field - which is where this file takes both the
+    # codes and their sequence from rather than declaring any of its own.
     Scenario Outline: What a corrected field does to the notice depends on which field the reviewer corrects
       Given the notice reports a policy number of "absent"
       And the notice is submitted for intake
       When the reviewer supplies a policy number of "HO-7654321"
       And the reviewer supplies a loss type of "<supplied_loss_type>"
       And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
-      Then the response is 200
-      And the notice's state is TRIAGED
+      Then the response is <response>
+      And the notice's state is <state>
+      And the notice's blockers are <blockers>
       And the notice's severity is <severity>
       And the notice's queue is <queue>
 
       Examples:
-        | supplied_loss_type | severity | queue    |
-        | absent             | standard | standard |
-        | fire               | high     | complex  |
+        | supplied_loss_type | response | state   | blockers                                                                         | severity         | queue            |
+        | absent             | 200      | TRIAGED |                                                                                  | standard         | standard         |
+        | fire               | 200      | TRIAGED |                                                                                  | high             | complex          |
+        | injury             | 422      | PENDED  | MISSING_REQUIRED_FIELD:claimant_name;MISSING_REQUIRED_FIELD:incident_description | not yet assigned | not yet assigned |
 
   Rule: A resolution is judged on the calendar date it arrives, not the one the notice was pended on
 
