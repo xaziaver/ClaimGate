@@ -1,15 +1,15 @@
 {
   "entries": {
     "config:.claude/settings.json": {
-      "approved_at": "2026-08-23T12:48:17+00:00",
-      "digest": "sha256:2389ec61376179d2247e2100d78d8f47a5e6ab77dcea5f4cec53052978c03710"
+      "approved_at": "2026-08-25T17:36:05+00:00",
+      "digest": "sha256:2131d400e671ccb57fad101e272888f1193dc73559d7f0d49df8a526b0b4841b"
     },
     "config:gauntlet.toml": {
-      "approved_at": "2026-08-23T12:48:17+00:00",
+      "approved_at": "2026-08-25T17:36:05+00:00",
       "digest": "sha256:70517884e3883dc684b91bb2f9b68893cf40787507db503db480a21313b97078"
     },
     "config:pyproject.toml": {
-      "approved_at": "2026-08-23T12:48:17+00:00",
+      "approved_at": "2026-08-25T17:36:05+00:00",
       "digest": "sha256:73516701ad676a7c2e12b66006342ca168f41c5bb933e0bd15f8bab129b80ddc"
     },
     "mutant:features/carrier_configuration.feature#A recognized carrier's rules load with neither SIU threshold configured|literal|And \"AAAA\" configures a duplicate match window of 60 days": {
