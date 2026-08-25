@@ -1,6 +1,7 @@
 """What crosses the shell's boundary on POST /notices and GET /notices/{id}:
-the reporter's fields, the response, the retrieval view, and one submission's
-bundled inputs.
+the reporter's fields, the response, the retrieval view, one submission's
+bundled inputs, and the one shape that crosses between the two transactions a
+created notice takes.
 
 Separated from notice_intake.py so idempotency.py can name these shapes without
 importing the orchestration that assembles them - and so notice_intake.py stays
@@ -9,10 +10,11 @@ inside the size gate now that a submission has an idempotency key to carry.
 
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
-from claimgate.domain.models import ValidationBlocker
+from claimgate.domain.models import Candidate, CarrierRules, ValidationBlocker
+from claimgate.shell.records import NoticeRecord
 from claimgate.shell.store import NoticeStore
 
 
@@ -57,6 +59,13 @@ class NoticeView:
     severity: str | None
     queue: str | None
 
+    @classmethod
+    def of(cls, record: NoticeRecord) -> "NoticeView":
+        """The stored notice as GET /notices/{id} shows it: everything the
+        record carries except the receipt timestamp and the carrier, which are
+        envelope and attribution rather than the notice."""
+        return cls(record.notice_id, record.state, record.blockers, record.severity, record.queue)
+
 
 @dataclass(frozen=True)
 class Submission:
@@ -74,3 +83,15 @@ class Submission:
     @property
     def raw_payload(self) -> dict[str, Any]:
         return asdict(self.fields)
+
+
+@dataclass(frozen=True)
+class AcceptedNotice:
+    """A notice whose receipt transaction has committed and whose decision has
+    not been made yet. It exists because rule evaluation runs between the two,
+    inside neither - see notice_intake.py."""
+
+    notice_id: str
+    candidate: Candidate
+    today: date
+    rules: CarrierRules

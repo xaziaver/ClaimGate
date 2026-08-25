@@ -15,7 +15,12 @@ from claimgate.shell.messages import NoticeFields
 from claimgate.shell.notice_intake import get_notice
 from claimgate.shell.records import payload_reference
 from claimgate.shell.store import NoticeStore
-from tests.shell.conftest import DEFAULT_FIELDS, DEFAULT_SUBMITTED_AT, Submitter
+from tests.shell.support import (
+    DEFAULT_FIELDS,
+    DEFAULT_SUBMITTED_AT,
+    RuleEvaluationBugError,
+    Submitter,
+)
 
 
 def test_an_unrecognized_carrier_is_refused_with_nothing_persisted(
@@ -146,3 +151,32 @@ def test_an_unrecognized_jurisdiction_timezone_is_not_handled(submit: Submitter)
 
 def test_get_notice_returns_none_for_an_unknown_id(store: NoticeStore) -> None:
     assert get_notice(store, "unknown") is None
+
+
+def test_a_bug_in_rule_evaluation_cannot_erase_the_receipt(
+    store: NoticeStore, submit: Submitter, rule_evaluation_raises: None
+) -> None:
+    # PHASE2_DESIGN.md's whole reason for writing RECEIVED before any rule
+    # runs: "a bug in rule evaluation must never be able to erase or delay the
+    # fact that a notice was received." The receipt transaction has committed
+    # before rule evaluation is reached, so the exception leaves the notice
+    # standing rather than rolling it back.
+    with pytest.raises(RuleEvaluationBugError):
+        submit(idempotency_key="K-9")
+
+    assert store.count_notices() == 1
+    payloads = store.list_payloads()
+    assert len(payloads) == 1
+    notice_id = payloads[0].notice_id
+    assert notice_id is not None
+    record = store.get_notice(notice_id)
+    assert record is not None
+    assert record.state == "RECEIVED"
+    assert record.received_at == DEFAULT_SUBMITTED_AT
+    trail = store.get_audit_trail(notice_id)
+    assert [entry.to_state for entry in trail] == ["RECEIVED"]
+    # The key was remembered with the receipt, not with the decision, which is
+    # what makes the client's retry a replay rather than a second notice.
+    remembered = store.find_key("AAAA", "K-9")
+    assert remembered is not None
+    assert remembered.notice_id == notice_id

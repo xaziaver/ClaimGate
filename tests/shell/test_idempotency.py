@@ -15,7 +15,7 @@ from claimgate.shell.idempotency import KEY_LIFETIME
 from claimgate.shell.messages import NoticeFields
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.store import IdempotencyKeyAlreadyRememberedError, NoticeStore
-from tests.shell.conftest import DEFAULT_SUBMITTED_AT, Submitter
+from tests.shell.support import DEFAULT_SUBMITTED_AT, RuleEvaluationBugError, Submitter
 
 _MALFORMED = NoticeFields(
     policy_number="HO-1234567", loss_date="not-a-date", loss_type="wind_hail", notice_type="INITIAL"
@@ -171,3 +171,22 @@ def _blind_lookup(store: NoticeStore) -> Lookup:
         return None if len(asked) == 1 else real(carrier_code, idempotency_key)
 
     return _find
+
+
+def test_a_notice_stranded_at_received_replays_as_received(
+    store: NoticeStore, submit: Submitter, rule_evaluation_raises: None
+) -> None:
+    # The replay reads the notice's state rather than assuming a decision was
+    # made about it. No scenario can reach this: features/idempotency.feature
+    # can only strand a notice at RECEIVED by breaking rule evaluation, which
+    # a specification has no way to say.
+    with pytest.raises(RuleEvaluationBugError):
+        submit(idempotency_key="K-10")
+
+    replay = submit(idempotency_key="K-10")
+
+    assert replay.status == 200
+    assert replay.state == "RECEIVED"
+    assert replay.received_at == DEFAULT_SUBMITTED_AT
+    assert replay.notice_id == store.list_payloads()[0].notice_id
+    assert store.count_notices() == 1

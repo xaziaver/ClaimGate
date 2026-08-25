@@ -10,32 +10,25 @@ of the protection.
 
 Every store here is ":memory:". The database path is a constructor argument
 with no default (ASSUMPTIONS.md, "Persistence engine"), so a test has to say so.
+The values these fixtures build on live in support.py, not here - see its own
+docstring for why that separation is load-bearing rather than tidy.
 """
 
-from collections.abc import Callable
-from datetime import UTC, datetime
-from typing import Any
+from datetime import datetime
 
 import pytest
 
+from claimgate.shell import notice_intake
 from claimgate.shell.messages import NoticeFields, SubmitNoticeResponse
 from claimgate.shell.notice_intake import submit_notice
 from claimgate.shell.store import NoticeStore
-
-VALID_RULES: dict[str, Any] = {
-    "claimant_name_required": False,
-    "claimant_contact_required": False,
-    "recognized_policy_number_prefixes": ["HO"],
-    "late_reporting_threshold_days": None,
-    "recent_inception_threshold_days": 30,
-    "window_days": 60,
-}
-DEFAULT_SUBMITTED_AT = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
-DEFAULT_FIELDS = NoticeFields(
-    policy_number="HO-1234567", loss_date="2026-06-01", loss_type="wind_hail", notice_type="INITIAL"
+from tests.shell.support import (
+    DEFAULT_FIELDS,
+    DEFAULT_SUBMITTED_AT,
+    VALID_RULES,
+    RuleEvaluationBugError,
+    Submitter,
 )
-
-Submitter = Callable[..., SubmitNoticeResponse]
 
 
 @pytest.fixture
@@ -52,7 +45,7 @@ def submit(store: NoticeStore) -> Submitter:
         carrier_code: str = "AAAA",
         submitted_at: datetime = DEFAULT_SUBMITTED_AT,
         jurisdiction_timezone: str = "America/New_York",
-        carrier_rules_source: dict[str, Any] | None = None,
+        carrier_rules_source: dict[str, object] | None = None,
         fields: NoticeFields = DEFAULT_FIELDS,
         idempotency_key: str | None = None,
     ) -> SubmitNoticeResponse:
@@ -68,3 +61,16 @@ def submit(store: NoticeStore) -> Submitter:
         )
 
     return _submit
+
+
+@pytest.fixture
+def rule_evaluation_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make _apply_domain_rules raise. Patched at module level on purpose: the
+    point is that the receipt has already committed by the time anything in
+    rule evaluation can go wrong, and only a real raise from inside that step
+    proves the transaction boundary is where it is claimed to be."""
+
+    def _raise(*_: object, **__: object) -> tuple[str, tuple[()], None, None]:
+        raise RuleEvaluationBugError("rule evaluation is broken")
+
+    monkeypatch.setattr(notice_intake, "_apply_domain_rules", _raise)

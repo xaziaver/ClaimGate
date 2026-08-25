@@ -5,19 +5,18 @@ STRICT tables, constraints declared in the schema, no ORM. The constraint that
 forced the decision - uniqueness on (carrier_code, idempotency_key) "enforced
 by a database constraint, not a check-then-write" - lives in schema.py.
 
-**One POST /notices is one transaction.** `submission()` opens BEGIN IMMEDIATE
-and commits once, so a refusal, or a receipt with its decision and its key,
-lands whole or not at all. That turns "the raw payload and the RECEIVED write
-are one statutory fact" from a comment describing call order into a guarantee.
-
-*Noted rather than resolved:* PHASE2_DESIGN.md calls the receipt "a deliberate
-two-write design" so "a bug in rule evaluation must never be able to erase or
-delay the fact that a notice was received." Inside one transaction a raise
-between the receipt and the decision rolls the receipt back too. No such path
-is reachable today - both raising helpers in notice_intake.py run before the
-receipt - and atomicity is the stronger guarantee for the failure that does
-exist, a receipt stranded with no decision. Flagged for whoever adds a raise
-between those two writes.
+**A created notice is two transactions, not one** (corrected 2026-08-25).
+`submission()` opens BEGIN IMMEDIATE and commits once; the receipt transaction
+carries the payload record, the notice at RECEIVED, its RECEIVED audit entry
+and the idempotency key row, and commits *before* any domain rule runs, with
+the decision following in a second transaction. PHASE2_DESIGN.md requires that:
+the receipt is "a deliberate two-write design" so that "a bug in rule
+evaluation must never be able to erase or delay the fact that a notice was
+received," and one transaction spanning both writes would roll the receipt back
+on any exception rule evaluation raised - the outcome that design forbids. The
+one-transaction shape was an advisor instruction that contradicted the design
+and was reversed before merge. Refusals and replays stay single-transaction,
+and IMMEDIATE still serializes an idempotency lookup with the insert after it.
 
 Owns the actor identity phase 2 writes (audit schema: actor_id "caller-asserted
 in phase 2", actor_authenticated false on every entry, no exceptions - nothing

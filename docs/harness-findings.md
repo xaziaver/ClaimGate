@@ -1266,3 +1266,18 @@ that make that work were confirmed by running them in an isolated project, not i
 
 The isolated-project check cost about two minutes and would have cost a debugging session had
 either assumption been wrong in the direction of "quietly does something else."
+
+### A value imported from `conftest.py` is not the same object the fixtures use
+
+`tests/shell/` has no `__init__.py`, so pytest imports its `conftest.py` under its own module name
+and `from tests.shell.conftest import ...` produces a **second** module object. Both exist for the
+rest of the run. Constants survive that — a dataclass compares equal across the two copies — but a
+class does not: an exception defined in `conftest.py` and raised by a fixture is
+`conftest.TheError`, while the test's `pytest.raises(TheError)` names `tests.shell.conftest.TheError`,
+and the two do not match. Observed 2026-08-25 as `DID NOT RAISE` on an exception that had plainly
+been raised, with the traceback showing the other spelling of the same name.
+
+**Shared values belong in a plain module next to `conftest.py`, not in it** — `tests/shell/support.py`
+here. `conftest.py` then imports from that module like everything else, one object exists, and
+`except`/`isinstance` behave. The failure mode is worth knowing because it is silent for the cheap
+cases (constants, type aliases) and only appears once something identity-sensitive crosses the line.

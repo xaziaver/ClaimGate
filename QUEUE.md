@@ -1698,19 +1698,20 @@ this ref, review, `gauntlet spec approve` at the start of the implementing sessi
 **Item 5d is implemented and green on `phase2/5d-idempotency`, spec unchanged throughout.**
 `features/idempotency.feature` was approved by the human at `b08b416` (digest
 `sha256:f741ae2a6536`), re-confirmed against `gauntlet.lock.json` before any code was written and
-unchanged at the end. `gauntlet check` passes: **325/325 tests** (297 before; +13 acceptance
-scenarios, +15 shell unit tests), **coverage 100/100**, **code mutation 342 killed at 100%**
+unchanged at the end. `gauntlet check` passes: **327/327 tests** (297 before; +13 acceptance
+scenarios, +17 shell unit tests), **coverage 100/100**, **code mutation 342 killed at 100%**
 (unmoved, as expected — `[tool.mutmut] source_paths` is `src/claimgate/domain/` and nothing in the
-domain changed), duplication 0, worst function 22 of 25 lines, and acceptance **8 specs, 69
-reviewed-equivalent** — the same 69 approvals the branch started with, so **all 40 of
+domain changed), duplication 0, worst function 22 of 25 lines, largest module 246 of 250, and
+acceptance **8 specs, 69 reviewed-equivalent** — the same 69 approvals the branch started with, so **all 40 of
 `idempotency.feature`'s mutants were killed and no new approval was created**. Mutant count
 re-measured directly against `gauntlet.acceptance.mutation.mutants()` at the implementing ref: 40,
 12/6/6/4/6/6 by rule, all `example`, matching the amendment session's figures exactly;
 `notice_intake.feature` re-measured at 48, unchanged. The advisor's simulation of 0 survivors held.
 
-Three commits, in the order the log should read them: the SQLite port with the receipt clock
-(`1952dc0`), the shared-step move the duplication gate forced (`d60fcdd`), and idempotency itself
-(`f740495`). **The port and the receipt clock are deliberately one commit, not two** —
+Four commits, in the order the log should read them: the SQLite port with the receipt clock
+(`1952dc0`), the shared-step move the duplication gate forced (`d60fcdd`), idempotency itself
+(`f740495`), and the transaction-boundary correction judgment-call 4 below records. **The port and
+the receipt clock are deliberately one commit, not two** —
 `ASSUMPTIONS.md`'s own "One receipt clock, not two" says to build the clock fix "during item 5d's
 port of the store to SQLite, since that port rewrites `receive_notice` and its callers anyway," so
 separating them would invent a boundary the ratified decision says is not there.
@@ -1723,8 +1724,10 @@ payload records, idempotency keys — with `UNIQUE(carrier_code, idempotency_key
 foreign keys to the notice from the other three, and `BEFORE UPDATE`/`BEFORE DELETE` triggers that
 `RAISE(ABORT)` on the audit and payload tables, so `PHASE2_DESIGN.md`'s "no update path and no
 delete path exist in this schema" is refused by the database rather than merely not offered. The
-database path is a constructor argument with no default; tests pass `":memory:"`. One `POST
-/notices` is one `BEGIN IMMEDIATE` transaction. `datetime.now` is called **0 times** anywhere under
+database path is a constructor argument with no default; tests pass `":memory:"`. A created
+notice is two `BEGIN IMMEDIATE` transactions — receipt, then decision, with rule evaluation between
+them and inside neither (judgment call 4); a refusal, a conflict and a replay are one each.
+`datetime.now` is called **0 times** anywhere under
 `src/claimgate/shell/` (counted, not assumed): the notice's receipt, both audit entries and the
 payload record are all `submitted_at`, and `received_at` is now readable on `NoticeRecord` and on
 `SubmitNoticeResponse` for `201` and `200` alike, which is what lets a replay report a timestamp at
@@ -1756,6 +1759,20 @@ all.
    helpers run before the receipt — and atomicity is the stronger guarantee for the failure that
    does exist, a receipt stranded with no decision. Recorded in `store.py`'s docstring for whoever
    adds a raise between those two writes.
+   *Resolved 2026-08-25, before merge: the advisor instruction was wrong against the design and
+   is reversed. "No such path is reachable" was wrong too — `_apply_domain_rules` runs between
+   `receive_notice` and `record_decision`, and the guarantee `PHASE2_DESIGN.md` states is
+   against **bugs** in that evaluation, not against the two known raises that happen to run
+   earlier. A created notice is now two transactions: the receipt (payload record, notice at
+   `RECEIVED`, its audit entry, and the key row) commits first, rule evaluation runs outside
+   both, and the decision commits second. A raise in evaluation now leaves the notice at
+   `RECEIVED` with its key remembered, so the client's retry replays it with `200` and state
+   `RECEIVED` instead of creating a duplicate. Proven by
+   `test_a_bug_in_rule_evaluation_cannot_erase_the_receipt` and
+   `test_a_notice_stranded_at_received_replays_as_received` under `tests/shell/`; refusals,
+   conflicts and replays stay single-transaction, and the `IMMEDIATE` lock still serializes the
+   idempotency lookup with the insert that follows it. `PHASE2_DESIGN.md`'s two-write paragraph
+   now names the boundary rather than leaving it to be inferred.*
 5. **The shared-step move follows from the duplication gate, not from a preference.**
    `idempotency.feature` restates `notice_intake.feature`'s Background verbatim and both specs are
    locked, so neither rewording nor copying was available; `max_duplicate_blocks = 0` at six lines
@@ -1780,7 +1797,9 @@ mutation reaches no shell code at all; for `src/claimgate/shell/` the acceptance
 firing, the four triggers refusing `UPDATE` and `DELETE`, a notice's own row still being allowed to
 move state, no key row after a `400`, an expired key row replaced by the notice that reused it, the
 `409`'s payload record and its reference, the half-open boundary at one-second resolution rather
-than the spec's one-minute rows, the single receipt clock, and `carrier_code` on every audit entry.
+than the spec's one-minute rows, the single receipt clock, `carrier_code` on every audit entry, and
+— since the transaction correction — that a bug in rule evaluation leaves the notice standing at
+`RECEIVED` with its key remembered and that a replay of it reports `RECEIVED`.
 
 **Scope walls held.** No HTTP layer. Items 5e, 5f, 5g, 5h, 5i untouched; both `NotImplementedError`
 raises stay and stay tested; no SIU table, no field named `tolling`, and no persistence for anything

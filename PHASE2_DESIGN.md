@@ -45,7 +45,11 @@ runs — a deliberate two-write design, not an inefficiency:** the receipt times
 statutory acknowledgment clock's start. It must not depend on whether validation succeeds, is
 implemented correctly, or even runs at all — a bug in rule evaluation must never be able to erase
 or delay the fact that a notice was received. The timestamp is set once at capture and never
-recomputed on any later transition.
+recomputed on any later transition. **Made concrete 2026-08-25, in item 5d's persistence
+port:** the receipt transaction — payload record, notice at `RECEIVED`, `RECEIVED` audit entry,
+and the idempotency key row if one was supplied — commits before rule evaluation runs, and the
+decision is a second transaction. One transaction spanning both would roll the receipt back on any
+exception rule evaluation raised, which is precisely what this paragraph forbids.
 
 **Queue, severity, SIU indicators, and duplicate candidates are attributes, not states.** They are
 data carried by a `TRIAGED` notice; none of them is itself a place in the state machine. This
