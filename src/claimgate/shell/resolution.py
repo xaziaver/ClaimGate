@@ -38,11 +38,19 @@ the notice's receipt instant and pend instant are untouched by any of it
 path). resolved_at is written only by the resolution that moves the notice to
 TRIAGED; a refused attempt's instant lives on its audit entry and nowhere else.
 
+**A resolution that releases the notice owes it an SIU evaluation** (item 5f
+decision 1), written from siu.py inside this same transaction and only where the
+notice actually moved - a refused attempt transitions nothing and evaluates
+nothing. The rules that evaluation applies are the ones _judge resolved for this
+transaction, carried out of it rather than read a second time (decision 6), and
+the interval it measures is counted from the notice's own receipt instant rather
+than from this resolution's (decision 2): a pend does not make the reporter late.
+
 Out of scope, deliberately: the two instants above are recorded and nothing
 whatever is computed from them, which is PHASE2_DESIGN.md's "record precisely,
 compute nothing" - what the Fla. Stat. 627.70131(8)(b) interval means is a
-downstream legal determination and no phase-2 code goes near it. SIU (5f) and
-duplicate-candidate detection are untouched too; and there is no
+downstream legal determination and no phase-2 code goes near it.
+Duplicate-candidate detection is untouched; and there is no
 idempotency key on this endpoint - PHASE2_DESIGN.md scopes the header to
 POST /notices, so a network retry of a resolution that already succeeded meets a
 TRIAGED notice and is answered by the 409 below.
@@ -52,9 +60,8 @@ from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Any
 
-from claimgate.domain.models import ValidationBlocker
-from claimgate.shell import rules
-from claimgate.shell.messages import NoticeFields, Resolution, ResolutionResponse
+from claimgate.shell import rules, siu
+from claimgate.shell.messages import Judgement, NoticeFields, Resolution, ResolutionResponse
 from claimgate.shell.records import NoticeRecord, PayloadRecord
 from claimgate.shell.store import NoticeStore
 
@@ -100,36 +107,62 @@ def _evaluate(resolution: Resolution, record: NoticeRecord) -> ResolutionRespons
     store.append_notice_payload(
         record.notice_id, record.carrier_code, resolution.supplied, resolution.resolved_at
     )
-    state, blockers, severity, queue = _judge(resolution, record)
-    applied = state == "TRIAGED"
+    judged = _judge(resolution, record)
+    applied = judged.state == "TRIAGED"
     store.write_notice_decision(
-        record.notice_id, state=state, blockers=blockers, severity=severity, queue=queue,
+        record.notice_id, state=judged.state, blockers=judged.blockers,
+        severity=judged.severity, queue=judged.queue,
         pended_at=None, resolved_at=resolution.resolved_at if applied else None,
     )
-    store.append_audit_entry(
-        record.notice_id, from_state="PENDED", to_state="TRIAGED", actor_type="USER",
-        actor_id=resolution.actor_id, occurred_at=resolution.resolved_at, blockers=blockers,
-        outcome="APPLIED" if applied else "REFUSED", note=resolution.note,
-    )
+    _record_attempt(resolution, record, judged, applied=applied)
     return ResolutionResponse(
-        status=200 if applied else 422, notice_id=record.notice_id, state=state,
-        blockers=blockers, severity=severity, queue=queue,
+        status=200 if applied else 422, notice_id=record.notice_id, state=judged.state,
+        blockers=judged.blockers, severity=judged.severity, queue=judged.queue,
     )
 
 
-def _judge(
-    resolution: Resolution, record: NoticeRecord
-) -> tuple[str, tuple[ValidationBlocker, ...], str | None, str | None]:
+def _record_attempt(
+    resolution: Resolution, record: NoticeRecord, judged: Judgement, *, applied: bool
+) -> None:
+    """One audit entry either way - a refused attempt is an audit event, not a
+    non-event - and the SIU evaluation only where the notice actually moved.
+    Both writes are inside this resolution's transaction, so a notice that
+    reached TRIAGED without its evaluation beside it is not a state this path
+    can produce. The interval is counted from the notice's stored receipt
+    instant and the events are stamped with this resolution's: the stamp says
+    when the evaluation happened, the interval says what was measured."""
+    resolution.store.append_audit_entry(
+        record.notice_id, from_state="PENDED", to_state="TRIAGED", actor_type="USER",
+        actor_id=resolution.actor_id, occurred_at=resolution.resolved_at,
+        blockers=judged.blockers, outcome="APPLIED" if applied else "REFUSED",
+        note=resolution.note,
+    )
+    if applied:
+        siu.record_evaluation(
+            resolution.store, record.notice_id,
+            candidate=judged.candidate, rules=judged.rules,
+            received_at=record.received_at,
+            jurisdiction_timezone=resolution.jurisdiction_timezone,
+            evaluated_at=resolution.resolved_at,
+        )
+
+
+def _judge(resolution: Resolution, record: NoticeRecord) -> Judgement:
     """The whole validation, over the merged view, on the jurisdiction date of
     this resolution's own instant. A blocker the resolution introduces is not a
-    new outcome - it is simply among the current blockers the 422 reports."""
+    new outcome - it is simply among the current blockers the 422 reports. The
+    candidate and the carrier's rules come back with the outcome because the SIU
+    evaluation this transaction may owe has to use these and not a second
+    reading of either."""
     view = merged_view(resolution.store, record.notice_id)
     candidate = rules.build_candidate(view, _loss_date_of(view))
-    return rules.apply_domain_rules(
+    carrier_rules = rules.resolve_rules(record.carrier_code, resolution.carrier_rules_source)
+    state, blockers, severity, queue = rules.apply_domain_rules(
         candidate,
         rules.resolve_today(resolution.resolved_at, resolution.jurisdiction_timezone),
-        rules.resolve_rules(record.carrier_code, resolution.carrier_rules_source),
+        carrier_rules,
     )
+    return Judgement(state, blockers, severity, queue, candidate, carrier_rules)
 
 
 def merged_view(store: NoticeStore, notice_id: str) -> NoticeFields:

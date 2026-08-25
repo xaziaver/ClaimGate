@@ -45,3 +45,10 @@ class RuleEvaluationBugError(RuntimeError):
 class AuditWriteError(RuntimeError):
     """Stands in for whatever could go wrong on the last write a resolution
     makes, so the rollback has something to roll back."""
+
+
+class SiuWriteError(RuntimeError):
+    """Raised after the SIU events have been written and before the transaction
+    commits, so a test can tell "the events were never written" apart from "the
+    events were written and rolled back with the transition they belong to."
+    Only the second is what item 5f decision 1 asks for."""

@@ -124,6 +124,23 @@ class ResolutionResponse:
 
 
 @dataclass(frozen=True)
+class Judgement:
+    """What one transaction's run of the domain rules produced, and the two
+    inputs it produced them from. The inputs travel with the outcome rather than
+    being recomputed because the SIU evaluation the same transaction owes has to
+    apply exactly the rules that transaction resolved (ASSUMPTIONS.md, item 5f
+    decision 6): a second resolve_rules call would be a second reading, and the
+    whole point of the decision is that there is one."""
+
+    state: str
+    blockers: tuple[ValidationBlocker, ...]
+    severity: str | None
+    queue: str | None
+    candidate: Candidate
+    rules: CarrierRules
+
+
+@dataclass(frozen=True)
 class AcceptedNotice:
     """A notice whose receipt transaction has committed and whose decision has
     not been made yet. It exists because rule evaluation runs between the two,
