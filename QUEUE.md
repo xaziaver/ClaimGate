@@ -1969,3 +1969,108 @@ mutated row produces two blockers where one is asserted.
 **`gauntlet check` still expects exactly one unapproved spec.** Not run this session beyond `gauntlet
 spec list`. **The next action is the human's: review and lock.** No implementation, no approval, and
 no `gauntlet` command from the human's list were run.
+
+**Item 5e is implemented and green on `phase2/5e-resolution`, spec unchanged throughout.**
+`features/resolution.feature` was approved by the human at `187244d` (blob sha256 `2b014521a1bc`,
+589 lines), re-confirmed against the working tree after the acceptance run and unchanged at the end.
+`gauntlet check` **passes**: **363/363 tests** (327 at the 5d merge; +21 acceptance scenarios, +15
+shell unit tests), **coverage 100/100** line and branch, **code mutation 342 killed at 100%**
+(unmoved, as expected - `[tool.mutmut] source_paths` is `src/claimgate/domain/` and nothing in the
+domain changed), duplication 0, crap 5.0 of 15, boundary 11 step files with 0 direct imports, worst
+function 23 of 25, largest module `store.py` 243 of 250, and acceptance **9 specs, 69
+reviewed-equivalent** - the same 69 the branch started with, so **all 97 of `resolution.feature`'s
+mutants were killed and no new approval was created**. No survivor, so no `mutant approve` was
+run or needed. The acceptance gate took **759s**, up from the ~500s range 5d left it at; it is still
+growing and still the only gate that costs anything. Mutant counts re-measured directly against
+`gauntlet.acceptance.mutation.mutants()` at the implementing ref: `resolution.feature` **97**,
+12/10/24/18/8/6/9/4/6 by rule, all `example`, zero `literal` - identical to the amendment session's
+figures; `idempotency.feature` **40** and `notice_intake.feature` **48**, both unchanged. The
+drafting session's simulation of 0 survivors of 97 held.
+
+Five commits, in the order the log should read them: the two implementation decisions (`5bedbdf`),
+the schema and the two extractions it forced (`295ff64`), the resolution path with its steps and
+tests (`2702f7f`), the scope-wall citation fix (`6c64893`), and this paragraph.
+
+**What was built.** `src/claimgate/shell/` is now nine modules rather than six: `resolution.py` is
+the path itself, and `payloads.py` and `rules.py` are extractions the path forced rather than
+preferred (judgment call 2). `notices` gains `pended_at` and `resolved_at`; `payload_records` gains
+`content`. A resolution is one transaction after two checks that are deliberately outside it: the
+reviewer's identity is checked first, before the notice is read at all, so a caller who has not said
+who they are learns nothing about it; the state check is second and writes nothing, per decision 3.
+Inside the transaction the reviewer's payload record joins the arrival sequence, the current view is
+overlaid from that sequence field by field, the whole validation re-runs over it on the jurisdiction
+date of the resolution's own instant, the notice's blockers are replaced by that whole result, and
+one audit entry is written from `PENDED` to `TRIAGED` whether the outcome is `APPLIED` or `REFUSED`.
+`datetime.now` is still called **0 times** anywhere under `src/claimgate/shell/`.
+
+**Judgment calls, flagged rather than buried.**
+
+1. **The schema needed a third column the instruction did not name, and this was found by reading
+   the spec against the code rather than by any gate.** `payload_records` stored only the reference
+   hash. Rules 6 and 7 assert what each record *reports for a policy number*, and decision 1's
+   overlay derives the current view field by field - neither is computable from a hash.
+   `PHASE2_DESIGN.md` says the payload is stored "once, **verbatim**, immutable, and referenced by
+   hash"; item 5d stored the reference and not the verbatim half because nothing yet read it.
+   `content` was added and flagged before it was written.
+2. **Two extractions instead of a separate resolution store module.** The instruction offered either;
+   the size gate decided. `payloads.py` owns the arrival sequence, which is the thing this item
+   extends and which `store.py` had four lines of headroom for. `rules.py` owns the domain rules as
+   the shell runs them, and that one is forced by decision 2(a) rather than by size: a resolution
+   re-validates through *one* definition of "no blocker", the same one intake uses, and two copies
+   of that call would let it stop being true with no gate noticing. `store.py` ends at 243/250 and
+   absorbed the resolution's writes, so no third store module was needed; `notice_intake.py` drops
+   246 -> 187 and `receive_notice` was not touched.
+3. **`the notice's state is` overrides `conftest.py`'s definition rather than stacking `@given` on
+   it, against the instruction, because stacking cannot work.** The shared definition asserts
+   `response.state`, and Rule 2's `400` row asserts `PENDED` on a response that carries no state -
+   the identity check runs before the notice is read. The local definition asserts the stored notice
+   **and** the response wherever the response reports a state, which is what keeps Rule 6 a proof
+   about the replay rather than a second copy of Rule 3. `the response is` did just need `@given`,
+   as the instruction said.
+4. **Which arrival a record came from is checked against what arrived, never off `arrival_index`.**
+   A step that read the origin from the record's stored position would be asserting the index it
+   just indexed by. Each named arrival is rebuilt from the scenario's own steps and hashed with
+   `payload_reference`, so "the second record is the reviewer's first resolution" is a claim about
+   content that can fail.
+5. **Two escalations rather than invented status codes.** A resolution naming a notice this
+   deployment does not have, and one carrying a loss date that is not a date at all, both raise
+   `NotImplementedError`: the closed status-code table has a row for neither, routing an unknown
+   identifier belongs to the HTTP layer that does not exist, and intake answers the second at its own
+   schema boundary with no decision extending that row here. Both are tested.
+6. **Four phrases moved into `tests/acceptance/conftest.py`** - the blockers assertion from
+   `test_notice_intake_acceptance.py` and the three idempotency phrases - because
+   `resolution.feature` is the second locked spec to state each of them word for word, which is the
+   standing reason for that file rather than the duplication gate (which does not read `tests/`).
+   `tests/acceptance/support.py` is new and holds the compact-blockers parser, for the reason
+   `tests/shell/support.py` exists.
+7. **The replay rule passes with no change to the replay path - verified, not assumed.**
+   `answer_repeated_key` already reports `remembered.state` read fresh from the notice row, so a
+   notice a resolution moved replays `TRIAGED`. Not one line of `idempotency.py`, and no line of
+   `notice_intake.py`'s replay path, changed for it.
+8. **What the acceptance suite cannot see was measured, not guessed, and is why the shell tests
+   exist.** Stamping `resolved_at` on refusals as well as applications passes all 21 scenarios -
+   nothing in the spec can observe it - so that rule is asserted only under `tests/shell/`, along
+   with the transaction boundary, the two refusals that persist nothing, and the pend instant
+   surviving a resolution. Three other deliberate breakages were run to confirm the scenarios do
+   bite: disabling the identity check, ignoring later records in the overlay, and judging on the
+   receipt date instead of the resolution's instant each fail exactly the rows they should.
+9. **The scope wall on the word `tolling` was broken and then fixed rather than argued with.**
+   Four docstrings named the statutory interval by that word. Every one was a citation or a
+   disclaimer rather than an identifier, but `src/` had never contained the word and the wall says
+   nowhere, so `6c64893` cites Fla. Stat. 627.70131(8)(b) by number instead - which is the primary
+   source this project's citation rule asks for anyway.
+
+**One thing recorded rather than fixed, and it is `ASSUMPTIONS.md` decision (c).**
+`resolution.feature`'s injury row asserts `claimant_name` before `incident_description`, an order
+`validation.feature` does not state anywhere: canonical order is fixed by code there, and the
+within-code order is alphabetical by field, from `validation.py`'s sort key alone. A locked spec now
+depends on it. Stating it in `validation.feature` is a reopening of a locked spec and is a candidate
+queue item, not this item's defect to fix.
+
+**Scope walls held.** Items 5f, 5g, 5h, 5i untouched; both `NotImplementedError` raises stay and
+stay tested, moved into `rules.py` intact; `src/claimgate/domain/` is byte-identical to `origin/main`
+(`git diff origin/main HEAD -- src/claimgate/domain/` is empty); no HTTP layer; no SIU computation;
+no field, column, function or word `tolling` anywhere under `src/`.
+
+**Next action is the human's: review and merge to `main`.** Nothing about this item is waiting on an
+agent, and no `gauntlet` command from the human's list was run.
