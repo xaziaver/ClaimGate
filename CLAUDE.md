@@ -164,7 +164,12 @@ Before any work, orient and verify. Report before acting.
    STOP: you are reading a `QUEUE.md` older than the handoff written for you.
    Merge `origin/main`, push, re-read, then continue.
 3. Confirm the working tree is clean and local matches remote for every branch
-   the status section names.
+   the status section names. If exactly one file under `features/` is modified
+   and its diff is one line containing `_gauntlet`, an earlier mutation run was
+   killed: restore it with `git checkout --`, confirm its sha256 against
+   `gauntlet.lock.json`, and report it. Do not edit it and do not treat the
+   acceptance gate's "changed since it was approved" as true until you have.
+   Check that no `gauntlet` process is alive first.
 4. If a spec is described as drafted-not-locked, confirm with `gauntlet spec list`
    whether it has since been approved. The lock is the human's action and may have
    happened after the handoff was written.
