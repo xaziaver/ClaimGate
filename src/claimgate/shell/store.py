@@ -27,7 +27,14 @@ resolution path.
 
 The payload table moved to payloads.py in item 5e - the arrival sequence is what
 that item extends, and this module had four lines of headroom before it did. The
-methods below that name payloads delegate there so callers keep one store.
+audit table moved to audit.py in item 5f, which adds a column to every entry and
+a second table beside them, and siu_indicator_events arrived in siu_events.py
+rather than here for the same reason. The methods below that name any of the
+three delegate there so callers keep one store.
+
+No statement anywhere in this package updates or deletes an SIU indicator event
+(ASSUMPTIONS.md, item 5f decision 3); tests/shell/test_store.py reads the
+package looking for one, so the absence is checked rather than asserted here.
 """
 
 import sqlite3
@@ -37,18 +44,17 @@ from datetime import datetime
 from typing import Any
 
 from claimgate.domain.models import ValidationBlocker
-from claimgate.shell import payloads
+from claimgate.shell import audit, payloads, siu_events
 from claimgate.shell.records import (
     AuditEntry,
     NoticeRecord,
     PayloadRecord,
-    audit_entry_from_row,
+    SiuIndicatorEvent,
+    SiuIndicatorObservation,
     dump_blockers,
     notice_from_row,
 )
 from claimgate.shell.schema import SCHEMA_STATEMENTS
-
-UNVERIFIED_ACTOR_ID = "no verified identity"
 
 
 class IdempotencyKeyAlreadyRememberedError(Exception):
@@ -162,10 +168,7 @@ class NoticeStore:
         return None if row is None else notice_from_row(row)
 
     def get_audit_trail(self, notice_id: str) -> tuple[AuditEntry, ...]:
-        rows = self._connection.execute(
-            "SELECT * FROM audit_entries WHERE notice_id = ? ORDER BY entry_id", (notice_id,)
-        ).fetchall()
-        return tuple(audit_entry_from_row(row) for row in rows)
+        return audit.for_notice(self._connection, notice_id)
 
     def find_key(self, carrier_code: str, idempotency_key: str) -> NoticeRecord | None:
         """The notice a remembered key names, or None if this pair has never
@@ -216,27 +219,29 @@ class NoticeStore:
     def append_audit_entry(
         self, notice_id: str, *, from_state: str | None, to_state: str, actor_type: str,
         occurred_at: datetime, blockers: tuple[ValidationBlocker, ...],
-        actor_id: str = UNVERIFIED_ACTOR_ID, outcome: str = "APPLIED", note: str | None = None,
+        actor_id: str = audit.UNVERIFIED_ACTOR_ID, outcome: str = "APPLIED",
+        note: str | None = None,
     ) -> None:
-        """Every transition attempt gets one, refused attempts included
-        (PHASE2_DESIGN.md's audit log). actor_authenticated is written 0 here and
-        nowhere else, for every actor type without exception: phase 2 has no
-        authentication mechanism, so nothing has been verified, and a caller
-        cannot assert otherwise because this method does not take it."""
-        self._connection.execute(
-            "INSERT INTO audit_entries"
-            " (notice_id, carrier_code, from_state, to_state, actor_id, actor_type,"
-            " occurred_at, blockers, outcome, actor_authenticated, note)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
-            (notice_id, self._carrier_code_of(notice_id), from_state, to_state, actor_id,
-             actor_type, occurred_at.isoformat(), dump_blockers(blockers), outcome, note),
+        audit.append(
+            self._connection, notice_id, from_state=from_state, to_state=to_state,
+            actor_type=actor_type, occurred_at=occurred_at, blockers=blockers,
+            actor_id=actor_id, outcome=outcome, note=note,
         )
 
-    def _carrier_code_of(self, notice_id: str) -> str:
-        row = self._connection.execute(
-            "SELECT carrier_code FROM notices WHERE notice_id = ?", (notice_id,)
-        ).fetchone()
-        return str(row["carrier_code"])
+    def append_siu_events(
+        self, notice_id: str, observations: tuple[SiuIndicatorObservation, ...],
+        *, ruleset_version: str, evaluated_at: datetime,
+    ) -> None:
+        siu_events.append_all(
+            self._connection, notice_id, observations,
+            ruleset_version=ruleset_version, evaluated_at=evaluated_at,
+        )
+
+    def get_siu_events(self, notice_id: str) -> tuple[SiuIndicatorEvent, ...]:
+        return siu_events.for_notice(self._connection, notice_id)
+
+    def list_siu_events(self) -> tuple[SiuIndicatorEvent, ...]:
+        return siu_events.all_records(self._connection)
 
 
 def _stamp(instant: datetime | None) -> str | None:

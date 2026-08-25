@@ -1,5 +1,5 @@
-"""The SQLite schema phase 2 writes into: four tables and the triggers that
-make PHASE2_DESIGN.md's audit-log rule enforceable.
+"""The SQLite schema phase 2 writes into: five tables and the triggers that
+make PHASE2_DESIGN.md's append-only rules enforceable.
 
 STRICT tables and schema-declared constraints, per ASSUMPTIONS.md's
 "Persistence engine" - the point of choosing an engine at all was that
@@ -41,6 +41,27 @@ EXISTS leaves an older file as it found it - which decision (b) accepts.
 `carrier_code` is on `audit_entries` because PHASE2_DESIGN.md's "Carrier
 reference" section requires it persisted on every audit entry. It is
 attribution and nothing else; no query in this package branches on it.
+
+`siu_indicator_events` is item 5f's, and it is a table rather than columns on
+`notices` because that is PHASE2_DESIGN.md's "SIU handling" point 1: "physical
+separation is the part that's hard to retrofit ... columns on the main record
+are a leak risk in every future query and serializer, forever." Nothing on the
+notice row reaches it, so no serializer over that row can carry it by accident.
+It gets the same `BEFORE UPDATE` / `BEFORE DELETE` refusal the audit trail has,
+for the reason ASSUMPTIONS.md's item 5f decision 3 gives: "unevaluated is not
+negative" is only auditable if the unevaluated evaluation is written down, and a
+trail something can edit afterwards records what was last believed rather than
+what was observed. `reason_code` is null unless the value is `NOT_EVALUATED`,
+and `threshold_days` is null where the carrier configured none - never zero,
+which is a real carrier choice meaning every notice is late
+(carrier_configuration.feature) and would record a rule nobody configured.
+`UNIQUE (notice_id, ordinal)` keeps one position in a notice's trail to one row,
+the way it does for the arrival sequence above.
+
+Adding it does not upgrade an existing database, for the same reason
+`pended_at` and `resolved_at` did not: `CREATE TABLE IF NOT EXISTS` leaves an
+older file as it found it, and item 5e decision (b) accepts that a schema change
+recreates the database.
 """
 
 SCHEMA_STATEMENTS: tuple[str, ...] = (
@@ -96,6 +117,20 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     ) STRICT
     """,
     """
+    CREATE TABLE IF NOT EXISTS siu_indicator_events (
+        event_id INTEGER PRIMARY KEY,
+        notice_id TEXT NOT NULL REFERENCES notices (notice_id),
+        ordinal INTEGER NOT NULL,
+        indicator TEXT NOT NULL,
+        value TEXT NOT NULL,
+        reason_code TEXT,
+        threshold_days INTEGER,
+        ruleset_version TEXT NOT NULL,
+        evaluated_at TEXT NOT NULL,
+        UNIQUE (notice_id, ordinal)
+    ) STRICT
+    """,
+    """
     CREATE TRIGGER IF NOT EXISTS audit_entries_are_append_only_no_update
     BEFORE UPDATE ON audit_entries
     BEGIN SELECT RAISE(ABORT, 'audit entries are append-only'); END
@@ -114,5 +149,15 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     CREATE TRIGGER IF NOT EXISTS payload_records_are_immutable_no_delete
     BEFORE DELETE ON payload_records
     BEGIN SELECT RAISE(ABORT, 'payload records are immutable'); END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS siu_indicator_events_are_append_only_no_update
+    BEFORE UPDATE ON siu_indicator_events
+    BEGIN SELECT RAISE(ABORT, 'SIU indicator events are append-only'); END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS siu_indicator_events_are_append_only_no_delete
+    BEFORE DELETE ON siu_indicator_events
+    BEGIN SELECT RAISE(ABORT, 'SIU indicator events are append-only'); END
     """,
 )
