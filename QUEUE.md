@@ -1828,3 +1828,20 @@ the coverage from `gauntlet.toml`'s `tests = "tests/"` key rather than from sour
 repeated it. The move stands on design grounds — two locked specs sharing a Background should
 share one definition per phrase — but no gate would have refused the alternative, and none will
 catch a future duplicated step module. Recorded in `gauntlet-findings.md` as a proposed change.
+
+**Item 5e's prep decisions are recorded, drafting-session work only, on branch `phase2/5e-resolution`
+off `main`.** Five points `PHASE2_DESIGN.md` leaves open are escalated in `ASSUMPTIONS.md`'s "Open
+decisions" rather than defaulted, and no scenario is drafted against any of them: what a resolution
+payload may contain ("the supplemental field values" is never given a set); what a resolution is
+evaluated against, both which rules run and which calendar date they run on; what happens to the
+payload of a resolution that is not applied, which the item's own required payload-sequence scenario
+turns on; whether `actor_type` is a caller input at all, and what status a refused actor or an
+absent `actor_id` gets, neither of which the closed status-code table has a row for; and whether the
+`409` for "not currently `PENDED`" covers a notice standing at `RECEIVED`, a state item 5d's
+two-transaction receipt made observable after that row was written. Three of the five would widen a
+table `PHASE2_DESIGN.md` calls closed, which is the human's call. Separately, `ASSUMPTIONS.md`'s "One
+receipt clock" entry gains a dated extension to the resolution path — every timestamp this endpoint
+writes is the caller-supplied instant for that call, and the notice's receipt instant is untouched by
+a resolution — stated by the instruction that opened this item, not inferred here. Recorded as read
+rather than escalated: this endpoint has no idempotency key, so a network retry of a resolution that
+already succeeded is answered by the `409` row above.

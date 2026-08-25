@@ -96,6 +96,18 @@ or data. Nothing below was confirmed against a live book.
   same reason `notice_intake.feature`'s own Rule 2 comment already gives — `occurred_at` is real
   wall-clock time at the moment a run executes and cannot be stated as a spec literal.
 
+  **Extended to the resolution path, 2026-08-25, stated by the instruction that opened item 5e.**
+  Every timestamp the resolution endpoint writes — the resolution-received instant on the notice, the
+  `occurred_at` of the entry it adds to the audit trail, and the resolution payload record's own — is
+  the caller-supplied instant for that call, never `now()`. The receipt instant the notice already
+  carries is untouched by a resolution, per the Record state model's "set once at capture and never
+  recomputed on any later transition." This is the same rule as above rather than a second one, but
+  it is written down because the entry above reasons entirely about receipt, and item 5e writes
+  timestamps that are not receipts: `PHASE2_DESIGN.md`'s tolling section wants the pend instant and
+  the resolution-received instant recorded "precisely, in UTC," and two clock reads on one resolution
+  would put an unexplained gap between the two ends of the interval something downstream computes
+  tolling from.
+
 - **Timezone-correct "now."** The phase-2 API shell must receive a timezone-aware UTC instant and
   convert it to a calendar date in the jurisdiction's timezone before calling any domain function.
   The domain never receives a date derived from server local time. The conversion is a named,
@@ -1085,6 +1097,75 @@ or data. Nothing below was confirmed against a live book.
   away from a named estate strengthened this rather than changing it — with no estate, the shape has
   nothing left justifying it, and phase 2's adapter layer is now the only defensible home. Do not
   read 4j as having closed this entry.
+
+- **Item 5e's resolution endpoint: five points the design leaves open — escalated 2026-08-25,
+  undecided, nothing drafted against any of them.** `PHASE2_DESIGN.md`'s "Pending resolution and
+  tolling" section, its audit-log entry schema, and its closed status-code table together settle the
+  endpoint's `200` and `422` outcomes, its `409`, the `outcome=REFUSED` entry a refusal still writes,
+  and the immutable per-resolution payload record. Each point below is something a scenario in
+  `features/resolution.feature` would have to answer by defaulting, which `CLAUDE.md`'s never-default
+  constraint forbids. They are listed in the order a scenario meets them.
+
+  1. **What a resolution payload may contain.** The body is "`actor_id` (required), the supplemental
+     field values, an optional note" — and "the supplemental field values" is never given a set. Two
+     readings, and they are not close: only the fields named by the notice's own recorded blockers,
+     or any field the original submission could have carried. The second lets a reviewer change the
+     loss type of a notice pended for a missing policy number, moving severity and queue on a notice
+     nobody said was wrong about its peril; the first cannot express a correction to a field that was
+     present but wrong, which is a real reviewer action a `PENDED` notice invites. The design's own
+     "the current view of a notice is derived from that ordered sequence" is true under either.
+
+  2. **What a resolution is evaluated against.** Two questions that arrive together.
+     **(a) Which rules run.** "Supplied data clears every blocker" and "`422` with the current
+     blockers" point opposite ways: re-checking only the blockers already recorded, or re-running the
+     full validation over the merged current view. Under the second a resolution can introduce a
+     blocker the notice never had — a supplied policy number that is itself malformed — and the
+     design has no word for that outcome.
+     **(b) Which calendar date.** `LOSS_DATE_IN_FUTURE` is a blocker whose truth changes with the
+     date alone. If re-evaluation uses the resolution instant's jurisdiction date, a notice pended
+     for a future loss date clears itself on an empty payload with no reviewer supplying anything; if
+     it uses the calendar date the notice was originally judged on, that pend can never clear at all,
+     because nothing a reviewer supplies moves it. Neither is obviously right and neither is written
+     down anywhere.
+
+  3. **What happens to the payload of a resolution that is not applied.** Both the `422` refusal and
+     the `409` carry content. Arrival order is what the current view is derived from, so a refused
+     resolution's data cannot simply take the next position — that would apply data the system just
+     refused. `POST /notices`'s comparable cases went deliberately opposite ways (a schema-invalid
+     `400` and an idempotency `409` each keep the content with a reference of its own; an
+     unknown-carrier `400` persists nothing), so there is precedent for either answer and no rule
+     that reaches this endpoint. This one is load-bearing for the item's own required
+     payload-sequence scenario rather than a corner of it.
+
+  4. **The actor: what identifies one, whether its type is an input, and what a refused actor gets.**
+     `actor_id` is "caller-asserted in phase 2" and `actor_authenticated` is `false` on every entry
+     regardless, so nothing verifies who a reviewer is — that much is settled and needs no decision.
+     What is not: whether `actor_type` is supplied by the caller at all. The Record state model says
+     a `SYSTEM`-actor attempt at `PENDED → TRIAGED` "is a refused attempt, not an invalid request"
+     and still gets an `outcome=REFUSED` entry — which describes a reachable case only if a caller
+     can name a type. If instead the endpoint writes `USER` because it is the resolution endpoint,
+     that paragraph describes nothing phase 2 can reach and the item's "`USER` actor only" is a
+     tautology with no scenario behind it. Either way the closed status-code table has no row for a
+     refused actor, and none for an absent `actor_id` either — every `400` in it belongs to
+     `POST /notices`.
+
+  5. **Whether `409` covers a notice still at `RECEIVED`.** The table's row is "notice not currently
+     `PENDED`", which reads a `RECEIVED` notice as `409` — but that row was written when `RECEIVED`
+     was not observable at rest, which `notice_intake.feature` states as fact in its own opening
+     comment. Item 5d's two-transaction receipt made it observable: a notice whose rule evaluation
+     raised stands at `RECEIVED`, with its idempotency key remembered and no decision ever recorded.
+     A `409` on it is defensible, since there is no pend to resolve — but so is treating it as a
+     distinct case, because `TRIAGED` means resolved and `RECEIVED` means never judged, and one code
+     for both tells a reviewer nothing about which they hit. The table is closed, so widening it is
+     the human's call and not a spec-drafting one.
+
+  **Not escalated — read from the design rather than defaulted, and recorded so the next session does
+  not reopen it as a gap:** the resolution endpoint has no idempotency key. `PHASE2_DESIGN.md`'s
+  Idempotency section scopes the header to `POST /notices` explicitly, and the status-code table
+  carries no idempotency row for this endpoint. The consequence is that a network retry of a
+  resolution that already succeeded meets a `TRIAGED` notice and is answered `409` by point 5's own
+  row — a correct answer rather than a gap, but one reached by composing two rules rather than one
+  the design states, which is why it is written here instead of assumed.
 
 ## Synthetic data
 
