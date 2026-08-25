@@ -21,8 +21,13 @@ and IMMEDIATE still serializes an idempotency lookup with the insert after it.
 Owns the actor identity phase 2 writes (audit schema: actor_id "caller-asserted
 in phase 2", actor_authenticated false on every entry, no exceptions - nothing
 has been verified because phase 2 verifies nothing). It owns no wall clock any
-more: every timestamp in a submission is the receipt instant the caller
-supplies. See ASSUMPTIONS.md, "One receipt clock, not two".
+more: every timestamp it writes is the instant the caller supplied for that
+call. See ASSUMPTIONS.md, "One receipt clock, not two", as extended to the
+resolution path.
+
+The payload table moved to payloads.py in item 5e - the arrival sequence is what
+that item extends, and this module had four lines of headroom before it did. The
+methods below that name payloads delegate there so callers keep one store.
 """
 
 import sqlite3
@@ -32,6 +37,7 @@ from datetime import datetime
 from typing import Any
 
 from claimgate.domain.models import ValidationBlocker
+from claimgate.shell import payloads
 from claimgate.shell.records import (
     AuditEntry,
     NoticeRecord,
@@ -39,8 +45,6 @@ from claimgate.shell.records import (
     audit_entry_from_row,
     dump_blockers,
     notice_from_row,
-    payload_from_row,
-    payload_reference,
 )
 from claimgate.shell.schema import SCHEMA_STATEMENTS
 
@@ -91,9 +95,10 @@ class NoticeStore:
             " VALUES (?, ?, 'RECEIVED', '[]', NULL, NULL, ?)",
             (notice_id, carrier_code, received_at.isoformat()),
         )
-        self._insert_payload(carrier_code, raw_payload, received_at, notice_id)
-        self._append_audit_entry(
-            notice_id, carrier_code, None, "RECEIVED", "EXTERNAL", received_at, ()
+        payloads.append(self._connection, carrier_code, raw_payload, received_at, notice_id)
+        self.append_audit_entry(
+            notice_id, from_state=None, to_state="RECEIVED", actor_type="EXTERNAL",
+            occurred_at=received_at, blockers=(),
         )
 
     def record_decision(
@@ -106,21 +111,49 @@ class NoticeStore:
         queue: str | None,
         occurred_at: datetime,
     ) -> None:
-        self._connection.execute(
-            "UPDATE notices SET state = ?, blockers = ?, severity = ?, queue = ?"
-            " WHERE notice_id = ?",
-            (state, dump_blockers(blockers), severity, queue, notice_id),
+        """Intake's decision transaction. A decision that lands in PENDED stamps
+        the pend instant, which is the instant this decision was made and not a
+        second clock read (item 5e decision (a))."""
+        self.write_notice_decision(
+            notice_id, state=state, blockers=blockers, severity=severity, queue=queue,
+            pended_at=occurred_at if state == "PENDED" else None, resolved_at=None,
         )
-        carrier_code = self._carrier_code_of(notice_id)
-        self._append_audit_entry(
-            notice_id, carrier_code, "RECEIVED", state, "SYSTEM", occurred_at, blockers
+        self.append_audit_entry(
+            notice_id, from_state="RECEIVED", to_state=state, actor_type="SYSTEM",
+            occurred_at=occurred_at, blockers=blockers,
+        )
+
+    def write_notice_decision(
+        self, notice_id: str, *, state: str, blockers: tuple[ValidationBlocker, ...],
+        severity: str | None, queue: str | None,
+        pended_at: datetime | None, resolved_at: datetime | None,
+    ) -> None:
+        """The notice row every decision writes, intake's and a resolution's
+        alike. Both instants go through COALESCE, so each takes a value once and
+        no later write can replace it - item 5e decision (a)'s "written once and
+        never rewritten", enforced by the statement rather than by call order.
+        Passing None leaves whatever is already there."""
+        self._connection.execute(
+            "UPDATE notices SET state = ?, blockers = ?, severity = ?, queue = ?,"
+            " pended_at = COALESCE(pended_at, ?), resolved_at = COALESCE(resolved_at, ?)"
+            " WHERE notice_id = ?",
+            (state, dump_blockers(blockers), severity, queue,
+             _stamp(pended_at), _stamp(resolved_at), notice_id),
         )
 
     def refuse_payload(
         self, carrier_code: str, raw_payload: Mapping[str, Any], received_at: datetime
     ) -> str:
-        self._insert_payload(carrier_code, raw_payload, received_at, None)
-        return payload_reference(raw_payload)
+        return payloads.append(self._connection, carrier_code, raw_payload, received_at, None)
+
+    def append_notice_payload(
+        self, notice_id: str, carrier_code: str,
+        content: Mapping[str, Any], received_at: datetime,
+    ) -> str:
+        """A resolution's own immutable record, at the next position in the
+        notice's arrival sequence. What it carries is what that reviewer
+        supplied and nothing else - the sequence is the notice."""
+        return payloads.append(self._connection, carrier_code, content, received_at, notice_id)
 
     def get_notice(self, notice_id: str) -> NoticeRecord | None:
         row = self._connection.execute(
@@ -168,24 +201,36 @@ class NoticeStore:
             raise IdempotencyKeyAlreadyRememberedError(carrier_code, idempotency_key) from violation
 
     def get_notice_payload_reference(self, notice_id: str) -> str:
-        """The reference of the payload the notice was created from - position
-        0 of its arrival sequence, the one item 5e's resolution records append
-        after."""
-        row = self._connection.execute(
-            "SELECT reference FROM payload_records WHERE notice_id = ? AND arrival_index = 0",
-            (notice_id,),
-        ).fetchone()
-        return str(row["reference"])
+        return payloads.notice_reference(self._connection, notice_id)
+
+    def get_notice_payloads(self, notice_id: str) -> tuple[PayloadRecord, ...]:
+        return payloads.for_notice(self._connection, notice_id)
 
     def count_notices(self) -> int:
         row = self._connection.execute("SELECT COUNT(*) AS total FROM notices").fetchone()
         return int(row["total"])
 
     def list_payloads(self) -> tuple[PayloadRecord, ...]:
-        rows = self._connection.execute(
-            "SELECT * FROM payload_records ORDER BY payload_id"
-        ).fetchall()
-        return tuple(payload_from_row(row) for row in rows)
+        return payloads.all_records(self._connection)
+
+    def append_audit_entry(
+        self, notice_id: str, *, from_state: str | None, to_state: str, actor_type: str,
+        occurred_at: datetime, blockers: tuple[ValidationBlocker, ...],
+        actor_id: str = UNVERIFIED_ACTOR_ID, outcome: str = "APPLIED", note: str | None = None,
+    ) -> None:
+        """Every transition attempt gets one, refused attempts included
+        (PHASE2_DESIGN.md's audit log). actor_authenticated is written 0 here and
+        nowhere else, for every actor type without exception: phase 2 has no
+        authentication mechanism, so nothing has been verified, and a caller
+        cannot assert otherwise because this method does not take it."""
+        self._connection.execute(
+            "INSERT INTO audit_entries"
+            " (notice_id, carrier_code, from_state, to_state, actor_id, actor_type,"
+            " occurred_at, blockers, outcome, actor_authenticated, note)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
+            (notice_id, self._carrier_code_of(notice_id), from_state, to_state, actor_id,
+             actor_type, occurred_at.isoformat(), dump_blockers(blockers), outcome, note),
+        )
 
     def _carrier_code_of(self, notice_id: str) -> str:
         row = self._connection.execute(
@@ -193,44 +238,6 @@ class NoticeStore:
         ).fetchone()
         return str(row["carrier_code"])
 
-    def _insert_payload(
-        self,
-        carrier_code: str,
-        raw_payload: Mapping[str, Any],
-        received_at: datetime,
-        notice_id: str | None,
-    ) -> None:
-        self._connection.execute(
-            "INSERT INTO payload_records"
-            " (reference, carrier_code, received_at, notice_id, arrival_index)"
-            " VALUES (?, ?, ?, ?, ?)",
-            (payload_reference(raw_payload), carrier_code, received_at.isoformat(),
-             notice_id, self._next_arrival_index(notice_id)),
-        )
 
-    def _next_arrival_index(self, notice_id: str | None) -> int:
-        if notice_id is None:
-            return 0
-        row = self._connection.execute(
-            "SELECT COUNT(*) AS total FROM payload_records WHERE notice_id = ?", (notice_id,)
-        ).fetchone()
-        return int(row["total"])
-
-    def _append_audit_entry(
-        self,
-        notice_id: str,
-        carrier_code: str,
-        from_state: str | None,
-        to_state: str,
-        actor_type: str,
-        occurred_at: datetime,
-        blockers: tuple[ValidationBlocker, ...],
-    ) -> None:
-        self._connection.execute(
-            "INSERT INTO audit_entries"
-            " (notice_id, carrier_code, from_state, to_state, actor_id, actor_type,"
-            " occurred_at, blockers, outcome, actor_authenticated)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'APPLIED', 0)",
-            (notice_id, carrier_code, from_state, to_state, UNVERIFIED_ACTOR_ID,
-             actor_type, occurred_at.isoformat(), dump_blockers(blockers)),
-        )
+def _stamp(instant: datetime | None) -> str | None:
+    return None if instant is None else instant.isoformat()

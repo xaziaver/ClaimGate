@@ -15,6 +15,15 @@ fields are additions this item made rather than found there:
   arrival sequence. Item 5e appends a resolution's payload record to that same
   sequence, so the order has to be a stored fact now rather than an artefact of
   insertion order later.
+- `PayloadRecord.content`, the payload itself. PHASE2_DESIGN.md says the raw
+  payload is "stored once, verbatim, immutable, and referenced by hash"; item 5d
+  had no reader for the verbatim half and stored only the hash. Item 5e derives
+  a notice's current view by overlaying the sequence field by field, which a
+  hash cannot answer, so the content is stored from here on.
+- `NoticeRecord.pended_at` and `NoticeRecord.resolved_at`, item 5e decision (a):
+  the pend instant and the instant of the resolution that released it, the two
+  ends of the interval PHASE2_DESIGN.md's tolling paragraph asks to be recorded
+  "on the notice and in the audit trail". Null until the notice reaches each.
 """
 
 import hashlib
@@ -40,6 +49,10 @@ class NoticeRecord:
     # set once at capture and never recomputed - and, since 2026-08-24, the
     # single receipt instant every timestamp in a submission is written from.
     received_at: datetime
+    # Written once each and never rewritten (item 5e decision (a)); a resolution
+    # that is refused moves neither, and its own instant lives on its audit entry.
+    pended_at: datetime | None = None
+    resolved_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -64,11 +77,22 @@ class AuditEntry:
 @dataclass(frozen=True)
 class PayloadRecord:
     reference: str
+    # What arrived in this position, verbatim. The sequence is what a notice's
+    # current view is read from, so each record holds what arrived in it and
+    # nothing more: a resolution's record carries only the fields its reviewer
+    # supplied, and a field absent from it keeps whatever an earlier record gave.
+    content: dict[str, Any]
     carrier_code: str
     received_at: datetime
     arrival_index: int
     # None for a refused submission - there is no notice to link it to.
     notice_id: str | None = None
+
+
+def serialize_payload(raw_payload: Mapping[str, Any]) -> str:
+    """The bytes a payload is both hashed from and stored as, so the stored
+    content and the reference over it can never describe different things."""
+    return json.dumps(raw_payload, sort_keys=True, default=str)
 
 
 def payload_reference(raw_payload: Mapping[str, Any]) -> str:
@@ -77,7 +101,7 @@ def payload_reference(raw_payload: Mapping[str, Any]) -> str:
     One recipe, so a reporter and a carrier name the same communication the
     same way - and, since item 5d, so a repeated idempotency key can be judged
     a replay or a conflict by comparing references rather than content."""
-    return hashlib.sha256(json.dumps(raw_payload, sort_keys=True, default=str).encode()).hexdigest()
+    return hashlib.sha256(serialize_payload(raw_payload).encode()).hexdigest()
 
 
 def dump_blockers(blockers: tuple[ValidationBlocker, ...]) -> str:
@@ -86,6 +110,10 @@ def dump_blockers(blockers: tuple[ValidationBlocker, ...]) -> str:
 
 def load_blockers(raw: str) -> tuple[ValidationBlocker, ...]:
     return tuple(ValidationBlocker(code=code, field=field) for code, field in json.loads(raw))
+
+
+def _instant(raw: str | None) -> datetime | None:
+    return None if raw is None else datetime.fromisoformat(raw)
 
 
 def notice_from_row(row: sqlite3.Row) -> NoticeRecord:
@@ -97,6 +125,8 @@ def notice_from_row(row: sqlite3.Row) -> NoticeRecord:
         severity=row["severity"],
         queue=row["queue"],
         received_at=datetime.fromisoformat(row["received_at"]),
+        pended_at=_instant(row["pended_at"]),
+        resolved_at=_instant(row["resolved_at"]),
     )
 
 
@@ -121,6 +151,7 @@ def audit_entry_from_row(row: sqlite3.Row) -> AuditEntry:
 def payload_from_row(row: sqlite3.Row) -> PayloadRecord:
     return PayloadRecord(
         reference=row["reference"],
+        content=json.loads(row["content"]),
         carrier_code=row["carrier_code"],
         received_at=datetime.fromisoformat(row["received_at"]),
         arrival_index=row["arrival_index"],

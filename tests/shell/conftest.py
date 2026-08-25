@@ -65,7 +65,10 @@ def submit(store: NoticeStore) -> Submitter:
 
 @pytest.fixture
 def rule_evaluation_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Make _apply_domain_rules raise. Patched at module level on purpose: the
+    """Make apply_domain_rules raise. Patched on notice_intake rather than on
+    rules.py, where it now lives, because the name the intake path resolves is
+    the one this module imported - patching the definition would leave that
+    binding pointing at the original. Patched at module level on purpose: the
     point is that the receipt has already committed by the time anything in
     rule evaluation can go wrong, and only a real raise from inside that step
     proves the transaction boundary is where it is claimed to be."""
@@ -73,4 +76,4 @@ def rule_evaluation_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     def _raise(*_: object, **__: object) -> tuple[str, tuple[()], None, None]:
         raise RuleEvaluationBugError("rule evaluation is broken")
 
-    monkeypatch.setattr(notice_intake, "_apply_domain_rules", _raise)
+    monkeypatch.setattr(notice_intake, "apply_domain_rules", _raise)

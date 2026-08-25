@@ -69,6 +69,68 @@ def test_a_notice_may_still_move_state_the_audit_trail_is_the_history(store: Not
     assert len(store.get_audit_trail(notice_id)) == 2
 
 
+def test_a_decision_that_lands_in_pended_stamps_the_pend_instant(store: NoticeStore) -> None:
+    notice_id = _seed_notice(store)
+    with store.submission():
+        store.record_decision(
+            notice_id, state="PENDED", blockers=(), severity=None, queue=None,
+            occurred_at=_RECEIVED_AT,
+        )
+
+    record = store.get_notice(notice_id)
+    assert record is not None
+    assert record.pended_at == _RECEIVED_AT
+    assert record.resolved_at is None
+
+
+def test_a_decision_that_lands_in_triaged_stamps_neither_instant(store: NoticeStore) -> None:
+    notice_id = _seed_notice(store)
+    with store.submission():
+        store.record_decision(
+            notice_id, state="TRIAGED", blockers=(), severity="standard", queue="standard",
+            occurred_at=_RECEIVED_AT,
+        )
+
+    record = store.get_notice(notice_id)
+    assert record is not None
+    assert record.pended_at is None
+    assert record.resolved_at is None
+
+
+def test_an_instant_already_stamped_is_never_replaced_by_a_later_write(
+    store: NoticeStore,
+) -> None:
+    # Item 5e decision (a): pended_at is written once and never rewritten. The
+    # COALESCE is what enforces it, so a second write naming a different instant
+    # has to leave the first one standing.
+    notice_id = _seed_notice(store)
+    later = datetime(2026, 8, 25, 9, 0, tzinfo=UTC)
+    with store.submission():
+        store.write_notice_decision(
+            notice_id, state="PENDED", blockers=(), severity=None, queue=None,
+            pended_at=_RECEIVED_AT, resolved_at=None,
+        )
+        store.write_notice_decision(
+            notice_id, state="PENDED", blockers=(), severity=None, queue=None,
+            pended_at=later, resolved_at=None,
+        )
+
+    record = store.get_notice(notice_id)
+    assert record is not None
+    assert record.pended_at == _RECEIVED_AT
+
+
+def test_a_payload_record_keeps_what_arrived_in_it_verbatim(store: NoticeStore) -> None:
+    # PHASE2_DESIGN.md stores the payload "verbatim ... and referenced by hash".
+    # The hash alone cannot be overlaid, which is what a notice's current view
+    # is derived by doing.
+    _seed_notice(store)
+
+    record = store.list_payloads()[0]
+    assert record.content == _PAYLOAD
+    assert record.arrival_index == 0
+
+
 def _execute(store: NoticeStore, statement: str) -> None:
     """Reaches past the store's own surface on purpose: the point of these
     tests is that the schema refuses writes no method here offers."""
