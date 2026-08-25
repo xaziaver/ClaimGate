@@ -1252,6 +1252,17 @@ or data. Nothing below was confirmed against a live book.
   it in `validation.feature` is a reopening of a locked spec and is not this item's; it is a
   candidate queue item, not a defect to fix here.
 
+  **(d) An unknown `notice_id` on the resolution endpoint is `404`, nothing persisted.** A resolution
+  against an id nobody has is not a notice event. One row added to the closed table, ratified
+  2026-08-25.
+
+  **(e) An unparseable loss date in a resolution body is body schema-invalid:** the existing `400`
+  row, nothing persisted, checked before the notice is read, beside `actor_id`. Intake answers the
+  same input the same way at its own schema boundary, so the merged view can never carry one and the
+  in-transaction parse that currently raises is unreachable once this lands. Ratified 2026-08-25.
+
+  Both carried to item 5i's reopening of `resolution.feature`.
+
 ## Synthetic data
 
 - No real policy numbers, names, addresses, phone numbers, or claim numbers appear anywhere in

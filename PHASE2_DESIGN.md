@@ -125,7 +125,8 @@ Four endpoints:
 | `POST /notices/{id}/resolution`, notice not currently `PENDED` | `409` |
 | `POST /notices/{id}/resolution`, blockers cleared | **`200 OK`** |
 | `POST /notices/{id}/resolution`, blockers still present | `422` |
-| `POST /notices/{id}/resolution`, body schema-invalid, including an absent or blank `actor_id` | `400`, nothing persisted — row added 2026-08-25, ratified; `ASSUMPTIONS.md` item 5e decision 4 |
+| `POST /notices/{id}/resolution`, body schema-invalid, including an absent or blank `actor_id` or an unparseable loss date | `400`, nothing persisted — row added 2026-08-25, ratified; `ASSUMPTIONS.md` item 5e decisions 4 and (e) |
+| `POST /notices/{id}/resolution`, unknown notice id | `404`, nothing persisted — row added 2026-08-25, ratified; `ASSUMPTIONS.md` item 5e decision (d) |
 
 The two `201`s being identical is deliberate, not an oversight: a notice is created and
 addressable at `GET /notices/{notice_id}` in both cases, which is what `201` means. `202` would

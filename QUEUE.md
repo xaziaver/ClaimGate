@@ -536,7 +536,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
     **Carried from item 5e, 2026-08-25:** the scenario for a resolution against a notice at rest in
     `RECEIVED` — `409`, body carrying state `RECEIVED`, nothing persisted — belongs here, because
     this item is what makes that state reachable by a specified path. It reopens
-    `resolution.feature`'s first rule; cheap while that rule carries no approvals.
+    `resolution.feature`'s first rule; cheap while that rule carries no approvals. Two more rows join that
+    reopening, decided 2026-08-25: an unknown notice id → `404`, nothing persisted; an
+    unparseable loss date in the resolution body → the schema-invalid `400`, nothing persisted,
+    checked at the boundary beside `actor_id` so the merged-view parse in
+    `shell/resolution.py` becomes unreachable and is removed. Both raise `NotImplementedError`
+    until then.
 
 ## What to read
 
@@ -2074,3 +2079,34 @@ no field, column, function or word `tolling` anywhere under `src/`.
 
 **Next action is the human's: review and merge to `main`.** Nothing about this item is waiting on an
 agent, and no `gauntlet` command from the human's list was run.
+
+**Item 5e is merged to `main`** (merge commit `0bab644`, `--no-ff`, 24 files, +2250/−218),
+2026-08-25. Branch `phase2/5e-resolution` ends at `911c962`. Spec locked at `187244d` (blob sha256
+`2b014521a1bc`, 589 lines, 97 mutants, 0 simulated and 0 gate survivors); implemented and green at
+`911c962`: 363/363, coverage 100/100, code mutation 342 killed / 100%, acceptance 9 specs, 69
+reviewed-equivalent, no new approvals; size worst function 23/25, largest module `store.py` 243/250.
+The acceptance gate now takes 693–759s. `handoff.sh`'s false `on origin: NO` for a SHA was fixed in
+the branch's last commit.
+
+**Two decisions made after the merge, 2026-08-25, advisor-recommended, human-ratified,** recorded
+in `ASSUMPTIONS.md` under item 5e as (d) and (e): an unknown `notice_id` on the resolution endpoint is
+`404`, nothing persisted; an unparseable loss date in a resolution body is body schema-invalid and
+takes the existing `400` row. Both currently raise `NotImplementedError` in `shell/resolution.py`,
+correctly escalated. Their scenarios are carried to item 5i's reopening of `resolution.feature`.
+
+**Correction, 2026-08-25, a claim in the 5e implementation report.** "Working tree clean" was true
+when written. After the merge, the human's working tree carried `features/validation.feature` one
+line off its lock — the `_gauntlet` marker. Cause, from the event log and `.gauntlet/mutation-backup/`
+timestamps: the Stop hook's stop-check run `20260825T152701` was killed by the hook's 600s timeout
+608 seconds in, mid-mutation on the last spec; the next stop-check then reported the spec as
+"changed since it was approved". That diagnosis is false whenever a backup in
+`.gauntlet/mutation-backup/` differs from the spec beside it. Restored with `git checkout --`;
+nothing committed was affected. Mitigations: commits 3 and 4 below; recorded for Gauntlet in
+`gauntlet-findings.md` (agent-gauntlet repo, `2547aa1`'s successor).
+
+**Note on history.** `ea64069` and `ab12a2b` added `gauntlet-findings.md` to this repository by
+mistake and `c360ce9` reverted them; that file lives in the agent-gauntlet repository and this
+project never reads or edits it.
+
+**Next action:** the human runs `gauntlet lock` for commit 4, then a fresh advisory session decides
+item 5f's SIU open points before 5f's opening prompt is written. Nothing else is in flight.
