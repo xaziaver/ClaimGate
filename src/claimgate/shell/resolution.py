@@ -1,6 +1,6 @@
 """Orchestration for POST /notices/{notice_id}/resolution.
 
-PHASE2_DESIGN.md's "Pending resolution and tolling" is the specification, and
+PHASE2_DESIGN.md's pending-resolution section is the specification, and
 ASSUMPTIONS.md's five item 5e decisions, ratified 2026-08-25, settle what it
 left open. There is no HTTP layer anywhere in this project yet; a reviewer's
 resolution arrives here as an ordinary call, the way a submission does.
@@ -38,8 +38,11 @@ the notice's receipt instant and pend instant are untouched by any of it
 path). resolved_at is written only by the resolution that moves the notice to
 TRIAGED; a refused attempt's instant lives on its audit entry and nowhere else.
 
-Out of scope, deliberately: no tolling is computed and nothing here is named for
-it; SIU (5f) and duplicate-candidate detection are untouched; and there is no
+Out of scope, deliberately: the two instants above are recorded and nothing
+whatever is computed from them, which is PHASE2_DESIGN.md's "record precisely,
+compute nothing" - what the Fla. Stat. 627.70131(8)(b) interval means is a
+downstream legal determination and no phase-2 code goes near it. SIU (5f) and
+duplicate-candidate detection are untouched too; and there is no
 idempotency key on this endpoint - PHASE2_DESIGN.md scopes the header to
 POST /notices, so a network retry of a resolution that already succeeded meets a
 TRIAGED notice and is answered by the 409 below.

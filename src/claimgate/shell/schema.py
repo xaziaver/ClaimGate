@@ -29,9 +29,10 @@ Two design statements become enforced facts rather than conventions:
   the intended reading.
 
 `notices.pended_at` and `notices.resolved_at` are item 5e decision (a)
-(ASSUMPTIONS.md): the two ends of the interval something downstream computes
-Fla. Stat. 627.70131(8)(b) tolling from, which PHASE2_DESIGN.md's tolling
-paragraph asks to be recorded "on the notice and in the audit trail". Both are
+(ASSUMPTIONS.md): the two ends of the interval Fla. Stat. 627.70131(8)(b)
+defines, which PHASE2_DESIGN.md asks to be recorded "precisely, in UTC, on the
+notice and in the audit trail". Whether that interval means anything is a
+downstream legal determination and nothing here computes it. Both columns are
 written through COALESCE, so each takes a value once and no later write can
 replace it; a refused attempt's instant lives on its audit entry alone. Adding
 these columns does not upgrade an existing database - CREATE TABLE IF NOT

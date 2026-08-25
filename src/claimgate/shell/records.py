@@ -22,8 +22,9 @@ fields are additions this item made rather than found there:
   hash cannot answer, so the content is stored from here on.
 - `NoticeRecord.pended_at` and `NoticeRecord.resolved_at`, item 5e decision (a):
   the pend instant and the instant of the resolution that released it, the two
-  ends of the interval PHASE2_DESIGN.md's tolling paragraph asks to be recorded
-  "on the notice and in the audit trail". Null until the notice reaches each.
+  ends of the interval Fla. Stat. 627.70131(8)(b) defines, which
+  PHASE2_DESIGN.md asks to be recorded "precisely, in UTC, on the notice and in
+  the audit trail". Null until the notice reaches each.
 """
 
 import hashlib
