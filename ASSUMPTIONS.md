@@ -1345,6 +1345,19 @@ or data. Nothing below was confirmed against a live book.
   per indicator per evaluation, so a notice that has never transitioned into `TRIAGED` has none, and
   the read returns nothing rather than a pair of absent values.
 
+  **Decided 2026-08-25, advisor-recommended, human-ratified.** `ruleset_version` names the version
+  of the domain rule set — the evaluating code — never the carrier's configured numbers, which have
+  no version and do not acquire one for this. Its value is a date-stamped label declared once in the
+  domain package and copied by the shell onto every audit entry (which has left it null since item
+  5c; 5f's implementation fills it on both paths) and onto every SIU event row. Any commit that
+  changes a rule's behaviour under `src/claimgate/domain/` bumps the label. That is a convention no
+  gate can enforce, recorded as one. Reproducibility of a row comes from recording the input
+  applied, not from versioning configuration: each SIU event row also carries the threshold the
+  evaluation used, null when none was configured. The spec asserts all of this relationally and with
+  no literal: one evaluation's two events carry the same version as each other and as the audit
+  entry that triaged the notice, and the late reporting event records the threshold the carrier
+  configured.
+
 ## Synthetic data
 
 - No real policy numbers, names, addresses, phone numbers, or claim numbers appear anywhere in
