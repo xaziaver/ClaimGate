@@ -1896,3 +1896,70 @@ state has drifted. **The next action is a human review and `gauntlet spec approv
 action** — and, before that, the five escalated points, three of which would widen a status-code table
 `PHASE2_DESIGN.md` calls closed. No implementation, no approval, and no `gauntlet` command beyond
 `spec list` were run.
+
+**Item 5e's five points are decided at `809e783` and the draft is amended in the commit that carries
+this paragraph, spec-only, pushed to `phase2/5e-resolution`.** The amendment names no ref of its own
+because a commit cannot carry its own hash and the spec and this record are deliberately one commit;
+the stable identity, and the one to lock against, is `features/resolution.feature` at sha256
+`ad983390d37d`, 555 lines — export it with `git show <branch tip>:features/resolution.feature` and
+check the digest before approving.
+Advisor-recommended, human-ratified 2026-08-25; all five recorded in full in `ASSUMPTIONS.md`'s "Open
+decisions" under the item 5e entry, which is the source for every line below. **1.** A resolution may
+supply any notice-content field, not only the ones its blockers name — a field-level overlay in
+arrival order, an omitted field keeping its prior value, and no way to blank a field in phase 2, only
+to replace it. **2.** The full validation re-runs over the merged current view, on the jurisdiction
+date of the resolution's own caller-supplied instant; a blocker the resolution introduces is not a new
+outcome but simply among "the current blockers" the `422` reports, and an empty resolution (`actor_id`
+only) is valid input. **3.** A refused resolution's data is kept, in sequence, and is part of the
+current view — the release was refused, not the data — while the `409` persists nothing at all.
+**4.** `actor_type` is not a caller input; the endpoint stamps `USER`, and a body with an absent or
+blank `actor_id` is schema-invalid — the single row this adds to the closed status-code table, `400`,
+nothing persisted. **5.** A `RECEIVED` notice gets the existing `409` whose body carries its current
+state; no new row, and the scenario is carried to item 5i, annotated in that item's entry.
+
+**One correction the ratification forced, recorded where the wrong claim was made.** The escalation
+entry and the draft's own header both said this file decided none of the five. That was false for
+point 3: Rule 2's refused row asserts the notice's blockers as `NOTICE_TYPE_UNRECOGNIZED:notice_type`
+alone, which is true only if the refused resolution's policy number had already entered the current
+view. The draft had decided point 3, in the direction since ratified, without saying so. Annotated in
+`ASSUMPTIONS.md` under decision 3 and in the feature file's replacement header.
+
+**Four rules added, two amended.** Added: a resolution with no reviewer behind it is refused before
+anything is written (`400`, nothing persisted, against the identified reviewer's `200`); a reviewer
+may correct a field the notice already had, not only supply one it was missing (an omitted loss type
+keeping `standard`/`standard` against a supplied `fire` moving the notice to `high`/`complex` — the
+accepted cost of decision 1, in the spec rather than only in the record of it); a resolution is judged
+on the calendar date it arrives, one minute either side of the boundary; and what a refused resolution
+supplied is kept, in sequence, and counts toward what the notice says — three records for one
+submission and two resolutions, the second clearing the pend only because the first attempt's policy
+number is already part of the current view. Amended: Rule 1 gains a records column, so the `409`'s "no
+state change, no audit entry" is a complete claim rather than half of one; Rule 2 gains a third row
+where the resolution introduces a blocker the notice never had, which a blockers-only recheck would
+have answered `200`.
+
+**Measured** directly against `gauntlet.acceptance.mutation.mutants()`: **85 mutants, all `example`
+kind, zero `literal`** — 12 / 10 / 24 / 6 / 8 / 6 / 9 / 4 / 6 in file order, up from 40. Re-measured
+alongside: `idempotency.feature` **40**, `notice_intake.feature` **48**, both unchanged by this branch.
+**Simulated**, and recorded as a simulation rather than a measurement: **0 survivors of 85**, each
+substitution dumped from the engine and walked individually against the rule its row belongs to rather
+than predicted from the table's shape.
+
+**The arithmetic in the arrival-date rule was recomputed rather than carried over.** America/New_York
+is UTC−4 in August 2026, so `2026-08-26T03:59Z` is 23:59 on the 25th there and `2026-08-26T04:00Z` is
+00:00 on the 26th; against a loss date of `2026-08-26`, the first is still in the future and the
+second is not. Verified against `zoneinfo` at the two instants plus the Background's own.
+
+**Nineteen step phrases in this file have no definition yet, and two existing definitions need a
+second keyword** — `the notice's state is <state>` and `the response is <response>` are both used in
+`Given` position as well as `Then`, the same stacking `docs/harness-findings.md` records for
+`@given`/`@when`. Two phrasings were changed during drafting to avoid shadowing: a records assertion
+reading `the notice <phrase>` would have captured `the notice is submitted for intake`, and a second
+`the <ordinal> record kept for the notice <phrase>` would have shadowed the first, so they are now
+`the notice's records <phrase>` and `that record <phrase>`. **One requirement the implementing session
+cannot get wrong without silently losing two mutants:** `the notice's blockers are <blockers>` must
+assert the exact set, never containment — Rule 2's second and third rows are killed only because a
+mutated row produces two blockers where one is asserted.
+
+**`gauntlet check` still expects exactly one unapproved spec.** Not run this session beyond `gauntlet
+spec list`. **The next action is the human's: review and lock.** No implementation, no approval, and
+no `gauntlet` command from the human's list were run.

@@ -33,41 +33,42 @@ Feature: Resolving a pended notice
   # and unambiguous. No scenario below names tolling, and nothing in phase
   # 2 does.
   #
-  # WHAT THIS DRAFT DELIBERATELY DOES NOT COVER, and why - five points
-  # PHASE2_DESIGN.md leaves open, escalated 2026-08-25 in ASSUMPTIONS.md's
-  # "Open decisions" and not defaulted here. Every scenario below is
-  # written to sit inside the intersection of the open readings, so that
-  # none of them has to be decided before this file can be locked:
+  # WHAT THIS FILE DECIDES, and where it was decided - the five points this
+  # draft escalated on 2026-08-25 were ratified the same day. Each is
+  # recorded in full, with its reasoning, in ASSUMPTIONS.md's "Open
+  # decisions", under the item 5e entry; one line each here so a reader of
+  # the spec knows which behaviour below is a decision and which is a
+  # consequence:
   #
-  #   1. What a resolution payload may contain. "The supplemental field
-  #      values" is never given a set. Every resolution below supplies only
-  #      fields the notice's own recorded blockers name, which is allowed
-  #      under both the narrow reading and the broad one. No scenario
-  #      supplies a field that was not blocked.
-  #   2. What a resolution is evaluated against - which rules re-run, and
-  #      against which calendar date. Every resolution below either clears
-  #      its blockers or leaves one of them standing, and none introduces a
-  #      blocker the notice did not already have, so re-checking only the
-  #      recorded blockers and re-running the whole validation agree on
-  #      every row. No notice below is pended for LOSS_DATE_IN_FUTURE,
-  #      which is the blocker whose truth changes with the calendar date
-  #      alone and so is the one the second half of that question turns on.
-  #   3. What happens to the payload of a resolution that is not applied.
-  #      Rule 3 asserts the arrival sequence only for a resolution that was
-  #      applied. Nothing below asserts whether a refused resolution's or a
-  #      conflicted resolution's content is kept, or where.
-  #   4. Whether the actor's type is a caller input, and what a refused
-  #      actor gets. Every resolution below is a reviewer's, so every
-  #      audited attempt is a USER one. There is no scenario for a
-  #      SYSTEM-actor attempt at this transition: the Record state model
-  #      says such an attempt is refused and audited, but the closed
-  #      status-code table has no row for it, and inventing one is exactly
-  #      what CLAUDE.md's never-default constraint forbids.
-  #   5. Whether the 409 for "not currently PENDED" covers a notice still
-  #      standing at RECEIVED. Rule 1's second row is a TRIAGED notice,
-  #      which the table's row plainly covers. A RECEIVED notice - which
-  #      item 5d's two-transaction receipt made observable at rest for the
-  #      first time, after that row was written - has no row here.
+  #   1. A resolution may supply any notice-content field, not only the
+  #      ones its blockers name - overlaid field by field in arrival order,
+  #      a field it omits keeping its prior value, and no way to blank a
+  #      field, only to replace it.
+  #   2. The full validation runs over the merged current view, on the
+  #      jurisdiction date of the resolution's own caller-supplied instant.
+  #      One definition of "no blocker", the same one intake uses. A
+  #      blocker the resolution introduces is not a new outcome; it is
+  #      simply among "the current blockers" the 422 reports.
+  #   3. A refused resolution's data is kept, in sequence, and is part of
+  #      the current view - the release was refused, not the data. The 409
+  #      persists nothing at all.
+  #   4. The actor's type is not a caller input; this endpoint stamps USER.
+  #      The reviewer's identity is a required caller-asserted string, and
+  #      a body without one is schema-invalid: 400, nothing persisted.
+  #   5. A notice at rest in RECEIVED gets the existing 409, whose body
+  #      carries the notice's current state. No new status row. That
+  #      scenario is owed to item 5i, which is what makes the state
+  #      reachable by a specified path; today it is only producible by an
+  #      exception from unbuilt code.
+  #
+  # One correction the ratification forced, recorded here because this
+  # header is where the wrong claim was made: the 2026-08-25 draft said it
+  # decided none of the five and sat inside the intersection of every open
+  # reading. That was false for point 3. Rule 2's refused row asserts the
+  # notice's blockers as NOTICE_TYPE_UNRECOGNIZED:notice_type alone, which
+  # is only true if the refused resolution's policy number had already
+  # entered the current view - the draft had decided point 3, in the
+  # direction since ratified, without saying so.
   #
   # Duplicate candidates and SIU indicators are asserted nowhere below, for
   # the same reasons notice_intake.feature gives: SIU is item 5f's
@@ -113,9 +114,22 @@ Feature: Resolving a pended notice
     # resolution to an already-triaged notice would look identical on state
     # alone and is caught by the trail.
     #
-    # The second row is a TRIAGED notice, not a RECEIVED one. A RECEIVED
-    # notice is the case escalated as open point 5 above and has no row
-    # here.
+    # The second row is a TRIAGED notice, not a RECEIVED one. Decision 5
+    # settles that a notice at rest in RECEIVED gets this same 409, with
+    # its current state in the body and no new status row - but the
+    # scenario for it belongs to item 5i, the item that makes that state
+    # reachable by a specified path. Today the only way to produce it is an
+    # exception raised from code nobody has written, and a scenario whose
+    # setup depends on that is not a scenario. There is no row for it here.
+    #
+    # The records column is what turns the 409's "no state change, no audit
+    # entry" into a complete claim rather than half of one. Decision 3
+    # settles that this case persists nothing at all - no pend, no request
+    # for information, nothing for a reviewer's content to be the answer
+    # to, so unlike the 422 there is nothing here worth keeping. The audit
+    # column on its own would pass an implementation that quietly kept the
+    # refused content and merely declined to audit it, which is exactly the
+    # thing decision 3 permits for the 422 and forbids here.
     Scenario Outline: Whether a resolution is acted on depends on the state the notice is already in
       Given the notice reports a policy number of "<policy_number>"
       And the notice is submitted for intake
@@ -125,11 +139,56 @@ Feature: Resolving a pended notice
       Then the response is <response>
       And the notice's state is <state_after>
       And the notice's audit trail <audit_effect>
+      And the notice's records <records>
 
       Examples:
-        | policy_number | state_before | response | state_after | audit_effect                            |
-        | absent        | PENDED       | 200      | TRIAGED     | gains a third entry, for the resolution |
-        | HO-1234567    | TRIAGED      | 409      | TRIAGED     | still holds only its two intake entries |
+        | policy_number | state_before | response | state_after | audit_effect                            | records                                             |
+        | absent        | PENDED       | 200      | TRIAGED     | gains a third entry, for the resolution | are two, the submission and the resolution           |
+        | HO-1234567    | TRIAGED      | 409      | TRIAGED     | still holds only its two intake entries | are one, the submission it was created from          |
+
+  Rule: A resolution with no reviewer behind it is refused before anything is written
+
+    # Decision 4: the actor's type is not a caller input - this endpoint
+    # stamps USER, because an unauthenticated caller asserting SYSTEM would
+    # be asserting something nothing in phase 2 can check. What the caller
+    # does supply is the reviewer's own identity: required, caller-asserted,
+    # recorded unverified. A body without one is schema-invalid, and that is
+    # the single row decision 4 added to a status-code table
+    # PHASE2_DESIGN.md otherwise calls closed - 400, nothing persisted.
+    #
+    # There is deliberately no scenario for a SYSTEM-actor attempt at this
+    # transition. PHASE2_DESIGN.md's Record state model says such an attempt
+    # is refused and audited, and that sentence now carries a dated
+    # annotation saying what it actually describes: a guard for a future
+    # system re-evaluation path, with no producer anywhere in phase 2. A
+    # scenario for it would be specifying code nobody can reach.
+    #
+    # 400 rather than 422 is the distinction between a body that cannot be
+    # read and a body that was read and did not clear the pend. Persisting
+    # nothing follows the unknown-carrier 400's reasoning rather than the
+    # schema-invalid one's: there is no reviewer here for an attempt to be
+    # attributed to, so an audit entry would have to name someone nobody
+    # supplied.
+    #
+    # The Background identifies a reviewer for every other rule in this
+    # file; this rule's own Given overrides it per row, and "absent" means
+    # the identity is not in the body at all - the same sentinel intake's
+    # own steps already give the word.
+    Scenario Outline: Whether a resolution is read at all depends on whether it says who is making it
+      Given the notice reports a policy number of "absent"
+      And the notice is submitted for intake
+      And the reviewer is identified as "<reviewer>"
+      When the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is <response>
+      And the notice's state is <state>
+      And the notice's audit trail <audit_effect>
+      And the notice's records <records>
+
+      Examples:
+        | reviewer      | response | state   | audit_effect                            | records                                              |
+        | adjuster-4471 | 200      | TRIAGED | gains a third entry, for the resolution | are two, the submission and the resolution           |
+        | absent        | 400      | PENDED  | still holds only its two intake entries | are one, the submission it was created from          |
 
   Rule: The notice moves only when the resolution clears every blocker, and either way the attempt is audited
 
@@ -147,12 +206,32 @@ Feature: Resolving a pended notice
     # reviewer who supplied part of what was missing rather than nothing at
     # all, which is the realistic shape of a refusal and the only one that
     # exercises "the still-failing blockers" as a proper subset of what the
-    # notice was held for. Both supplied fields are named by the notice's
-    # own blockers, and neither row can introduce a blocker the notice did
-    # not already have, which is what keeps this rule inside open points 1
-    # and 2 rather than deciding them. The blocker codes are
-    # validation.feature's own, reused rather than reinvented - this
-    # endpoint gets no blocker vocabulary of its own.
+    # notice was held for. The blocker codes are validation.feature's own,
+    # reused rather than reinvented - this endpoint gets no blocker
+    # vocabulary of its own.
+    #
+    # What the notice carries after a refusal is the full current set, not
+    # the leftovers of the set it was pended for. Decision 2(a): the whole
+    # validation re-runs over the merged current view, so the notice's
+    # stored blockers are replaced by that run's result and the 422 body
+    # and the record cannot disagree. The second row is where that is
+    # visible: the notice was pended for two blockers, the reviewer's
+    # policy number cleared one, and the notice is left carrying exactly
+    # one - which is true only because what a refused resolution supplied
+    # entered the current view. That is decision 3, and this row asserted
+    # it before it was ratified, at a point when this file's own header
+    # claimed to be deciding nothing; the header now records the
+    # correction.
+    #
+    # The third row is decision 2(a)'s other half, and it is the one the
+    # design had no word for before the ratification. The reviewer clears
+    # the notice-type blocker and supplies a policy number that is itself
+    # malformed, so the notice ends up carrying a blocker it never had at
+    # intake. That is not a new outcome needing a new status: it is the
+    # ordinary 422 "with the current blockers," and the row proves the
+    # implementation re-ran the whole validation rather than ticking off
+    # the two codes it started with - a blockers-only recheck would have
+    # cleared both and answered 200.
     #
     # The entry's blockers are asserted as a literal set rather than
     # relationally against the notice's, which is the opposite of the
@@ -180,7 +259,7 @@ Feature: Resolving a pended notice
       Given the notice reports a policy number of "absent"
       And the notice reports a notice type of "SUPPLEMENT"
       And the notice is submitted for intake
-      When the reviewer supplies a policy number of "HO-7654321"
+      When the reviewer supplies a policy number of "<supplied_policy_number>"
       And the reviewer supplies a notice type of "<supplied_notice_type>"
       And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
       Then the response is <response>
@@ -192,9 +271,98 @@ Feature: Resolving a pended notice
       And that entry records the reviewer's own asserted identity, unverified
 
       Examples:
-        | supplied_notice_type | response | state   | blockers                             | outcome | actor | entry_blockers                       |
-        | SUPPLEMENTAL         | 200      | TRIAGED |                                      | APPLIED | USER  |                                      |
-        | SUPPLEMENT           | 422      | PENDED  | NOTICE_TYPE_UNRECOGNIZED:notice_type | REFUSED | USER  | NOTICE_TYPE_UNRECOGNIZED:notice_type |
+        | supplied_policy_number | supplied_notice_type | response | state   | blockers                             | outcome | actor | entry_blockers                       |
+        | HO-7654321             | SUPPLEMENTAL         | 200      | TRIAGED |                                      | APPLIED | USER  |                                      |
+        | HO-7654321             | SUPPLEMENT           | 422      | PENDED  | NOTICE_TYPE_UNRECOGNIZED:notice_type | REFUSED | USER  | NOTICE_TYPE_UNRECOGNIZED:notice_type |
+        | HO-12                  | SUPPLEMENTAL         | 422      | PENDED  | POLICY_NUMBER_MALFORMED:policy_number | REFUSED | USER  | POLICY_NUMBER_MALFORMED:policy_number |
+
+  Rule: A reviewer may correct a field the notice already had, not only supply one it was missing
+
+    # Decision 1: a resolution may carry any notice-content field, not only
+    # the ones the notice's blockers name, overlaid field by field in
+    # arrival order. The reporter who left the policy number off also had
+    # the peril wrong, and the narrow reading would have carried a value a
+    # human knew was wrong through triage and on into the adapter.
+    #
+    # The accepted cost is exactly what the second row shows: correcting a
+    # field nobody was holding the notice for moves severity and queue.
+    # That is the strongest argument for the narrow reading, and it is not
+    # a defect - it is why PENDED -> TRIAGED is a USER transition at all. A
+    # human made the call, the entry names them, and the payload carrying
+    # it is immutable and hashed like every other.
+    #
+    # The first row is where "a field the resolution omits keeps its prior
+    # value" is asserted: the reviewer supplies only a policy number, the
+    # loss type is not in the resolution at all, and the notice still
+    # triages on the peril it was reported with. There is no way to blank a
+    # field in phase 2, only to replace one, so "absent" in a
+    # reviewer-supplies step means omitted and never means cleared.
+    #
+    # fire is a Section I peril, so no claimant-field requirement enters
+    # with it and this rule stays about the overlay rather than borrowing
+    # validation.feature's Section II rules. Both severities and both
+    # queues are triage.feature's own values, reused rather than restated
+    # here as new behaviour.
+    Scenario Outline: What a corrected field does to the notice depends on which field the reviewer corrects
+      Given the notice reports a policy number of "absent"
+      And the notice is submitted for intake
+      When the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer supplies a loss type of "<supplied_loss_type>"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is 200
+      And the notice's state is TRIAGED
+      And the notice's severity is <severity>
+      And the notice's queue is <queue>
+
+      Examples:
+        | supplied_loss_type | severity | queue    |
+        | absent             | standard | standard |
+        | fire               | high     | complex  |
+
+  Rule: A resolution is judged on the calendar date it arrives, not the one the notice was pended on
+
+    # Decision 2(b): the full validation re-runs on the jurisdiction date of
+    # the resolution's own caller-supplied instant, through the same
+    # conversion intake performs. The frozen alternative - judging every
+    # resolution on the date the notice was received - makes a pend for a
+    # future loss date permanently unresolvable, because nothing a reviewer
+    # supplies can move it, and a notice that can never leave PENDED is a
+    # discarded state under another name.
+    #
+    # Nothing here clears by the mere passage of time. No rule runs without
+    # a USER resolution, and the reviewer below supplies no field values at
+    # all - which decision 2(b) settles is valid input, a human asserting on
+    # the record that the notice is acceptable as it stands. Time alone
+    # changes nothing; time plus a reviewer's judgment does.
+    #
+    # The arithmetic, stated so the rows can be checked without running
+    # them: America/New_York is four hours behind UTC in August, so
+    # 2026-08-26T03:59Z is 23:59 on the 25th there and 2026-08-26T04:00Z is
+    # 00:00 on the 26th. The loss date is 2026-08-26. A loss date after
+    # today is in the future; a loss date equal to today is not. The two
+    # rows sit one minute either side of the only boundary this rule has,
+    # and the notice is pended on that boundary at intake because the
+    # Background's own instant falls on the 24th.
+    #
+    # That the reviewer supplies nothing is a fixed step rather than a
+    # column: it is identical on both rows, so mutation cannot see it. The
+    # rows carry the rule on the instant alone, which is the point - two
+    # identical resolutions, one refused and one applied, differing in
+    # nothing but when they arrived.
+    Scenario Outline: Whether a future loss date still blocks depends on the date the resolution arrives
+      Given the notice reports a loss date of "2026-08-26"
+      And the notice is submitted for intake
+      And the notice's state is PENDED
+      When the reviewer supplies no field values
+      And the reviewer's resolution is submitted at "<resolved_at>"
+      Then the response is <response>
+      And the notice's state is <state>
+      And the notice's blockers are <blockers>
+
+      Examples:
+        | resolved_at       | response | state   | blockers                      |
+        | 2026-08-26T03:59Z | 422      | PENDED  | LOSS_DATE_IN_FUTURE:loss_date |
+        | 2026-08-26T04:00Z | 200      | TRIAGED |                               |
 
   Rule: What a reviewer supplies is added to the notice's record in arrival order, never written over what is already there
 
@@ -239,7 +407,7 @@ Feature: Resolving a pended notice
       And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
       Then the response is 200
       And the <ordinal> record kept for the notice reports a policy number of <recorded_policy_number>
-      And the <ordinal> record kept for the notice <origin>
+      And that record <origin>
       And no third record is kept for the notice
       And the notice's current view reports a policy number of "HO-7654321"
 
@@ -247,6 +415,55 @@ Feature: Resolving a pended notice
         | ordinal | recorded_policy_number | origin                                        |
         | first   | absent                 | is the submission the notice was created from |
         | second  | HO-7654321             | is the reviewer's resolution                  |
+
+  Rule: What a refused resolution supplied is kept, in sequence, and counts toward what the notice says
+
+    # Decision 3: the release was refused, not the data. What the reviewer
+    # supplied is the reporter's answer to a request for information under
+    # Fla. Stat. 627.70131(4)(b)3 and is received the moment it arrives.
+    # The audit entry's REFUSED already records that the state did not
+    # move, so an applied/unapplied marker on the record itself would be a
+    # second place to say the same thing, and the two could disagree. The
+    # sequence is the notice.
+    #
+    # This is the rule a reviewer's actual working pattern needs. Someone
+    # who fixed one of two problems does not re-supply the fixed one on the
+    # next attempt, and the second resolution below supplies only a notice
+    # type. It clears the pend only because the policy number from the
+    # refused first attempt is already part of what the notice says - which
+    # is also the reason "422 with the current blockers" means anything at
+    # all rather than reporting a set nobody can act on.
+    #
+    # Three records for one submission and two resolutions, and the third
+    # reports its policy number as absent because the second resolution did
+    # not carry one. That is decision 1's overlay seen from the other side:
+    # each record holds what arrived in it and nothing more, and the
+    # current view is read from the sequence rather than from any single
+    # record in it. Four audit entries, because the refusal is an entry
+    # too.
+    Scenario Outline: Each record holds what arrived in it, and a refused resolution's record is one of them
+      Given the notice reports a policy number of "absent"
+      And the notice reports a notice type of "SUPPLEMENT"
+      And the notice is submitted for intake
+      And the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer supplies a notice type of "SUPPLEMENT"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      And the response is 422
+      And the notice's current view reports a policy number of "HO-7654321"
+      When the reviewer supplies a notice type of "SUPPLEMENTAL"
+      And the reviewer's resolution is submitted at "2026-08-25T11:00Z"
+      Then the response is 200
+      And the notice's state is TRIAGED
+      And the <ordinal> record kept for the notice reports a policy number of <recorded_policy_number>
+      And that record <origin>
+      And no fourth record is kept for the notice
+      And the notice's audit trail holds four entries
+
+      Examples:
+        | ordinal | recorded_policy_number | origin                                        |
+        | first   | absent                 | is the submission the notice was created from |
+        | second  | HO-7654321             | is the reviewer's first resolution            |
+        | third   | absent                 | is the reviewer's second resolution           |
 
   Rule: A replay of the original submission reports the state the notice is in now, not the one it landed in
 
