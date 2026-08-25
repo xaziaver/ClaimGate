@@ -454,6 +454,10 @@
       "approved_at": "2026-08-21T20:09:42+00:00",
       "digest": "sha256:1e7f697ecbcd62cd7447f331f935e94369e9768dfa0a45e9e2cf990dd370fec9"
     },
+    "spec:features/siu_separation.feature": {
+      "approved_at": "2026-08-25T22:31:05+00:00",
+      "digest": "sha256:cbde5f6ab716a5204fb00347ddf50512f2e515e7ffe274f391ce156928c1d2ef"
+    },
     "spec:features/triage.feature": {
       "approved_at": "2026-08-15T11:34:27+00:00",
       "digest": "sha256:269a12ba9c697f6d83b1d6b6a4881259fba603eb89a92d9dbf65c8b01661ca37"
