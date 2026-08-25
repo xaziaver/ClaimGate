@@ -2110,3 +2110,28 @@ project never reads or edits it.
 
 **Next action:** the human runs `gauntlet lock` for commit 4, then a fresh advisory session decides
 item 5f's SIU open points before 5f's opening prompt is written. Nothing else is in flight.
+
+**Item 5f is open on `phase2/5f-siu-separation`**, cut from `main` at the commit that carries this
+paragraph. It supersedes the "Next action" line above: `gauntlet lock` for commit 4 was run
+(`0c53323`), and the advisory session that line called for has happened. Six decisions came out of
+it — advisor-recommended, human-ratified, 2026-08-25, all recorded in full with their reasoning in
+`ASSUMPTIONS.md` under "Item 5f, SIU separation", one line each here:
+
+1. Indicators are evaluated on every transition into `TRIAGED`, on both paths, inside that
+   transaction, on the merged current view — never at `RECEIVED` or `PENDED`.
+2. Late reporting is measured from the original receipt instant's jurisdiction date, never from the
+   resolution instant.
+3. One append-only event row per indicator per evaluation, including `FALSE` and `NOT_EVALUATED`,
+   carrying the indicator, the value, the reason code, the `ruleset_version` and the transaction's
+   caller-supplied instant.
+4. No read surface in phase 2 beyond a restricted read in the test API the scenarios use.
+5. The leak assertions are outcome negatives on four surfaces — intake response, resolution
+   response, the notice's standard view, every audit entry — plus the reason-code exclusion from
+   blockers.
+6. The rules applied are the carrier's configuration as resolved at the triaging transaction.
+
+None of the six is a new indicator; further FNOL indicators are recorded in `ASSUMPTIONS.md` as a
+candidate item, not as 5f scope. **Next: draft `features/siu_separation.feature`, spec-only.** No
+implementation, no approval, and no command from the human's list. The acceptance gate will report
+one unapproved spec for as long as the draft is unlocked, which is guaranteed by the
+separate-commits rule and is not a defect to retry.

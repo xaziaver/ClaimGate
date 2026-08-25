@@ -457,3 +457,11 @@ rather than a pair of booleans named for a conclusion (`QUEUE.md` items 1 and 2,
 remains outstanding is unchanged and is phase-2-shell work that hasn't started: the separate
 persisted table and the allow-list serializer described above. The vocabulary discipline itself
 still binds — an indicator is a factual observation with a code, never a conclusion.
+
+**Decided 2026-08-25 (`ASSUMPTIONS.md`, item 5f decisions 1–6):** evaluation on every transition
+into `TRIAGED`, both paths, in that transaction, on the merged view; late reporting measured from
+the receipt instant, never the resolution instant; one append-only event row per indicator per
+evaluation including `FALSE` and `NOT_EVALUATED`, with reason code, `ruleset_version` and the
+transaction's caller-supplied instant; no read surface in phase 2 beyond the test API's restricted
+read; leak negatives on four surfaces plus the reason-code exclusion. The write-side trail named in
+point 4 above is item 5f's deliverable; the read-side log stays deferred.

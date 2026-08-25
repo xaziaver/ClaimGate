@@ -1263,6 +1263,51 @@ or data. Nothing below was confirmed against a live book.
 
   Both carried to item 5i's reopening of `resolution.feature`.
 
+- **Item 5f, SIU separation — six decisions, advisor-recommended, human-ratified, 2026-08-25.** All
+  six were open in `PHASE2_DESIGN.md`'s "SIU handling"; none is a new indicator. New indicators are
+  out of scope for 5f and recorded below as a candidate item.
+
+  1. **SIU indicators are evaluated on every transition into `TRIAGED`, on both paths, inside that
+     transaction, on the merged current view — never at `RECEIVED` or `PENDED`.** A pended notice is
+     an incomplete intake record, not a claim; carriers score indicators on the claim. A resolution
+     that corrects the loss date changes the interval, so an evaluation at pend time would record a
+     determination on data a human later corrected. A refused resolution and an idempotent replay
+     evaluate nothing, because neither transitions.
+
+  2. **Late reporting is measured from the original receipt instant's jurisdiction date, never from
+     the resolution instant.** Notice given is notice received; a pend does not make the reporter
+     late. The one-receipt-clock entry implies this and did not state it. A notice pended nine days
+     after loss and resolved five weeks later is not late.
+
+  3. **One event row per indicator per evaluation, including `FALSE` and `NOT_EVALUATED`.**
+     "Unevaluated is not negative" is only auditable if unevaluated is written; a trail of positives
+     makes an absent row mean three different things. A row carries the indicator name, the value,
+     the reason code (null unless `NOT_EVALUATED`), the `ruleset_version`, and `evaluated_at`, which
+     is the triaging transaction's caller-supplied instant. Append-only: no update, no delete, no
+     code path for either.
+
+  4. **No read surface in phase 2 beyond a restricted read in the test API used by scenarios.** No
+     HTTP route for indicators until an authenticated identity exists to log a read against — the
+     design's reasoning for deferring the read-side log applies to the read itself.
+
+  5. **The leak assertions are outcome negatives on four surfaces** — intake response, resolution
+     response, the notice's standard view, and every audit entry — for a notice whose late
+     reporting is `TRUE` and whose inception indicator is `NOT_EVALUATED`, so there is something to
+     leak; and the two SIU reason codes never appear among a response's blockers. Some of these will
+     be fixed steps the engine cannot mutate; they still execute, and the limit is recorded in the
+     spec's comments, not hidden.
+
+  6. **The rules applied are the carrier's configuration as resolved at the triaging transaction,**
+     with `ruleset_version` on every event row — the same answer as item 5e decision 2(a).
+
+  **Candidate item, not 5f:** further FNOL indicators a Florida residential SIU desk actually uses —
+  loss shortly before expiration or pending cancellation; a public adjuster, attorney, or assignee
+  as the reporter at first notice; a coverage or limit increase shortly before the loss; prior-loss
+  frequency from an industry database hit; reporter-versus-insured identity mismatch; loss dates
+  just outside a declared catastrophe window. Each needs its own defensible basis and its own
+  sensitivity review. The referral side (s. 626.9891 anti-fraud plan and SIU requirements) is
+  unverified this session and is not 5f's.
+
 ## Synthetic data
 
 - No real policy numbers, names, addresses, phone numbers, or claim numbers appear anywhere in
