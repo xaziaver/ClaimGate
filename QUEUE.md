@@ -1845,3 +1845,50 @@ writes is the caller-supplied instant for that call, and the notice's receipt in
 a resolution — stated by the instruction that opened this item, not inferred here. Recorded as read
 rather than escalated: this endpoint has no idempotency key, so a network retry of a resolution that
 already succeeded is answered by the `409` row above.
+
+**Item 5e's first draft landed, spec-only, on the same branch.** `features/resolution.feature`, five
+rules: a resolution is acted on only while the notice is still pended (`200` against a `409` on a
+notice already `TRIAGED`, with the trail proving the `409` wrote nothing); the notice moves only when
+the resolution clears every blocker, and either way the attempt is audited (`200`/`APPLIED` against
+`422`/`REFUSED`, the notice staying `PENDED` on the refusal); what a reviewer supplies is added in
+arrival order and never written over what is already there (the first record still reports the policy
+number absent after a resolution supplied one); a replay of the original submission reports `TRIAGED`
+after an applied resolution and `PENDED` after a refused one — item 5d's carried requirement, and the
+half `idempotency.feature` could not reach; and a resolution is recorded at the instant its caller
+gave it while the notice's pend instant is untouched. **Measured** directly against
+`gauntlet.acceptance.mutation.mutants()`: **40 mutants, 10 / 14 / 6 / 4 / 6 by rule, all `example`
+kind, zero `literal`.** `idempotency.feature` and `notice_intake.feature` re-measured alongside it at
+**40** and **48**, unchanged by this branch. **Simulated**, and recorded as a simulation rather than a
+measurement: **0 survivors of 40**, each mutant walked individually against the rule it belongs to.
+
+**Every scenario is written to sit inside the intersection of the five open points, so none of them
+has to be decided before the spec can be locked.** Every resolution supplies only fields the notice's
+own blockers name; no row introduces a blocker the notice did not already have, and none is pended
+for `LOSS_DATE_IN_FUTURE`, so re-checking only the recorded blockers and re-running the whole
+validation agree on every row; only an applied resolution's payload record is asserted; every audited
+attempt is a reviewer's, so every one is `USER`; and the `409` row is a `TRIAGED` notice, never a
+`RECEIVED` one. The file names all five in its own header comment rather than leaving the omissions to
+be inferred from what is absent.
+
+**One shape decision worth the human's eye, taken against `notice_intake.feature`'s precedent
+deliberately.** Rule 2 asserts the audit entry's blockers as a literal set rather than relationally
+against the notice's, which is the opposite of what that file's Rule 2 chose. Hand-simulated before
+the file was written to disk: here the entry and the notice carry the same set on both rows, so "the
+same ones the notice still carries" is true on the applied row as well and its own mutant survives.
+Two literal columns are redundant on their face and are kept anyway — an implementation that gets the
+`422` body right and the audit entry wrong, or the reverse, is caught by exactly one of them.
+
+**Two step-definition notes for the implementing session.** `the notice's state is <state>` is used in
+Rule 1 as both a precondition and an assertion, so it needs `@given` and `@then` on one function — the
+same stacking `docs/harness-findings.md` records for `@given`/`@when`, one position further along.
+And `the <ordinal> record kept for the notice ...` appears in two `Then` steps of Rule 3, so a mutant
+on the ordinal column moves both together; that is intended and is what makes the swap ask the wrong
+record for both its content and its origin at once.
+
+**`gauntlet check` is expected to report one unapproved spec on this branch** — the guaranteed state
+between a spec draft and its approval, not a defect. Not run this session beyond `gauntlet spec list`,
+which confirms `features/resolution.feature` is the only unapproved spec and that no other spec's
+state has drifted. **The next action is a human review and `gauntlet spec approve`, not an agent
+action** — and, before that, the five escalated points, three of which would widen a status-code table
+`PHASE2_DESIGN.md` calls closed. No implementation, no approval, and no `gauntlet` command beyond
+`spec list` were run.
