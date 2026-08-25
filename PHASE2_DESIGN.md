@@ -45,7 +45,11 @@ runs — a deliberate two-write design, not an inefficiency:** the receipt times
 statutory acknowledgment clock's start. It must not depend on whether validation succeeds, is
 implemented correctly, or even runs at all — a bug in rule evaluation must never be able to erase
 or delay the fact that a notice was received. The timestamp is set once at capture and never
-recomputed on any later transition.
+recomputed on any later transition. **Made concrete 2026-08-25, in item 5d's persistence
+port:** the receipt transaction — payload record, notice at `RECEIVED`, `RECEIVED` audit entry,
+and the idempotency key row if one was supplied — commits before rule evaluation runs, and the
+decision is a second transaction. One transaction spanning both would roll the receipt back on any
+exception rule evaluation raised, which is precisely what this paragraph forbids.
 
 **Queue, severity, SIU indicators, and duplicate candidates are attributes, not states.** They are
 data carried by a `TRIAGED` notice; none of them is itself a place in the state machine. This
@@ -74,6 +78,7 @@ amendment below — keeping both would have been redundant):
 | `build_sha` | domain package commit SHA, captured once at process startup |
 | `outcome` | `APPLIED` or `REFUSED` — every transition *attempt* gets an entry, including refused ones |
 | `actor_authenticated` | boolean recording whether the actor's identity was verified by an authentication mechanism. **`false` on every entry, for every actor type, no exceptions — including `SYSTEM` and `SERVICE` actors, with no inferred trust on the grounds that they are deployed code.** Phase 2 has no authentication mechanism at all, so nothing has been verified; this is the same reasoning as "unevaluated is not negative," pointed the other way — never record something as verified when nothing verified it. Phase-2 rows must stay distinguishable from authenticated ones written later. |
+| `carrier_code` | attribution only — required by the Carrier reference section, omitted from this table until 2026-08-24; added in item 5d's schema |
 
 **Append-only. No update path and no delete path exist in this schema, in phase 2, at all.**
 Corrections are compensating entries, never edits to history.
@@ -137,6 +142,7 @@ because accepting a notice is a statutory duty — there is no failure mode past
 system is allowed to refuse. `POST /notices/{id}/resolution` *does* return a 4xx on failure, because
 a resolution is an internal staff action, not a notice — refusing it creates no statutory duty, and
 telling the reviewer their submission didn't clear the pend is the useful, correct answer.
+**Annotated 2026-08-24:** the status-code table's `409` for a reused key with different content does not contradict this — the idempotency lookup is evaluated *before* the schema boundary, alongside the carrier-identity check, so the claim holds as written. Comparison rule, ordering, and the 24-hour tie are decided in `ASSUMPTIONS.md`, "Idempotency: what a repeated key is compared against".
 
 **`notice_id`, not `claim_id`.** ClaimGate does not issue claim numbers. A claim number is assigned
 by the policy administration system once phase 3's adapter boundary exists, and will be stored as a
@@ -166,6 +172,29 @@ opposite — an ordinary, unrestricted `TRIAGED` attribute, not a separate acces
 Whether these two reason codes surface in the notice's `reason_codes` list alongside validation
 blockers, or stay scoped to a duplicate-candidates-specific field, is a real, undecided question
 with a real rule behind it either way — resolve before the serializer is written, not after.
+
+## Persistence engine
+
+SQLite, via the stdlib `sqlite3` module, STRICT tables, constraints declared in the schema — not
+an ORM, not a separate server process. Decided 2026-08-24, advisor-recommended, human-ratified.
+This document decides everything about the writes above and, until now, nothing about what
+performs them.
+
+**Why:** the Idempotency section immediately below requires uniqueness on `(carrier_code,
+idempotency_key)` "enforced by a database constraint" — a literal `UNIQUE` constraint on those two
+columns satisfies that directly, with no new dependency. The two-write receipt (Record state
+model, above) becomes a single real transaction rather than two calls into an in-memory dict that
+happen to run in the same process, which is what makes `store.py`'s "the raw payload and the
+RECEIVED write are one statutory fact" comment an enforced guarantee instead of a comment
+describing call order. And the swappability proofs item 5g owes (Swappability proofs, below) are
+data-swaps — a different carrier set, a different jurisdiction map — not engine-swaps; nothing in
+this design asks persistence itself to be pluggable, so nothing is lost picking one engine now.
+
+**Costs, stated rather than discovered later:** single-writer concurrency, and no server-side
+access control beyond what the process itself enforces. Both accepted for phase 2. Both are
+revisited at phase 3's adapter boundary — the same boundary that already owns policy
+administration and claim-number minting (`CLAUDE.md`) — persistence technology joins it there
+rather than getting a phase of its own.
 
 ## Idempotency
 

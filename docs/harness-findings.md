@@ -91,6 +91,28 @@ conditions, so the wrong command isn't specific to a spec that changed after
 approval — any spec the acceptance gate hasn't approved, new or modified,
 carries this same incorrect instruction.
 
+**Corrected 2026-08-24: "generated from one code path covering both conditions" is wrong; the
+operational conclusion above it is not.** Verified against `registry.describe` in the gauntlet
+repo itself (`src/gauntlet/registry.py`), not reproduced from the harness's own output:
+`describe()` is a three-way branch on `Finding.status` — `MODIFIED`, `MISSING`, and everything else
+(the not-approved case) — and each branch returns its own distinct prose, not a shared one.
+`MODIFIED` and not-approved both happen to end by naming `gauntlet lock`, which is why the two
+observations above read as "identical" at the level of "which command it wrongly tells you to
+run" — but they are two separate branches producing two different sentences, not one code path
+producing one. The quoted text above already shows this, read closely: the not-approved sentence
+("is not approved. A human must review it and run `gauntlet lock`...") is not the modified
+sentence ("changed since it was approved... revert the change, or explain why it should change and
+let the human re-approve it with `gauntlet lock`") word for word. A third branch, `MISSING`, was
+never checked before this correction and is not like either: "was approved but no longer exists.
+Restore it, or ask the human to remove its approval" — no mention of `gauntlet lock` at all,
+because there is nothing to re-lock.
+
+**What stands, unchanged:** the operational advice — the acceptance gate's remedy names the wrong
+command for a human to approve a spec with, in both the modified and the not-approved case, and
+the correct command is `gauntlet spec approve`. What's corrected is only the reasoning for why the
+two observations matched: two branches that happen to share a word, reasoned here from two
+observations, not one branch producing one text.
+
 ### `pyproject.toml` is verified, not protected — an escalation that said otherwise was wrong
 
 An escalation during item 5b's session asserted that `pyproject.toml` could not be edited because it
@@ -1220,3 +1242,42 @@ silently accepted `_gauntlet` as a valid blockers rendering would be a real step
 this is the mechanism that would have caught it. It does mean the 100% figure overstates how many of
 the 48 mutants were caught by a domain assertion actually being wrong, for exactly the three that
 were never real row-swaps to begin with.
+
+### Two locked specs sharing a Background can only share step definitions through `conftest.py`
+
+`features/idempotency.feature` restates `features/notice_intake.feature`'s Background word for word.
+Neither rewording is available once both are approved, and copying the definitions into a second
+step module is a duplicate block well past `min_lines = 6`, which `max_duplicate_blocks = 0`
+refuses. `tests/acceptance/conftest.py` is the only remaining place, and two pytest-bdd behaviours
+that make that work were confirmed by running them in an isolated project, not inferred:
+
+- **A step definition in a test module overrides one of the same text in `conftest.py`.** Ordinary
+  pytest fixture precedence — pytest-bdd registers each step as a fixture keyed by its parsed text,
+  so the nearer definition wins. This is what lets `test_carrier_configuration_acceptance.py` keep
+  its own `"{carrier}" requires the claimant name` pointed at `context["rules_source"]` while the
+  shared one in `conftest.py` writes `context["carrier_rules_source"]` for everyone else. Without
+  it, moving a step to `conftest.py` would silently redirect every other spec that says the same
+  words.
+- **`@given` and `@when` stack on one function.** A step whose text appears under `Given` in one
+  scenario and under `When` in another needs both decorators; pytest-bdd matches on keyword, so a
+  `@given`-only definition is invisible to a `When` line with identical text. `idempotency.feature`
+  needs this for six steps, including `the notice is submitted for intake`, which its rules use as
+  a `Given` to set up the original submission and as a `When` for the replay.
+
+The isolated-project check cost about two minutes and would have cost a debugging session had
+either assumption been wrong in the direction of "quietly does something else."
+
+### A value imported from `conftest.py` is not the same object the fixtures use
+
+`tests/shell/` has no `__init__.py`, so pytest imports its `conftest.py` under its own module name
+and `from tests.shell.conftest import ...` produces a **second** module object. Both exist for the
+rest of the run. Constants survive that — a dataclass compares equal across the two copies — but a
+class does not: an exception defined in `conftest.py` and raised by a fixture is
+`conftest.TheError`, while the test's `pytest.raises(TheError)` names `tests.shell.conftest.TheError`,
+and the two do not match. Observed 2026-08-25 as `DID NOT RAISE` on an exception that had plainly
+been raised, with the traceback showing the other spelling of the same name.
+
+**Shared values belong in a plain module next to `conftest.py`, not in it** — `tests/shell/support.py`
+here. `conftest.py` then imports from that module like everything else, one object exists, and
+`except`/`isinstance` behave. The failure mode is worth knowing because it is silent for the cheap
+cases (constants, type aliases) and only appears once something identity-sensitive crosses the line.

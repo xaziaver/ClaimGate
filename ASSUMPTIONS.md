@@ -79,6 +79,23 @@ or data. Nothing below was confirmed against a live book.
   
 ## Carried requirements — decided, not yet built
 
+- **One receipt clock, not two — decided 2026-08-24, advisor-recommended, human-ratified.**
+  `store.py`'s `receive_notice` timestamps the payload record and the `RECEIVED` audit entry with
+  `datetime.now(UTC)`, while `notice_intake.py`'s `submit_notice` separately judges the notice
+  against the `submitted_at` parameter the shell was given — two different clock reads for one
+  statutory receipt event (Fla. Stat. 627.70131(1)(a)'s acknowledgment clock; `PHASE2_DESIGN.md`'s
+  Record state model, "the timestamp is set once at capture"). Invisible to every scenario today
+  because calls are synchronous and the gap between the two reads is microseconds; wrong the moment
+  a transport layer, a queue, or any asynchronous boundary sits between the two calls.
+
+  **Decided:** the receipt instant is `submitted_at`, passed through to the store; `now()` is not
+  consulted for any receipt-adjacent timestamp. Not fixed now — build it during item 5d's port of
+  the store to SQLite, since that port rewrites `receive_notice` and its callers anyway. Flag it in
+  that item's own report as design-consistency work the port carries, not something any
+  `idempotency.feature` scenario mandates: no scenario asserts a literal timestamp value, for the
+  same reason `notice_intake.feature`'s own Rule 2 comment already gives — `occurred_at` is real
+  wall-clock time at the moment a run executes and cannot be stated as a spec literal.
+
 - **Timezone-correct "now."** The phase-2 API shell must receive a timezone-aware UTC instant and
   convert it to a calendar date in the jurisdiction's timezone before calling any domain function.
   The domain never receives a date derived from server local time. The conversion is a named,
@@ -279,6 +296,57 @@ or data. Nothing below was confirmed against a live book.
   the raw bytes would have kept (e.g. two payloads differing only in insignificant whitespace or key
   casing that the parse step normalizes away). Not decided now - flagged for whoever builds that
   layer.
+
+- **Idempotency: what a repeated key is compared against, and when the window closes —
+  advisor-recommended, human-ratified 2026-08-24.** `PHASE2_DESIGN.md`'s "Idempotency" section and
+  status-code table decided that a key reused with a different payload is `409` and that keys
+  expire after 24 hours, and decided neither how "different" is judged nor what happens at exactly
+  24 hours. Item 5d's first draft escalated both rather than guess (correctly, under `CLAUDE.md`'s
+  never-default constraint). Decided:
+
+  1. **"Different payload" is a different payload reference** — the SHA-256 recipe recorded above
+     under "The payload reference recipe", already persisted on every created notice since item 5c's
+     close-out fix. The resubmission's reference is computed by the same recipe and compared to the
+     reference linked to the notice that `(carrier_code, idempotency_key)` resolves to. Equal is a
+     replay (`200`); unequal is a conflict (`409`). One recipe, one definition of "the same
+     submission" — a second comparison rule would be a second source of truth for the same
+     question. This is what Stripe-style idempotency does (compare request content, refuse a
+     mismatch); the IETF Idempotency-Key draft prescribes the same comparison. The draft's
+     preferred status code for a mismatch differs from `409` and was not re-read this session; the
+     `409` decision stands as already recorded and is not reopened.
+  2. **The key is envelope and is examined before the schema boundary.** Order on `POST /notices`:
+     carrier identity, then the idempotency lookup, then the loss-date schema check, then receipt.
+     Consequence: a conflicting resubmission whose loss date does not parse gets `409`, not `400`.
+     This also means `PHASE2_DESIGN.md`'s "never returns a 4xx once a payload clears the schema
+     boundary" remains true — `409` is decided before that boundary; see the annotation there.
+  3. **A `409` creates no notice and adds no audit entry to the original, but the conflicting
+     content is kept with a reference of its own** — the same treatment as a schema-invalid `400`,
+     deliberately unlike the unknown-carrier `400` that persists nothing. An unknown carrier creates
+     no duty here; a mis-keyed submission from an administered carrier may be a real loss, and the
+     record of what arrived is cheap to keep and expensive to reconstruct. Design call, not an
+     industry standard.
+  4. **A key is remembered only by the notice it created.** The uniqueness constraint lives on the
+     notice table. A submission refused at the schema boundary creates no notice and its key is not
+     remembered against the refusal; the next use of that key is judged on its own. Keeping a
+     separate table of attempts would make a refused submission's key block the corrected
+     resubmission the caller is most likely to send next. *Corrected 2026-08-24, advisor,
+     before implementation: not the notice table. A `UNIQUE(carrier_code, idempotency_key)`
+     there would refuse the post-expiry fresh notice that Rule 1's third row requires. The key
+     record is its own table, one row per pair, written only inside the transaction that
+     creates a notice, and replaced — not duplicated — when an expired key is reused, so the
+     new notice holds the key and the old one no longer does. The substance stands: a refused
+     submission writes no key row and can block nothing.*
+  5. **The 24-hour window is half-open.** A replay is within the window while
+     `replay_submitted_at - submitted_at < 24h`, and past it at equality. Basis: RFC 9111 §4.2 —
+     a stored response is fresh only while `freshness_lifetime > current_age`, stale at equality
+     (verified 2026-08-24 against rfc-editor.org's text). It is the convention every caller's HTTP
+     stack already applies to a TTL, so a client cannot be surprised by it. Both instants are the
+     receipt clock (`submitted_at`, per the one-receipt-clock decision above), never `now()`.
+
+  **Carried to item 5e:** a scenario that a replay of a notice resolved `PENDED → TRIAGED` reports
+  `TRIAGED`. Item 5d proves only that the replayed state comes from the notice rather than a
+  constant (a `PENDED` original replays as `PENDED`); the "may have moved since" half of the design
+  text is unprovable until a notice can move.
 
 - **Unevaluated is not negative.** General rule, not SIU-specific, to implement when the SIU
   reopening comes: any derived indicator or attribute whose required input is unavailable is
@@ -912,6 +980,24 @@ or data. Nothing below was confirmed against a live book.
   the lock and now reads `NO_CONTINUOUS_COVERAGE_DATE`.
 
 ## Open decisions
+
+- **Persistence engine: SQLite via the stdlib `sqlite3` module, decided 2026-08-24,
+  advisor-recommended, human-ratified.** Item 5d's own design text requires uniqueness on
+  `(carrier_code, idempotency_key)` "enforced by a database constraint" (`PHASE2_DESIGN.md`,
+  "Idempotency") — a literal `UNIQUE` constraint satisfies that with zero new dependencies. The
+  two-write receipt (Record state model, above) becomes a single real transaction instead of two
+  in-memory dict writes that happen to share a process, which is what turns `store.py`'s "the raw
+  payload and the RECEIVED write are one statutory fact" comment into an enforced guarantee rather
+  than a comment describing call order. Item 5g's swappability proofs are data-swaps — a different
+  carrier set, a different jurisdiction map — not engine-swaps, so nothing in this project's design
+  asks persistence itself to be pluggable; nothing is lost committing to one engine now. STRICT
+  tables, constraints declared in the schema, no ORM.
+
+  **Costs, stated rather than discovered later:** single-writer concurrency, and no server-side
+  access control beyond what the process itself enforces. Both accepted for phase 2. Both are
+  revisited at phase 3's adapter boundary — the same boundary that already owns policy
+  administration and claim-number minting (`CLAUDE.md`) — not before. See `PHASE2_DESIGN.md`'s
+  "Persistence engine" section for the same decision in design-doc voice.
 
 - **Replacement for the 30-day late-reporting threshold — not being set now.** Setting it quickly
   is the process that produced the 365, the 30, and the 500. Constraints for whoever settles it: a

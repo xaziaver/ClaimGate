@@ -1,105 +1,20 @@
-"""Acceptance tests binding features/notice_intake.feature to the test API."""
+"""Acceptance tests binding features/notice_intake.feature to the test API.
 
-from datetime import datetime
+The Background steps, the submission step, and the response-status and state
+assertions this file used to own now live in conftest.py: item 5d's
+features/idempotency.feature restates them verbatim and both specs are locked,
+so sharing was the only way to keep the duplication gate green. What stays here
+is what only this spec asserts - blockers, severity and queue, retrieval, and
+the audit trail.
+"""
+
 from typing import Any
 
-from pytest_bdd import given, parsers, scenarios, then, when
+from pytest_bdd import parsers, scenarios, then
 
-from tests.api.notice_intake import NoticeFields, NoticeStore, get_notice, submit_notice
+from tests.api.notice_intake import get_notice
 
 scenarios("../../features/notice_intake.feature")
-
-
-def _rules_entry(context: dict[str, Any], carrier: str) -> dict[str, Any]:
-    return context.setdefault("carrier_rules_source", {}).setdefault(carrier, {})
-
-
-@given(parsers.re(r'^(?:the carrier )?"(?P<carrier>[^"]+)" requires the claimant name$'))
-def set_claimant_name_required(context: dict[str, Any], carrier: str) -> None:
-    _rules_entry(context, carrier)["claimant_name_required"] = True
-
-
-@given(parsers.parse('"{carrier}" does not require the claimant contact'))
-def set_claimant_contact_not_required(context: dict[str, Any], carrier: str) -> None:
-    _rules_entry(context, carrier)["claimant_contact_required"] = False
-
-
-@given(parsers.parse('"{carrier}" recognizes the policy-number prefixes "{prefixes}"'))
-def set_recognized_prefixes(context: dict[str, Any], carrier: str, prefixes: str) -> None:
-    _rules_entry(context, carrier)["recognized_policy_number_prefixes"] = prefixes.split(";")
-
-
-@given(parsers.parse('"{carrier}" has no late reporting threshold configured'))
-def clear_late_reporting_threshold(context: dict[str, Any], carrier: str) -> None:
-    _rules_entry(context, carrier).pop("late_reporting_threshold_days", None)
-
-
-@given(parsers.parse('"{carrier}" configures a recent policy inception threshold of {value:d} days'))
-def set_recent_inception_threshold(context: dict[str, Any], carrier: str, value: int) -> None:
-    _rules_entry(context, carrier)["recent_inception_threshold_days"] = value
-
-
-@given(parsers.parse('"{carrier}" configures a duplicate match window of {value:d} days'))
-def set_duplicate_match_window(context: dict[str, Any], carrier: str, value: int) -> None:
-    _rules_entry(context, carrier)["window_days"] = value
-
-
-@given(parsers.parse('the notice is submitted by carrier "{carrier_code}"'))
-def set_carrier_code(context: dict[str, Any], carrier_code: str) -> None:
-    context["carrier_code"] = carrier_code
-
-
-@given(parsers.parse('the jurisdiction observes "{timezone_name}"'))
-def set_jurisdiction_timezone(context: dict[str, Any], timezone_name: str) -> None:
-    context["jurisdiction_timezone"] = timezone_name
-
-
-@given(parsers.parse('the notice is submitted at "{submitted_at}"'))
-def set_submitted_at(context: dict[str, Any], submitted_at: str) -> None:
-    context["submitted_at"] = submitted_at
-
-
-@given(parsers.parse('the notice reports a policy number of "{value}"'))
-def set_policy_number(context: dict[str, Any], value: str) -> None:
-    context["fields"]["policy_number"] = "" if value == "absent" else value
-
-
-@given(parsers.parse('the notice reports a loss date of "{value}"'))
-def set_loss_date(context: dict[str, Any], value: str) -> None:
-    context["fields"]["loss_date"] = value
-
-
-@given(parsers.parse('the notice reports a loss type of "{value}"'))
-def set_loss_type(context: dict[str, Any], value: str) -> None:
-    context["fields"]["loss_type"] = value
-
-
-@given(parsers.parse('the notice reports a notice type of "{value}"'))
-def set_notice_type(context: dict[str, Any], value: str) -> None:
-    context["fields"]["notice_type"] = value
-
-
-@when("the notice is submitted for intake")
-def submit(context: dict[str, Any]) -> None:
-    store = context.setdefault("store", NoticeStore())
-    context["response"] = submit_notice(
-        store,
-        carrier_code=context["carrier_code"],
-        submitted_at=_parse_instant(context["submitted_at"]),
-        jurisdiction_timezone=context["jurisdiction_timezone"],
-        carrier_rules_source=context["carrier_rules_source"],
-        fields=NoticeFields(**context["fields"]),
-    )
-
-
-@then(parsers.re(r"^the response is (?P<value>\d+)$"))
-def check_response_status(context: dict[str, Any], value: str) -> None:
-    assert context["response"].status == int(value)
-
-
-@then(parsers.re(r"^the notice's state is (?P<value>.*)$"))
-def check_state(context: dict[str, Any], value: str) -> None:
-    assert context["response"].state == value
 
 
 @then(parsers.re(r"^the notice's blockers are (?P<value>.*)$"))
@@ -185,18 +100,14 @@ def check_record_outcome(context: dict[str, Any], value: str) -> None:
     elif value == "is kept anyway, with a reference of its own":
         assert response.notice_id is None
         assert response.reference is not None
-        assert len(store.payloads) == 1
+        assert len(store.list_payloads()) == 1
     elif value == "is not kept":
         assert response.notice_id is None
         assert response.reference is None
-        assert len(store.notices) == 0
-        assert len(store.payloads) == 0
+        assert store.count_notices() == 0
+        assert len(store.list_payloads()) == 0
     else:
         raise ValueError(f"unrecognized record outcome: {value!r}")
-
-
-def _parse_instant(raw: str) -> datetime:
-    return datetime.fromisoformat(raw.replace("Z", "+00:00"))
 
 
 def _parse_compact_blockers(value: str) -> list[tuple[str, str]]:
