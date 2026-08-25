@@ -1248,8 +1248,21 @@ were never real row-swaps to begin with.
 `features/idempotency.feature` restates `features/notice_intake.feature`'s Background word for word.
 Neither rewording is available once both are approved, and copying the definitions into a second
 step module is a duplicate block well past `min_lines = 6`, which `max_duplicate_blocks = 0`
-refuses. `tests/acceptance/conftest.py` is the only remaining place, and two pytest-bdd behaviours
-that make that work were confirmed by running them in an isolated project, not inferred:
+refuses.
+
+**Correction, 2026-08-24.** The sentence above is false: the duplication gate does not read the test
+tree. `gates/base.py::tool_targets` and `python_files()` scope `static`, `size`, `complexity` and
+`duplication` to `src` only — read from source after the move landed, not before. The advisor's
+instruction asserted the gate's scope from `gauntlet.toml`'s `tests` key, and this entry recorded the
+assertion as the mechanism. The consolidation is still correct, for a reason this entry should have
+led with: two locked specs that say the same words must mean the same thing, and one definition per
+phrase is how that is kept true. The two pytest-bdd behaviours below are unaffected and remain the
+thing that makes the consolidation work. Another instance of the pattern this document keeps
+finding — a claim about how a gate behaves, written from configuration rather than from its source,
+wrong on first check.
+
+`tests/acceptance/conftest.py` is the only remaining place, and two pytest-bdd behaviours that make
+that work were confirmed by running them in an isolated project, not inferred:
 
 - **A step definition in a test module overrides one of the same text in `conftest.py`.** Ordinary
   pytest fixture precedence — pytest-bdd registers each step as a fixture keyed by its parsed text,

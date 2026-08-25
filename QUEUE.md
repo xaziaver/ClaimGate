@@ -1774,6 +1774,8 @@ all.
    idempotency lookup with the insert that follows it. `PHASE2_DESIGN.md`'s two-write paragraph
    now names the boundary rather than leaving it to be inferred.*
 5. **The shared-step move follows from the duplication gate, not from a preference.**
+   *Corrected 2026-08-24: the duplication gate does not scan `tests/` — see the correction under the
+   5d merge record below. The move stands as design, not as gate compliance.*
    `idempotency.feature` restates `notice_intake.feature`'s Background verbatim and both specs are
    locked, so neither rewording nor copying was available; `max_duplicate_blocks = 0` at six lines
    left `tests/acceptance/conftest.py` as the only place the definitions could go. Verified
@@ -1809,3 +1811,20 @@ reachable, that a `PENDED` original replays as `PENDED`.
 
 **Next action is the human's: review and merge to `main`.** Nothing about this item is waiting on an
 agent, and no `gauntlet` command from the human's list was run.
+
+**Item 5d is merged to `main`** (merge commit `8f3c19e`, `--no-ff`, 22 files, +2071/−425), 2026-08-24.
+Branch `phase2/5d-idempotency` ends at `e761d24`. This record lands on `main` directly, per the
+documentation-lands-on-main convention the 5c record missed. Gate at merge: 327/327, coverage
+100/100, code mutation 342 killed / 100%, acceptance 8 specs, 69 reviewed-equivalent, no survivors,
+no new approvals; size worst function 22/25, largest module `notice_intake.py` 246/250 — item 5e
+should put the resolution endpoint in its own module rather than add to that one.
+
+**Correction, 2026-08-24, advisor's own claim.** Item 5d's judgment call 5 and the harness-findings
+entry it cites say the duplication gate forced the shared-step move into `tests/acceptance/conftest.py`.
+It did not. Read from `gates/base.py` in the agent-gauntlet repo: `tool_targets()` hands external
+tools the `src` tree only, and `python_files()` filters even `--changed` runs to `src`, so `static`,
+`size`, `complexity` and `duplication` never analyze anything under `tests/`. The advisor asserted
+the coverage from `gauntlet.toml`'s `tests = "tests/"` key rather than from source; the agent
+repeated it. The move stands on design grounds — two locked specs sharing a Background should
+share one definition per phrase — but no gate would have refused the alternative, and none will
+catch a future duplicated step module. Recorded in `gauntlet-findings.md` as a proposed change.
