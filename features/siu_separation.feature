@@ -49,7 +49,9 @@ Feature: Keeping SIU indicators off the notice
   #   5. The leak assertions are outcome negatives on four surfaces, for a
   #      notice that actually has something to leak.
   #   6. The rules applied are the carrier's configuration as resolved at the
-  #      transaction that triaged the notice.
+  #      transaction that triaged the notice - read then, not snapshotted when
+  #      the notice arrived, so a threshold configured while a notice sits
+  #      pended is the one its evaluation uses.
   #
   # WHAT VERSION AN EVENT RECORDS, decided 2026-08-25 and recorded in
   # ASSUMPTIONS.md under "Item 5f, one point the six decisions do not cover".
@@ -89,13 +91,19 @@ Feature: Keeping SIU indicators off the notice
     # No late reporting threshold is configured here. Each rule below states
     # its own, because a threshold stated in a Background is a threshold
     # mutation cannot reach (docs/harness-findings.md, "Mutation cannot see a
-    # fixed Given") and every threshold in this file is the subject of the
-    # rule that states it. The recent policy inception threshold is left
-    # unconfigured for a different reason, given at Rule 1.
+    # fixed Given") and every late reporting threshold in this file is the
+    # subject of the rule that states it. The recent policy inception
+    # threshold is different and is configured here at 30, matching
+    # notice_intake.feature: no rule in this file is about it, and
+    # configuring it leaves the continuous coverage date as the single
+    # absent input behind every NOT_EVALUATED that indicator records below.
+    # That is what keeps this file's reason codes readable from its own text
+    # rather than from a precedence rule specified in another file.
     Given the carrier "AAAA" requires the claimant name
     And "AAAA" does not require the claimant contact
     And "AAAA" recognizes the policy-number prefixes "HO;DP"
     And "AAAA" has no late reporting threshold configured
+    And "AAAA" configures a recent policy inception threshold of 30 days
     And "AAAA" configures a duplicate match window of 60 days
     And the notice is submitted by carrier "AAAA"
     And the jurisdiction observes "America/New_York"
@@ -122,8 +130,10 @@ Feature: Keeping SIU indicators off the notice
     # propose one. 45 and 44 are adjacent on purpose - one day apart is what
     # makes the third row a boundary probe rather than a second unrelated
     # example - and both are deliberately not 30, which is the recent policy
-    # inception threshold's real kept value, so an implementation crossing
-    # the two thresholds cannot pass by coincidence.
+    # inception threshold this file's own Background configures, so an
+    # implementation crossing the two thresholds cannot pass by coincidence.
+    # The 7-day threshold two rules below is not 30 either, for the same
+    # reason.
     #
     # Arithmetic, recomputed rather than carried over: 2026-07-10 is 45 days
     # before 2026-08-24 and 2026-07-09 is 46. Late reporting fires when the
@@ -137,12 +147,13 @@ Feature: Keeping SIU indicators off the notice
     # this system processes, and that is the correct answer rather than a
     # stub (ASSUMPTIONS.md, 2026-08-22): the continuous coverage date arrives
     # by an adapter lookup that phase 2 does not have, so the input is
-    # genuinely absent. It resolves NO_CONTINUOUS_COVERAGE_DATE rather than
-    # NO_THRESHOLD_CONFIGURED even though the Background configures no
-    # threshold either, because the missing input outranks the missing rule -
-    # siu_indicators.feature's "Neither recent policy inception input is
-    # present" is where that ordering is specified, and this file relies on
-    # it rather than restating it.
+    # genuinely absent. The Background configures the threshold, so the
+    # coverage date is the only input this indicator is missing anywhere in
+    # this file and NO_CONTINUOUS_COVERAGE_DATE follows from that one absence
+    # rather than from any ordering between two of them. That is deliberate:
+    # siu_indicators.feature specifies which reason wins when both inputs are
+    # gone, and a file whose every scenario depended on that ordering would
+    # be asserting another file's rule in every one of its own.
     #
     # The threshold the late reporting event records is asserted against the
     # same placeholder that configured it. That is deliberate and it is a
@@ -322,6 +333,66 @@ Feature: Keeping SIU indicators off the notice
         | loss_date  | late_reporting |
         | 2026-08-15 | FALSE          |
         | 2026-07-09 | TRUE           |
+
+  Rule: The rules applied are the carrier's configuration at the transaction that triages, not at intake
+
+    # Decision 6. Every other scenario in this file configures the carrier
+    # before the notice arrives and never changes it, so all of them pass
+    # identically against an implementation that reads the configuration once
+    # at intake and carries that reading forward to the resolution. This
+    # scenario is the one that tells the two apart: the carrier has no late
+    # reporting threshold when the notice arrives and has one by the time a
+    # reviewer releases it, so an implementation holding the arrival-time
+    # reading records NOT_EVALUATED with NO_THRESHOLD_CONFIGURED, and one
+    # reading the configuration in the transaction that triages records TRUE.
+    # Nothing else in the file distinguishes them.
+    #
+    # A carrier changing a threshold while a notice sits pended is ordinary
+    # operational reality, not a contrived setup: a pend can last weeks, and
+    # a deployment that rolled out a new configuration in that window has to
+    # answer which one the evaluation used. Decision 6 answers it, and this
+    # is where the answer is checked.
+    #
+    # Arithmetic, recomputed rather than carried: 2026-08-16 is 8 days before
+    # the receipt's jurisdiction date of 2026-08-24. Against a 7-day
+    # threshold that is more than the threshold, so TRUE. 7 is chosen for
+    # that reason and not for being a round number - the engine mutates a
+    # bare number by incrementing it, and 8 days against an 8-day threshold
+    # is FALSE, so the one mutant this scenario has is killed by the result
+    # it asserts. It is illustrative exactly like every other late reporting
+    # threshold in this file: no such value has been approved for any
+    # carrier.
+    #
+    # The threshold the event records is stated as its own literal here, not
+    # as a placeholder shared with the configuring step the way Rule 1's is.
+    # A plain scenario has no columns to share, and the difference is worth
+    # having: the two numbers mutate independently, so a mutant that raises
+    # the configured threshold leaves the assertion expecting the old one and
+    # dies twice over - once on the result and once on the number the event
+    # reports. That is the check that an implementation echoing back a
+    # constant rather than what it applied cannot pass.
+    #
+    # This scenario says nothing about which instant the interval is counted
+    # from - both clocks read TRUE here, 8 days from the receipt and 46 from
+    # the resolution. That is Rule 3's question and it is deliberately not
+    # re-asked, so a failure here means the configuration was read at the
+    # wrong time rather than the interval counted from the wrong day.
+    Scenario: A threshold configured while the notice is pended is the one the evaluation uses
+      Given the notice reports a policy number of "absent"
+      And the notice reports a loss date of "2026-08-16"
+      And the notice is submitted for intake
+      And the notice's state is PENDED
+      And no SIU indicator event is recorded for the notice
+      And "AAAA" configures a late reporting threshold of 7 days
+      When the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer's resolution is submitted at "2026-10-01T14:00Z"
+      Then the response is 200
+      And the notice's state is TRIAGED
+      And the late reporting indicator recorded for the notice is TRUE
+      And the late reporting event records a threshold of 7 days
+      And exactly two SIU indicator events are recorded for the notice
+      And each of those events is stamped "2026-10-01T14:00Z"
+      And those two events record the same ruleset version as the audit entry that released the notice
 
   Rule: A replay records nothing; a resubmission past the window is a new notice and records its own
 
