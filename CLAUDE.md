@@ -92,6 +92,11 @@ this list before proposing anything that would violate one.
   current documentation. Pushing first is not housekeeping: the superset check below compares
   against `origin/main`, so an unpushed commit on local `main` makes that check pass while the
   branch is missing it.
+- **A commit that changes a rule's behaviour under `src/claimgate/domain/` bumps
+  `RULESET_VERSION`.** The label is declared once, in `domain/ruleset.py`, and the shell copies
+  it onto every audit entry and every SIU indicator event, so a stored decision names the code
+  that made it. No gate can enforce this; a stale label makes every row written after it a claim
+  about rules that were not the ones applied.
 - **A result that was not computed is never reported as a negative.** An indicator whose input is
   missing, or a comparison that was deliberately not run, resolves to a distinct not-evaluated
   value with a reason code — never to false, never to an empty result. Two reopenings have turned
