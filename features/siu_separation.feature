@@ -51,17 +51,26 @@ Feature: Keeping SIU indicators off the notice
   #   6. The rules applied are the carrier's configuration as resolved at the
   #      transaction that triaged the notice.
   #
-  # WHAT THIS FILE DOES NOT DECIDE, and deliberately does not assert. What
-  # ruleset version an event records is escalated and undecided as of
-  # 2026-08-25 (ASSUMPTIONS.md, "Item 5f, one point the six decisions do not
-  # cover"): PHASE2_DESIGN.md's audit schema calls the field a label for the
-  # domain rules, decision 6's wording reads as a version of the carrier
-  # configuration, and no agreed value exists for either reading -
-  # notice_intake.feature declined to assert a literal for the same field for
-  # the same reason. So the scenarios below assert only that the two events
-  # of one evaluation record the same ruleset version as each other, which is
-  # true under both readings. Nothing here says which version it is, what it
-  # contains, or how it relates to the audit entry's own copy.
+  # WHAT VERSION AN EVENT RECORDS, decided 2026-08-25 and recorded in
+  # ASSUMPTIONS.md under "Item 5f, one point the six decisions do not cover".
+  # The ruleset version is the version of the domain rule set - the code that
+  # evaluated the indicator - and never the carrier's configured numbers,
+  # which have no version and do not acquire one for this. It is a
+  # date-stamped label declared once in the domain package, and the same
+  # label reaches every audit entry and every SIU event written in the same
+  # transaction, which is why the scenarios below tie an evaluation's events
+  # to the audit entry that moved the notice rather than to a literal. No
+  # scenario states the label itself: it changes whenever a domain rule's
+  # behaviour changes, so a spec that named one would be stale by
+  # construction, and notice_intake.feature declined to name it for the same
+  # reason.
+  #
+  # Reproducing a recorded evaluation comes from recording what was applied,
+  # not from versioning the configuration: each event also carries the
+  # threshold that evaluation used, and no threshold where none was
+  # configured. That is what makes a row answerable a year later without
+  # anyone having to reconstruct which carrier configuration was in force -
+  # the two facts together, the rule version and the number it was given.
   #
   # There is no HTTP layer anywhere in this project yet, and no
   # authentication; notice_intake.feature, idempotency.feature and
@@ -135,6 +144,23 @@ Feature: Keeping SIU indicators off the notice
     # present" is where that ordering is specified, and this file relies on
     # it rather than restating it.
     #
+    # The threshold the late reporting event records is asserted against the
+    # same placeholder that configured it. That is deliberate and it is a
+    # relational tie rather than a second threshold: it adds no mutant of its
+    # own, and the threshold column's existing mutants now move the
+    # configured value and the recorded one together, so what the tie
+    # protects is that the event reports the number the evaluation was
+    # actually given rather than a constant. An implementation recording a
+    # hardcoded 45 fails the 44-day row. The verdicts on those mutants are
+    # unchanged by the tie; they are still decided by the outcome column.
+    #
+    # The two version assertions are deliberately both present even though
+    # the second implies the first. They fail differently and a reader should
+    # be able to tell which broke: two events disagreeing with each other is
+    # an evaluation that read the label twice, while two events agreeing with
+    # each other and not with the audit entry is a transaction that wrote the
+    # SIU trail from a different read than the one it audited.
+    #
     # Two assertions below are fixed steps rather than columns and the engine
     # therefore cannot mutate them: the recent policy inception result, which
     # is identical on every row and would be an inert column if it were one
@@ -153,6 +179,8 @@ Feature: Keeping SIU indicators off the notice
       And exactly two SIU indicator events are recorded for the notice
       And each of those events is stamped "2026-08-24T16:00Z"
       And those two events record the same ruleset version as each other
+      And those two events record the same ruleset version as the audit entry that triaged the notice
+      And the late reporting event records a threshold of <threshold> days
 
       Examples:
         | threshold | loss_date  | late_reporting |
@@ -174,6 +202,12 @@ Feature: Keeping SIU indicators off the notice
     # as "not late", and the event is written anyway, because an evaluation
     # that did not happen is a fact worth recording and an absent row would
     # be indistinguishable from an evaluation nobody ran.
+    #
+    # The event records no threshold rather than a zero. A configured zero is
+    # a real carrier choice that makes every notice late
+    # (carrier_configuration.feature), so writing zero here would record a
+    # rule nobody configured - the same failure, one field along, that
+    # NOT_EVALUATED exists to prevent on the value itself.
     Scenario: A carrier with no late reporting threshold still records both events
       Given "AAAA" has no late reporting threshold configured
       And the notice reports a loss date of "2026-07-09"
@@ -183,6 +217,8 @@ Feature: Keeping SIU indicators off the notice
       And the recent policy inception indicator recorded for the notice is NOT_EVALUATED with reason NO_CONTINUOUS_COVERAGE_DATE
       And exactly two SIU indicator events are recorded for the notice
       And each of those events is stamped "2026-08-24T16:00Z"
+      And those two events record the same ruleset version as the audit entry that triaged the notice
+      And the late reporting event records no threshold
 
   Rule: Nothing is recorded until the notice reaches TRIAGED
 
@@ -211,6 +247,13 @@ Feature: Keeping SIU indicators off the notice
     # 2026-08-25T09:00Z, not with the receipt: the evaluation happened then.
     # Rule 3 is where the stamp and the interval are shown to come from
     # different instants deliberately.
+    #
+    # The ruleset-version tie lives inside the applied row's cell rather than
+    # in a step of its own, because the refused row has no event for it to be
+    # about and a step asserting something of every event would pass over an
+    # empty set there and prove nothing. Keeping it in the column also keeps
+    # it mutable: the two cells swap against each other, and either direction
+    # lands on a row that expects the other outcome.
     Scenario Outline: Whether a resolution records an evaluation depends on whether it releases the notice
       Given "AAAA" configures a late reporting threshold of 45 days
       And the notice reports a policy number of "absent"
@@ -226,9 +269,9 @@ Feature: Keeping SIU indicators off the notice
       And the SIU indicator events recorded for the notice <events>
 
       Examples:
-        | supplied_notice_type | response | state   | events                                       |
-        | SUPPLEMENT           | 422      | PENDED  | are none                                     |
-        | SUPPLEMENTAL         | 200      | TRIAGED | are two, both stamped "2026-08-25T09:00Z"    |
+        | supplied_notice_type | response | state   | events                                                                                                        |
+        | SUPPLEMENT           | 422      | PENDED  | are none                                                                                                      |
+        | SUPPLEMENTAL         | 200      | TRIAGED | are two, both stamped "2026-08-25T09:00Z" and both carrying the ruleset version of the entry that released it  |
 
   Rule: Late reporting is counted from the day the notice was received, not the day it was released
 
@@ -273,6 +316,7 @@ Feature: Keeping SIU indicators off the notice
       And the late reporting indicator recorded for the notice is <late_reporting>
       And exactly two SIU indicator events are recorded for the notice
       And each of those events is stamped "2026-10-01T14:00Z"
+      And those two events record the same ruleset version as the audit entry that released the notice
 
       Examples:
         | loss_date  | late_reporting |
@@ -299,6 +343,13 @@ Feature: Keeping SIU indicators off the notice
     # own notice, which reaches TRIAGED on its own receipt and records its
     # own pair. That is the column that discriminates - a replay adding a
     # pair, or a resubmission adding none, both land on the wrong total.
+    #
+    # The ruleset-version tie is written to hold on both rows without going
+    # vacuous on either: each event is tied to the entry that triaged the
+    # notice it belongs to, which on the first row is the original notice and
+    # on the second is the original and the new notice separately. An
+    # implementation that stamped the new notice's events from the original's
+    # transaction fails the second row.
     Scenario Outline: Whether a repeated submission records a second evaluation
       Given "AAAA" configures a late reporting threshold of 45 days
       And the notice is submitted with the idempotency key "K-800"
@@ -310,6 +361,7 @@ Feature: Keeping SIU indicators off the notice
       And the response <notice_relation>
       And the original notice still has exactly two SIU indicator events
       And <recorded_in_all> SIU indicator events have been recorded in all
+      And every recorded event carries the ruleset version of the audit entry that triaged its own notice
 
       Examples:
         | replay_submitted_at | response | notice_relation                           | recorded_in_all |
