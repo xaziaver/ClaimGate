@@ -1229,6 +1229,29 @@ or data. Nothing below was confirmed against a live book.
   2022-271, matching `STATUTORY_REGISTER.md`): (1)(a), (4)(b)1–7, (5)(b), (7)(a), (8)(b), (9) all as
   stated. The 2025 statutes page was not separately fetched.
 
+  **Two further decisions for the implementation, 2026-08-25, advisor-recommended, human-ratified.**
+
+  **(a) The notice carries `pended_at` and `resolved_at`; the audit trail carries every attempt.**
+  `PHASE2_DESIGN.md`'s tolling paragraph wants both instants "on the notice and in the audit trail",
+  and the notice carried only its receipt instant. `pended_at` is written once, when the notice
+  enters `PENDED`, and never rewritten; `resolved_at` is written only by the resolution that moves
+  the notice to `TRIAGED`, and is null while it is pended. A refused attempt's instant lives on its
+  audit entry and nowhere else. Downstream gets one unambiguous pair per notice for the
+  627.70131(8)(b) interval and the full attempt history where the fidelity belongs. **Revisit
+  trigger:** any later phase that lets a notice enter `PENDED` a second time.
+
+  **(b) A phase-2 schema change recreates the database.** The schema is `CREATE TABLE IF NOT EXISTS`
+  on STRICT tables with no migration path, so adding columns does not upgrade an existing file.
+  Accepted: every acceptance scenario opens `:memory:` and no deployment exists. Migration tooling
+  joins the phase-3 adapter boundary with the rest of persistence.
+
+  **(c) Recorded, not decided:** `resolution.feature`'s injury row asserts two blockers in an order -
+  `claimant_name` before `incident_description` - that `validation.feature` does not state. That file
+  fixes canonical order by code only; the within-code order is alphabetical by field, from
+  `validation.py`'s sort key and from nowhere in any spec. A locked spec now depends on it. Stating
+  it in `validation.feature` is a reopening of a locked spec and is not this item's; it is a
+  candidate queue item, not a defect to fix here.
+
 ## Synthetic data
 
 - No real policy numbers, names, addresses, phone numbers, or claim numbers appear anywhere in
