@@ -52,6 +52,24 @@ Technique that follows: the start-up check in `CLAUDE.md` now looks for this bef
 else, and the hook timeout is raised. Neither removes the cause, which is Gauntlet's and recorded
 for it; they make the symptom visible and rare.
 
+**Correction, 2026-08-26, from a live strand of a class this entry did not name.** A stop-check
+was killed by the human's next message, not by a timeout: any reply inside the acceptance gate's
+window kills the run, so interruption is the normal case in interactive use and the 1800s raise
+does not touch it. Two claims above fall with that. "The corrupted file is always
+`validation.feature`" was a property of the fixed 600s instant, not of the file — specs are
+mutated in sorted path order (`specs.discover`), the stranded spec is whichever one's mutation
+window spans the kill instant, and 600s always fell inside `validation.feature`'s window because
+it is the last and largest. Today's interrupt kill landed in `carrier_configuration.feature`
+instead, at line 140, `60 days` incremented to `61 days` — which is the second fallen claim: a
+numeric mutant strands with no `_gauntlet` marker at all, so the marker is not a shape test,
+and `CLAUDE.md`'s start-up rule is corrected accordingly in the same commit as this paragraph.
+The `.gauntlet/mutation-backup/` comparison in the diagnosis above is unaffected and is the test
+that survives both strand shapes. One trap found while diagnosing: `pgrep -af gauntlet` matches
+its own command string, so the liveness check must use `ps` read by eye or it will report every
+check as a live run. The stranded mutant happened to be the numeric member of the colliding pair
+the locator entry below records; coincidence, no evidence weight, noted so the incident log does
+not read as significant.
+
 ### What a locked spec cannot see is found by breaking the implementation on purpose
 
 Item 5e had a rule no phrase in its spec could read — the notice's resolution timestamp must stay
