@@ -2104,6 +2104,13 @@ timestamps: the Stop hook's stop-check run `20260825T152701` was killed by the h
 nothing committed was affected. Mitigations: commits 3 and 4 below; recorded for Gauntlet in
 `gauntlet-findings.md` (agent-gauntlet repo, `2547aa1`'s successor).
 
+*Corrected 2026-08-26: that successor does not exist. `agent-gauntlet`'s HEAD on origin is
+`2547aa1` itself, and `gauntlet-findings.md` there carries no mention of the 600s timeout, of
+the path-order determinism that makes `validation.feature` the deterministically stranded file,
+or of the `.gauntlet/mutation-backup/` diagnostic. The ClaimGate-facing half of that finding was
+written and the Gauntlet-facing half was not. Recorded rather than silently fixed: this file
+naming the ref the finding was supposed to land in is the only reason the gap was recoverable.*
+
 **Note on history.** `ea64069` and `ab12a2b` added `gauntlet-findings.md` to this repository by
 mistake and `c360ce9` reverted them; that file lives in the agent-gauntlet repository and this
 project never reads or edits it.
@@ -2393,3 +2400,42 @@ identical to `origin/main` and predating this item. `datetime.now` is still call
 **Next action is the human's: `gauntlet mutant approve` for the two survivors above, then review and
 merge to `main`.** The acceptance gate stays red until then, which is guaranteed by there being
 survivors at all rather than a defect, and no command from the human's list was run.
+
+**Item 5f's two survivors are approved and the branch is green.** `gauntlet mutant approve`
+landed at `1778e25`, one reason covering both, approvals stamped `2026-08-26T10:42:18Z`. The
+spec's digest did not move: `features/siu_separation.feature` still hashes `cbde5f6ab716`,
+matching `gauntlet.lock.json`. `gauntlet check` passes at `23bb58d`: protect 3/3 paths
+unchanged, static 0 findings, size worst function 24 of 25, complexity 5 of 6, boundary 12 step
+files / 0 direct imports, tests **397/397**, coverage **line 100.0 / branch 100.0**, crap 5.0 of
+15, duplication 0, code mutation **100.0% / 342 killed**, acceptance **10 specs, 71
+reviewed-equivalent, 893.841s**.
+
+**Reviewed-equivalent moved 69 -> 71; the killed count is derived, not printed.** The green
+acceptance summary carries no killed figure, so it was computed: **708 mutants across the ten
+specs**, measured directly against `gauntlet.acceptance.mutation.mutants()` at the branch ref
+rather than read off any gate — 180 / 97 / 90 / 84 / 57 / 53 / 48 / 40 / 39 / 20 for
+`validation`, `resolution`, `triage`, `carrier_configuration`, `duplicates`, `siu_separation`,
+`notice_intake`, `idempotency`, `siu_indicators`, `jurisdiction_date` — minus 0 surviving and 71
+reviewed-equivalent gives **637 killed**, the same 637 as the pre-approval run. Approving a
+survivor moves it between two columns and changes nothing about what executes: Gauntlet's
+`gates/acceptance.py`'s `_survivors` applies every mutant and runs the full suite for each one
+before the ledger is consulted at all.
+
+**The acceptance gate's wall time is a new project maximum at 893.841s**, against 866.202s on
+the same ten specs and the same 708 mutants at the pre-approval run. The 27.6s between them is
+unexplained and inside ordinary variance — two datapoints, not a trend, and specifically not
+evidence that an approval costs time. The Stop hook's timeout is 1800s, so headroom is roughly
+2x; the cost is mutant count times suite time and both still grow with every item.
+
+**`docs/temp_doc.odt` is removed.** No gate would have caught it, and that was verified from
+Gauntlet's source rather than inferred from `gauntlet.toml`: `gates/base.py`'s `python_files()`
+filters candidates on `f.is_relative_to(self.src)` and `tool_targets()` hands external tools the
+`src` tree, so anything outside `src/` is invisible to static, size, complexity and duplication
+alike.
+
+**Item 5f is ready to merge, and merging promptly is the point.** `main`'s copy of this file
+described item 5f as having no implementation and `src/` untouched for two days while it sat
+finished and approved on this branch. That is the third instance of the
+documentation-lands-on-main convention being missed — item 4a carried two such commits forward,
+item 5c recorded its own, and this is 5f's. The cost is specific and is not stylistic: `main` is
+what a memoryless session reads.
