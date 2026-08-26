@@ -2495,3 +2495,65 @@ session's Stop hook will produce a real post-merge figure for free.
    error into a question; a guess would have been unrecoverable in one direction, since the
    plausible alternative reading rewrote a merged record to absorb a criticism of itself, which
    no later check could distinguish from the record having always said that.
+
+**Item 5g is open on `phase2/5g-jurisdiction-map`, drafted and not implemented.** The draft spec is
+`features/jurisdiction_selection.feature`, committed at `1a5d90d` — 189 lines, blob sha256
+`4d269770f90e`, **30 mutants across 30 unique locators**, no locator collision, every mutant
+`example`-kind. `gauntlet spec list` reports it `unapproved`; approving it is mine and has not
+happened. The branch also carries a merge of `main`'s documentation commit for this entry and the
+`PHASE2_DESIGN.md` correction below, so it stays a superset. Nothing under `src/` is touched, no step
+definitions exist, and the two swappability tests are not written.
+
+**The acceptance gate is red on this branch, and it is guaranteed rather than a defect.** A spec that
+is drafted and not approved is the state the spec-lock-then-implementation rule produces on every
+reopening, and this one additionally has no step definitions bound to it. Neither clears from the
+agent's side. Do not treat a red acceptance gate here as something to fix.
+
+**`PHASE2_DESIGN.md`'s "Jurisdiction axis" gained a dated correction** (2026-08-26): "`property_state`
+is captured on the notice for this purpose" described intent, not the codebase. At `92db17d`, `git
+grep property_state` across `src/`, `features/` and `tests/` returned nothing. Capturing it is item
+5g's work.
+
+**Three rules in the draft; the third is recommended and not ratified, and that is the decision this
+item is waiting on.** Rule 1 is that the jurisdiction's calendar date, not the UTC one, decides
+whether a loss date is ahead of today — the proof that the map's Florida entry actually supplies the
+date the domain receives. Rule 2 is that an unsupported or absent property state marks the notice
+`jurisdiction_unsupported` and does not block it. Rule 3 covers the collision the design section is
+silent on: an unsupported property state means no map entry, so no timezone, so no jurisdiction
+today, and "today" is exactly what the future-dated-loss determination and item 5f's late-reporting
+indicator are counted against. The draft recommends the shape "Notice type and window selection"
+already uses for `LOSS_ASSESSMENT` — an explicit not-evaluated outcome with a reason, never a silent
+fallback — and names one new reason code, `NO_JURISDICTION_DATE`, in each of two separate closed
+enumerations. Adding to a closed enumeration is mine. Until it is ratified, Rule 3's scenarios assert
+behaviour nobody has approved.
+
+**Four locked specs carry a step this item's submission-surface change invalidates, and none of them
+has been touched.** `And the jurisdiction observes "<zone>"` appears in the Backgrounds of
+`notice_intake.feature`, `resolution.feature`, `siu_separation.feature` and `idempotency.feature`,
+and twice more inside `notice_intake.feature`'s Rule 5 scenarios. Once the timezone comes from a
+jurisdiction map keyed by `property_state` rather than from the submission, that step has nothing to
+set. `notice_intake.feature`'s "The same submission instant is judged differently under each of the
+jurisdictions the book writes in" is the sharpest case: it varies `America/New_York` against
+`America/Chicago`, and a Florida entry holding one timezone cannot produce the second. Reopening
+those specs is a decision, not a mechanical follow-on, and it is not part of the draft.
+
+**A one-entry-per-jurisdiction map is factually wrong for the Florida panhandle, and the draft says so
+rather than asserting either answer.** Escambia, Santa Rosa, Okaloosa and most of Walton are
+`America/Chicago`; the rest of the state is `America/New_York` (`ASSUMPTIONS.md`, "The jurisdiction
+timezone is a parameter of the conversion, not a constant in it"). A notice on a Pensacola risk is
+dated Eastern under this design, which is a wrong `LOSS_DATE_IN_FUTURE` answer around midnight
+Central.
+
+**Adding `property_state` to the notice's fields breaks item 5d's idempotency comparison for keys
+already remembered.** The comparison hashes the submitted fields — `records.payload_reference`, SHA-256
+over the whole field set — and compares that against the reference stored when the notice was created.
+A new field changes every reference, so a byte-identical resubmission under a remembered key computes
+a reference the stored one cannot match and is answered `409 conflict` instead of a `200` replay.
+Bounded to the 24-hour key lifetime, and only for keys remembered before the change. Removing
+`jurisdiction_timezone` costs nothing here by contrast: it is a shell input, never part of the hashed
+field set.
+
+**What remains before item 5g closes:** ratify or replace Rule 3; approve the spec; decide the four
+locked specs' reopening; then the map, the `property_state` capture through schema, message shape and
+persistence, the step definitions, and last the two swappability tests — which land as tests, not as
+feature files, because a fictional second jurisdiction is not a business rule of this product.

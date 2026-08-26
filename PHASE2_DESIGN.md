@@ -242,6 +242,18 @@ several states, and a state governs several carriers.
 from the carrier's domicile and never from the reporter's address.** `property_state` is captured
 on the notice for this purpose.
 
+**Corrected 2026-08-26: that last sentence described intent, not the codebase, and had never been
+true.** At `92db17d` — the commit at which item 5g opened — `git grep property_state` across `src/`,
+`features/` and `tests/` returned nothing. What the notice carried was `jurisdiction_timezone`, a raw
+IANA name supplied by the caller on every submission, which items 5b and 5c built as scaffolding and
+which `ASSUMPTIONS.md`'s "Timezone-correct 'now'" never intended as the resting shape — that entry
+has the timezone name arriving from configuration, and its 2026-08-23 annotation distinguishes it
+from the instant precisely on that ground. Capturing `property_state` and deriving the timezone from
+it is item 5g's work — the schema, the message shape, the persistence, and the specification — not a
+fact this section could be read as reporting. Recorded because a reader taking the sentence as
+description would look for the field, not find it, and be unable to tell whether it had been removed
+or never added.
+
 **Phase 2 behavior:** statutory config is a real map keyed by jurisdiction code, with exactly one
 entry populated (`FL`) — a genuine lookup, not a constant dressed up as one. If `property_state` is
 absent, or present but not `FL`, the notice is **not** blocked: it proceeds to `TRIAGED` with a
