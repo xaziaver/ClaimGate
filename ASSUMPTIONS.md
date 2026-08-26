@@ -199,6 +199,50 @@ or data. Nothing below was confirmed against a live book.
   settled before this inventory was checked and are left as they are
   because that specification is locked. Settle the inconsistency when item
   5a's implementation lands, not by reopening an approved spec for a name.
+- **One timezone per jurisdiction, and Florida's is `America/New_York` — advisor-recommended,
+  human-ratified, 2026-08-26.** Item 5g keys the statutory map by jurisdiction code, so a
+  jurisdiction holds one IANA timezone and Florida's panhandle — Escambia, Santa Rosa, Okaloosa and
+  most of Walton, which are `America/Chicago` — is dated Eastern along with the rest of the state.
+  The entry above records that this is a real divergence; this entry records that it is accepted for
+  phase 2, and what it actually costs, recomputed rather than carried over from the first statement
+  of it. **Eastern's date is never behind Central's**, so the skew is one-directional and both of its
+  effects are tolerant:
+
+  - A loss dated tomorrow by a Central-clock reporter passes the future-date check unflagged,
+    because Eastern's today has already reached that date. **No false `LOSS_DATE_IN_FUTURE` is
+    possible** — the failure this whole axis exists to prevent cannot occur in this direction.
+  - The late-reporting interval reads up to one day long, so an advisory indicator flags early
+    rather than late.
+
+  It applies for one hour a day, and a wrong block is the only outcome that would be unacceptable.
+  Corrected from the first drafting of item 5g's spec, which stated the direction backwards and
+  called it "a real wrong answer around midnight Central" on the blocking field. Revisit when a
+  jurisdiction key finer than the state exists, not before.
+
+- **`property_state` is matched exactly, and a miss is marked rather than normalized —
+  advisor-recommended, human-ratified, 2026-08-26.** The jurisdiction lookup is an exact match on
+  the value as submitted. `fl`, a misspelling, a full state name and a state this deployment has no
+  entry for all resolve the same way: no jurisdiction, and a `jurisdiction_unsupported` marking for
+  a person. Nothing is upper-cased, trimmed into a match, or mapped from a name to a code. Case
+  folding looks free and is not: it is the first step of a chain that ends in inferring what the
+  reporter meant, on the field that selects which state's law applies. A marked notice is still
+  received, still triaged, and still visible; a normalized one is judged under a jurisdiction nobody
+  chose. Specified by `features/jurisdiction_selection.feature`'s `fl` row, which exists to pin this
+  class rather than to document a spelling.
+
+- **The zone that dates a resolution's SIU interval comes from the merged view, not from what was
+  known at receipt — advisor-recommended, human-ratified, 2026-08-26.** Item 5f decision 2 fixes the
+  *instant* the late-reporting interval is counted from as the notice's own receipt, and says nothing
+  about the *timezone* that instant is converted under — a gap that only opens once the zone stops
+  riding the submission and starts coming from `property_state`, which a reviewer can supply at
+  resolution like any other field. The zone is resolved from the notice's current merged view:
+  where the insured property is, is a fact about the risk, not about the moment the notice arrived,
+  and a notice that reached `TRIAGED` unsupported and is later told where the property is should
+  have its interval become computable rather than stay permanently unevaluated. This rewrites
+  nothing: the SIU trail is append-only, so the intake-time `NOT_EVALUATED` observation stands as
+  the evaluation that was actually made then, and the resolution appends a second one beside it.
+  Both carry their own `evaluated_at`, so which is which is readable from the trail without a
+  convention.
 - **An instant that is not a timezone-aware UTC instant is out of scope for item 5b —
   advisor-recommended, human-ratified, 2026-08-23.** The "Timezone-correct 'now'" contract has the
   shell supply that instant, and it comes from the request pipeline and the server clock rather
