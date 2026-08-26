@@ -2583,3 +2583,28 @@ including `NO_JURISDICTION_DATE` as a new code in two separate closed enumeratio
 stale and should come off before approval rather than being locked into the file. It was left in
 place because removing it was not among the amendments asked for, and a closed-enumeration addition
 is not something to infer.
+
+**Both of those closed on 2026-08-26, and the current draft is `a456913`.** 202 lines, blob sha256
+`4ea48af66271`, still **36 mutants across 36 unique locators**, all `example`-kind — verified as
+comment-only by locator *and* signature list identity against `955dfef`, not by count parity, which
+`docs/harness-findings.md` records as the check that catches a swapped mutant at an unchanged total.
+Rule 3's banner now reads `RATIFIED 2026-08-26, advisor-recommended`, and its closing sentence names
+the ratification as what adds the reason code rather than leaving the addition to look like a
+consequence of the spec having been written: **`NO_JURISDICTION_DATE` enters two closed enumerations
+as two codes of one spelling** — the future-dated-loss determination's reasons and the SIU indicator
+reasons — by that ratification and by nothing else. All four per-consumer recommendations stand as
+accepted, and the resolution-path one is explicitly ratified in the form it was recommended: an
+unsupported jurisdiction's `NOT_EVALUATED` determination never by itself refuses a release, which is
+decided on the remaining checks.
+
+**One obligation is carried forward to the implementation prompt, because no gate can raise it and
+it is invisible until step definitions exist.** Six of the 36 mutants die by marker rather than by
+sibling swap — the four `TRIAGED -> TRIAGED_gauntlet` in Rule 2, and the two empty `blockers` cells
+that take `-> _gauntlet` because an empty cell has no sibling alternative. Those six die **only if
+the step definitions compare outcome tokens exactly and refuse an unrecognized one.** A tolerant
+parser — one that maps an unparseable `blockers` string to "no blockers", or an unrecognized state
+token to a default — converts all six into vacuous survivors that cost six equivalence approvals
+while proving nothing, the same failure `features/jurisdiction_date.feature` records from the
+opposite direction, where a marker landing outside a closing quote killed a mutant at step
+resolution before the domain was reached. The predicted zero survivors is conditional on that, and
+the condition is the implementer's to satisfy.
