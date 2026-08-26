@@ -174,6 +174,18 @@
       "reason": "Margin, not inertness. The threshold is doing its job; the example values sit far enough from it that a plus-or-minus-one mutation cannot cross the boundary - 62 days against 45/46, and 40 days against both 45/46 and 30/31. The boundaries themselves are proven in the dedicated boundary scenarios, which are where a one-day mutation does kill. REVISIT TRIGGER: void if either scenario's example dates are changed such that an interval lands within one day of its threshold.",
       "reviewer": "xaziaver"
     },
+    "mutant:features/siu_separation.feature#What a notice triaged at intake records for each indicator|example|loss_date|44|2026-07-10|TRUE": {
+      "approved_at": "2026-08-26T10:42:18+00:00",
+      "digest": "sha256:6406d79ac84dac8b9c79ca465381a29225208f79b986a9a68e6645612230d70e",
+      "reason": "Two equivalent mutants by construction of a boundary table. (1) 45->46 on the row whose interval equals the threshold: the row is the non-firing boundary and raising a threshold already at or above the interval cannot make it fire. (2) 2026-07-10->2026-07-09 on the 44-day row: both loss dates in the column exceed 44 days, so the swap cannot flip TRUE. Neither can be killed without deleting the boundary row or the configuration-follows-carrier row.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/siu_separation.feature#What a notice triaged at intake records for each indicator|example|threshold|45|2026-07-10|FALSE": {
+      "approved_at": "2026-08-26T10:42:18+00:00",
+      "digest": "sha256:0bbcf58d83baeb2a20d7f71c9191f9a4c64be9ab724e7e540badfbb5dc8fb5eb",
+      "reason": "Two equivalent mutants by construction of a boundary table. (1) 45->46 on the row whose interval equals the threshold: the row is the non-firing boundary and raising a threshold already at or above the interval cannot make it fire. (2) 2026-07-10->2026-07-09 on the 44-day row: both loss dates in the column exceed 44 days, so the swap cannot flip TRUE. Neither can be killed without deleting the boundary row or the configuration-follows-carrier row.",
+      "reviewer": "xaziaver"
+    },
     "mutant:features/triage.feature#From raw record to queue, with SIU indicators recorded separately and never affecting routing|example|coverage_start|theft|400.00|2026-06-15|2024-01-01|standard|standard|TRUE|FALSE": {
       "approved_at": "2026-08-15T15:50:43+00:00",
       "digest": "sha256:e5968e311a1e3b36644eb53bb92f58ffe45a78917bfbbb05bbef636062a080a8",
