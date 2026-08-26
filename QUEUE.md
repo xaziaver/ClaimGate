@@ -2557,3 +2557,29 @@ field set.
 locked specs' reopening; then the map, the `property_state` capture through schema, message shape and
 persistence, the step definitions, and last the two swappability tests — which land as tests, not as
 feature files, because a fictional second jurisdiction is not a business rule of this product.
+
+**The draft was reviewed and amended, 2026-08-26; the current draft is `955dfef`, superseding the
+figures above.** 200 lines, blob sha256 `67e65c362fd7`, **36 mutants across 36 unique locators**, no
+collision, every mutant `example`-kind. Four amendments, all from the review: two comments were
+recomputed and had been wrong in the first draft — Rule 1's claimed that a UTC implementation is
+wrong on both of its rows when only the 02:30Z row separates the two calendars, and the panhandle
+note had the skew direction backwards. Two assertions were added: Rule 1 now asserts the clean
+`FALSE` determination, which nothing asserted before, so an implementation recording nothing on a
+clean evaluation would have passed; and Rule 2 gained an `fl` row pinning the unrecognized-string
+class.
+
+**Three decisions were ratified and are recorded in `ASSUMPTIONS.md`, dated 2026-08-26.** One
+timezone per jurisdiction, with the skew stated in its corrected direction — Eastern's date is never
+behind Central's, so no false `LOSS_DATE_IN_FUTURE` is possible and both skewed answers are tolerant.
+`property_state` is matched exactly and a miss is marked rather than normalized. And the zone that
+dates a resolution's SIU interval comes from the notice's merged view rather than from what was known
+at receipt, which closes a gap item 5f decision 2 left open by fixing the instant and not the
+timezone. The four per-consumer recommendations from the collision analysis were accepted as drafted.
+
+**Two things are still open before the spec can be approved.** The acceptance gate stays red until
+`gauntlet spec approve` runs, which is mine. And Rule 3 still carries a `RECOMMENDED, NOT RATIFIED`
+banner over its two scenarios; if accepting the per-consumer recommendations settled those rules —
+including `NO_JURISDICTION_DATE` as a new code in two separate closed enumerations — that banner is
+stale and should come off before approval rather than being locked into the file. It was left in
+place because removing it was not among the amendments asked for, and a closed-enumeration addition
+is not something to infer.
