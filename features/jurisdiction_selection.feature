@@ -45,9 +45,14 @@ Feature: Jurisdiction selection
   # the rest of the state is America/New_York (ASSUMPTIONS.md, "The
   # jurisdiction timezone is a parameter of the conversion, not a constant in
   # it"). A jurisdiction keyed by state holds one timezone, so a notice on a
-  # Pensacola risk is dated Eastern here. That is a real wrong answer around
-  # midnight Central on the field that already drives LOSS_DATE_IN_FUTURE, and
-  # no scenario below asserts it either way.
+  # Pensacola risk is dated Eastern here. For one hour a day that skews two
+  # answers, both in the tolerant direction: a loss dated tomorrow by the
+  # Central clock passes the future-date check unflagged (Eastern's today has
+  # already reached it), and the late reporting interval reads up to one day
+  # long, which flags early on an advisory indicator. No false block is
+  # possible - Eastern's date is never behind Central's. Ratified as
+  # acceptable for phase 2; recorded in ASSUMPTIONS.md, and no scenario below
+  # asserts the skew either way.
 
   Background:
     # Carrier configuration is carrier_configuration.feature's subject and is
@@ -73,9 +78,11 @@ Feature: Jurisdiction selection
     # This is the proof that the jurisdiction actually supplies the date the
     # domain receives, rather than the date being derived some other way that
     # happens to agree. Both rows report the same loss date and differ only in
-    # the instant the notice arrived; between them, an implementation reading
-    # the UTC calendar date instead of Florida's is wrong on both, in the same
-    # direction. 2026-06-11T04:30Z is 00:30 on 2026-06-11 in Florida, so a
+    # the instant the notice arrived; between them, only the 02:30Z row
+    # separates the two calendars - at 04:30Z the UTC date and Florida's agree
+    # - so that row alone is the discriminator, and the 04:30Z row is here to
+    # prove the agreement case rather than to catch anyone.
+    # 2026-06-11T04:30Z is 00:30 on 2026-06-11 in Florida, so a
     # loss on 2026-06-11 is today rather than ahead of it; 2026-06-11T02:30Z
     # is still 22:30 on 2026-06-10 there, so the same loss date is ahead of
     # the jurisdiction's today and blocks.
@@ -91,11 +98,12 @@ Feature: Jurisdiction selection
       When the notice is submitted for intake
       Then the notice's state is <state>
       And the notice's blockers are <blockers>
+      And the future-dated-loss determination recorded for the notice is <determination>
 
       Examples:
-        | submitted_at      | state   | blockers                      |
-        | 2026-06-11T04:30Z | TRIAGED |                               |
-        | 2026-06-11T02:30Z | PENDED  | LOSS_DATE_IN_FUTURE:loss_date |
+        | submitted_at      | state   | blockers                      | determination |
+        | 2026-06-11T04:30Z | TRIAGED |                               | FALSE         |
+        | 2026-06-11T02:30Z | PENDED  | LOSS_DATE_IN_FUTURE:loss_date | TRUE          |
 
   Rule: A property state this deployment supports no jurisdiction for does not block the notice, it marks it for a person
 
@@ -121,11 +129,14 @@ Feature: Jurisdiction selection
       And the notice's state is <state>
       And the notice's jurisdiction marking is <jurisdiction_marking>
 
+      # The lookup is exact-match and its misses are marked for a person, never
+      # normalized into a guess about what the reporter meant.
       Examples:
         | property_state | response | state   | jurisdiction_marking     |
         | FL             | 201      | TRIAGED | none                     |
         | GA             | 201      | TRIAGED | jurisdiction_unsupported |
         | absent         | 201      | TRIAGED | jurisdiction_unsupported |
+        | fl             | 201      | TRIAGED | jurisdiction_unsupported |
 
   Rule: A determination that needs the jurisdiction's calendar date is recorded as not evaluated, naming what was missing
 
