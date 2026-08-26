@@ -140,7 +140,7 @@ Feature: Jurisdiction selection
 
   Rule: A determination that needs the jurisdiction's calendar date is recorded as not evaluated, naming what was missing
 
-    # RECOMMENDED, NOT RATIFIED - every row in this rule's two scenarios.
+    # RATIFIED 2026-08-26, advisor-recommended - every row in this rule's two scenarios.
     # PHASE2_DESIGN.md's "Jurisdiction axis" predates the machinery it
     # collides with here and is silent on it: an unsupported property state
     # means no jurisdiction, so no timezone, so no jurisdiction today, and
@@ -150,9 +150,11 @@ Feature: Jurisdiction selection
     # that a LOSS_ASSESSMENT notice's late-notice attribute resolves to an
     # explicit not-computable outcome with a reason, never a silent fallback -
     # and CLAUDE.md's standing constraint that a result which was not computed
-    # is never reported as a negative. It is a recommendation until a human
-    # ratifies it, and the reason code it introduces belongs to a closed
-    # enumeration that only a human may add to.
+    # is never reported as a negative. The human ratified it on 2026-08-26,
+    # and the ratification is what adds the reason code: NO_JURISDICTION_DATE
+    # enters two closed enumerations as two codes of one spelling - the
+    # future-dated-loss determination's reasons and the SIU indicator reasons -
+    # by that ratification and by nothing else.
 
     # The determination has to be recorded as its own three-valued outcome
     # because the place a positive one goes - the notice's blockers - is the
