@@ -20,6 +20,13 @@ fields are additions this item made rather than found there:
   had no reader for the verbatim half and stored only the hash. Item 5e derives
   a notice's current view by overlaying the sequence field by field, which a
   hash cannot answer, so the content is stored from here on.
+- `SiuIndicatorObservation` and `SiuIndicatorEvent`, item 5f. The first is what
+  one evaluation observed about one indicator - the domain's own result plus the
+  threshold that evaluation was given; the second is that observation as the
+  append-only trail stores it, with the notice it is about, its position in that
+  notice's own order, the rule set that produced it and when. They are two shapes
+  rather than one because the ordinal is assigned where the row is written and is
+  not something the evaluation knows.
 - `NoticeRecord.pended_at` and `NoticeRecord.resolved_at`, item 5e decision (a):
   the pend instant and the instant of the resolution that released it, the two
   ends of the interval Fla. Stat. 627.70131(8)(b) defines, which
@@ -35,7 +42,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from claimgate.domain.models import ValidationBlocker
+from claimgate.domain.models import SiuIndicatorResult, ValidationBlocker
 
 
 @dataclass(frozen=True)
@@ -157,4 +164,47 @@ def payload_from_row(row: sqlite3.Row) -> PayloadRecord:
         received_at=datetime.fromisoformat(row["received_at"]),
         arrival_index=row["arrival_index"],
         notice_id=row["notice_id"],
+    )
+
+
+@dataclass(frozen=True)
+class SiuIndicatorObservation:
+    """One indicator's outcome and the number the evaluation applied to reach
+    it. The threshold is null where the carrier configured none and never zero:
+    a configured zero makes every notice late (carrier_configuration.feature),
+    so zero standing in for absent would record a rule nobody configured."""
+
+    indicator: str
+    result: SiuIndicatorResult
+    threshold_days: int | None
+
+
+@dataclass(frozen=True)
+class SiuIndicatorEvent:
+    """One stored row of the SIU trail. `ordinal` is its position in its own
+    notice's order, assigned where the row is written; `evaluated_at` is the
+    instant of the transaction that triaged the notice, which on the resolution
+    path is not the instant the interval was counted from (ASSUMPTIONS.md, item
+    5f decisions 2 and 3)."""
+
+    notice_id: str
+    ordinal: int
+    indicator: str
+    value: str
+    ruleset_version: str
+    evaluated_at: datetime
+    reason_code: str | None = None
+    threshold_days: int | None = None
+
+
+def siu_event_from_row(row: sqlite3.Row) -> SiuIndicatorEvent:
+    return SiuIndicatorEvent(
+        notice_id=row["notice_id"],
+        ordinal=row["ordinal"],
+        indicator=row["indicator"],
+        value=row["value"],
+        ruleset_version=row["ruleset_version"],
+        evaluated_at=datetime.fromisoformat(row["evaluated_at"]),
+        reason_code=row["reason_code"],
+        threshold_days=row["threshold_days"],
     )

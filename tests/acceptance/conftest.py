@@ -12,6 +12,16 @@ which keeps its own carrier-rules steps and its own rules-source vocabulary).
 features/resolution.feature (item 5e) uses that override for one phrase and
 shares the rest: the blockers assertion and the three idempotency phrases below
 moved here when it became the second locked spec to state them word for word.
+
+The reviewer's four phrases and the carrier's late reporting threshold moved here
+in item 5f, by the same rule and for the same reason: features/siu_separation.
+feature states all five in exactly the words another locked spec already used.
+The threshold phrase came from test_carrier_configuration_acceptance.py, which
+keeps its own definition of it - that module has its own rules-source vocabulary
+and writes to its own context key, which neither submit_notice nor resolve_notice
+reads. Written here on the _rules_entry pattern instead, it replaces the value in
+place, which is what lets a scenario configure a threshold after the notice has
+already arrived.
 """
 
 from datetime import date, datetime
@@ -20,10 +30,16 @@ from typing import Any
 import pytest
 from pytest_bdd import given, parsers, then, when
 
-from tests.acceptance.support import parse_compact_blockers
+from tests.acceptance.support import parse_compact_blockers, parse_instant
 from tests.api.notice_intake import IN_MEMORY_DATABASE, NoticeFields, NoticeStore, submit_notice
+from tests.api.resolution import resolve_notice
 
 DEFAULT_TODAY = date(2026, 8, 2)
+_SUPPLIED_FIELDS = {
+    "policy number": "policy_number",
+    "notice type": "notice_type",
+    "loss type": "loss_type",
+}
 
 
 @pytest.fixture
@@ -80,6 +96,13 @@ def set_claimant_contact_not_required(context: dict[str, Any], carrier: str) -> 
 @given(parsers.parse('"{carrier}" recognizes the policy-number prefixes "{prefixes}"'))
 def set_recognized_prefixes(context: dict[str, Any], carrier: str, prefixes: str) -> None:
     _rules_entry(context, carrier)["recognized_policy_number_prefixes"] = prefixes.split(";")
+
+
+@given(parsers.parse('"{carrier}" configures a late reporting threshold of {value:d} days'))
+def set_carrier_late_reporting_threshold(
+    context: dict[str, Any], carrier: str, value: int
+) -> None:
+    _rules_entry(context, carrier)["late_reporting_threshold_days"] = value
 
 
 @given(parsers.parse('"{carrier}" has no late reporting threshold configured'))
@@ -174,6 +197,42 @@ def submit(context: dict[str, Any]) -> None:
 @given("that submission is remembered as the original")
 def remember_the_original(context: dict[str, Any]) -> None:
     context["original"] = context["response"]
+
+
+@given(parsers.parse('the reviewer is identified as "{value}"'))
+def set_reviewer(context: dict[str, Any], value: str) -> None:
+    # "absent" here means no identity in the body at all, which is what makes
+    # the body schema-invalid. It is a different absence from a field the
+    # reviewer simply did not supply.
+    context["reviewer"] = None if value == "absent" else value
+
+
+@when(parsers.re(r'^the reviewer supplies a (?P<name>[a-z ]+) of "(?P<value>[^"]*)"$'))
+@given(parsers.re(r'^the reviewer supplies a (?P<name>[a-z ]+) of "(?P<value>[^"]*)"$'))
+def supply_field(context: dict[str, Any], name: str, value: str) -> None:
+    # "absent" means the field is not in the resolution payload. There is no way
+    # to blank a field in phase 2, only to replace one, so it never means
+    # cleared - it means this reviewer said nothing about it.
+    if name not in _SUPPLIED_FIELDS:
+        raise ValueError(f"unrecognized supplied field: {name!r}")
+    if value != "absent":
+        context.setdefault("supplied", {})[_SUPPLIED_FIELDS[name]] = value
+
+
+@given(parsers.parse('the reviewer\'s resolution is submitted at "{instant}"'))
+@when(parsers.parse('the reviewer\'s resolution is submitted at "{instant}"'))
+def submit_resolution(context: dict[str, Any], instant: str) -> None:
+    supplied = context.pop("supplied", {})
+    context.setdefault("resolutions", []).append(supplied)
+    context["response"] = resolve_notice(
+        context["store"],
+        context["notice_id"],
+        actor_id=context["reviewer"],
+        resolved_at=parse_instant(instant),
+        jurisdiction_timezone=context["jurisdiction_timezone"],
+        carrier_rules_source=context["carrier_rules_source"],
+        supplied=supplied,
+    )
 
 
 @given(parsers.re(r"^the response is (?P<value>\d+)$"))

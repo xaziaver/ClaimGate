@@ -46,8 +46,14 @@ in item 5e: the resolution path has to run the same validation over its merged
 current view, and decision 2(a) says that is because there is one definition of
 "no blocker" rather than one per endpoint. Both NotImplementedError raises moved
 with them, intact - item 5i's unresolvable rules entry and item 5g's
-unresolvable jurisdiction_timezone. Out of scope here: SIU (5f) and
-duplicate-candidate detection, left unsettled rather than assumed.
+unresolvable jurisdiction_timezone.
+
+**The SIU evaluation item 5f owes a transition into TRIAGED runs inside the
+decision transaction**, from siu.py, which the resolution path calls too. It runs
+only where this submission's decision was TRIAGED: a pend is an incomplete intake
+record and evaluates nothing, and a replay or a refusal never reaches here at
+all. Out of scope still: duplicate-candidate detection, left unsettled rather
+than assumed.
 """
 
 import uuid
@@ -57,6 +63,7 @@ from typing import Any
 
 from claimgate.domain.carrier_identity import CARRIER_IDENTITY_REFERENCE, resolve_carrier_identity
 from claimgate.domain.models import Candidate, CarrierRules
+from claimgate.shell import siu
 from claimgate.shell.idempotency import (
     answer_repeated_key,
     find_remembered_notice,
@@ -175,9 +182,28 @@ def _decide(submission: Submission, accepted: AcceptedNotice) -> SubmitNoticeRes
             accepted.notice_id, state=state, blockers=blockers, severity=severity, queue=queue,
             occurred_at=submission.submitted_at,
         )
+        if state == "TRIAGED":
+            _record_indicators(submission, accepted)
     return SubmitNoticeResponse(
         status=201, notice_id=accepted.notice_id, state=state, blockers=blockers,
         severity=severity, queue=queue, received_at=submission.submitted_at,
+    )
+
+
+def _record_indicators(submission: Submission, accepted: AcceptedNotice) -> None:
+    """The intake path's half of item 5f decision 1, inside the decision
+    transaction so the events and the transition commit together. Both instants
+    are the submission's: on this path the notice was received and triaged in
+    one request, so the day the interval is counted from and the instant the
+    evaluation happened are the same event rather than a coincidence."""
+    siu.record_evaluation(
+        submission.store,
+        accepted.notice_id,
+        candidate=accepted.candidate,
+        rules=accepted.rules,
+        received_at=submission.submitted_at,
+        jurisdiction_timezone=submission.jurisdiction_timezone,
+        evaluated_at=submission.submitted_at,
     )
 
 

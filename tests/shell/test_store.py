@@ -7,15 +7,30 @@ does not reach src/claimgate/shell/ at all, so if these do not assert it,
 nothing does.
 """
 
+import re
 import sqlite3
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
+from claimgate.domain.models import SiuIndicatorResult
+from claimgate.shell import store as store_module
+from claimgate.shell.records import SiuIndicatorObservation
 from claimgate.shell.store import NoticeStore
 
 _RECEIVED_AT = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
 _PAYLOAD = {"policy_number": "HO-1234567"}
+_EVALUATED_AT = datetime(2026, 6, 2, 9, 0, tzinfo=UTC)
+_LATE_REPORTING_FIRED = SiuIndicatorObservation("late_reporting", SiuIndicatorResult("TRUE"), 45)
+_INCEPTION_UNEVALUATED = SiuIndicatorObservation(
+    "recent_policy_inception", SiuIndicatorResult("NOT_EVALUATED", "NO_CONTINUOUS_COVERAGE_DATE"),
+    None,
+)
+_WRITES_AN_SIU_EVENT = (
+    re.compile(r"UPDATE\s+siu_indicator_events", re.IGNORECASE),
+    re.compile(r"DELETE\s+FROM\s+siu_indicator_events", re.IGNORECASE),
+)
 
 
 def _seed_notice(store: NoticeStore, notice_id: str = "notice-1") -> str:
@@ -129,6 +144,78 @@ def test_a_payload_record_keeps_what_arrived_in_it_verbatim(store: NoticeStore) 
     record = store.list_payloads()[0]
     assert record.content == _PAYLOAD
     assert record.arrival_index == 0
+
+
+def test_an_siu_indicator_event_cannot_be_updated(store: NoticeStore) -> None:
+    _seed_events(store)
+
+    with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+        _execute(store, "UPDATE siu_indicator_events SET value = 'FALSE'")
+
+
+def test_an_siu_indicator_event_cannot_be_deleted(store: NoticeStore) -> None:
+    _seed_events(store)
+
+    with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+        _execute(store, "DELETE FROM siu_indicator_events")
+
+
+def test_no_statement_in_the_shell_updates_or_deletes_an_siu_indicator_event() -> None:
+    """The triggers above refuse both from the database's side. This asserts the
+    other half of ASSUMPTIONS.md's item 5f decision 3 - "no code path for
+    either" - by reading the package rather than by trusting that nobody added
+    one. Quotes and line breaks are collapsed first, so a statement split across
+    adjacent string literals is found the same as one written on a single line.
+    """
+    for module in sorted(Path(store_module.__file__).parent.glob("*.py")):
+        source = re.sub(r"[\"']|\s+", " ", module.read_text())
+        for statement in _WRITES_AN_SIU_EVENT:
+            assert statement.search(source) is None, f"{module.name}: {statement.pattern}"
+
+
+def test_a_notices_siu_events_come_back_in_the_order_they_were_written(
+    store: NoticeStore,
+) -> None:
+    # The ordinal is the notice's own arrival order, so a second evaluation
+    # continues it rather than restarting - the read is by stored position, not
+    # by insertion order.
+    notice_id = _seed_events(store)
+    with store.submission():
+        store.append_siu_events(
+            notice_id, (_LATE_REPORTING_FIRED,),
+            ruleset_version="2026-01-01", evaluated_at=_EVALUATED_AT,
+        )
+
+    events = store.get_siu_events(notice_id)
+    assert [event.ordinal for event in events] == [0, 1, 2]
+    assert [event.indicator for event in events[:2]] == ["late_reporting", "recent_policy_inception"]
+    assert events[2].ruleset_version == "2026-01-01"
+
+
+def test_an_siu_event_records_no_threshold_rather_than_a_zero_where_none_was_configured(
+    store: NoticeStore,
+) -> None:
+    # A configured zero is a real carrier choice that makes every notice late
+    # (carrier_configuration.feature), so an absent threshold has to come back
+    # as absent and never as zero.
+    _seed_events(store)
+
+    fired, unevaluated = store.list_siu_events()
+    assert (fired.value, fired.reason_code, fired.threshold_days) == ("TRUE", None, 45)
+    assert unevaluated.value == "NOT_EVALUATED"
+    assert unevaluated.reason_code == "NO_CONTINUOUS_COVERAGE_DATE"
+    assert unevaluated.threshold_days is None
+    assert unevaluated.evaluated_at == _EVALUATED_AT
+
+
+def _seed_events(store: NoticeStore, notice_id: str = "notice-1") -> str:
+    _seed_notice(store, notice_id)
+    with store.submission():
+        store.append_siu_events(
+            notice_id, (_LATE_REPORTING_FIRED, _INCEPTION_UNEVALUATED),
+            ruleset_version="2026-08-25", evaluated_at=_EVALUATED_AT,
+        )
+    return notice_id
 
 
 def _execute(store: NoticeStore, statement: str) -> None:

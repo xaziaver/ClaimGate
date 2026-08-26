@@ -472,9 +472,12 @@ and the trend is upward, not flat: the four most recent runs measured 186.2s,
 174.1s, 208.2s, and 260.3s. Budget 300s as a floor for any tool timeout
 wrapping `gauntlet check`, and expect that floor to keep rising as the suite
 grows — don't quote a fixed number here again without rechecking the log.
-The exposure isn't evenly distributed: the Stop hook already allows 600s, and
-the `PostToolUse` hook only ever runs the fast gates (`static`, `size`,
-`complexity`) at a 60s budget, neither of which is at risk. Every killed run
+The exposure isn't evenly distributed, and this entry's original claim about
+it was falsified: the Stop hook's 600s was overtaken by a green run and had to
+be raised to 1800s on 2026-08-25. See "The Stop hook's timeout is now shorter
+than a green acceptance run" above for what that cost. The `PostToolUse` hook
+only ever runs the fast gates (`static`, `size`, `complexity`) at a 60s
+budget and is the only one genuinely not at risk. Every killed run
 in this project's history was an agent-issued `gauntlet check` through `bash`,
 cut off at whatever that tool call's own timeout happened to be — that is the
 timeout that needs raising, not the hooks'.
@@ -498,6 +501,16 @@ the time is the cost of one more fully-exercised spec file (48 mutants) on top
 of the six already there, not a full-suite re-run per mutant. Both figures are
 real; they measure different things. Budget past 480s now, and keep
 rechecking rather than anchoring on either number.
+
+**Third correction, 2026-08-26: 893.841s, and read it beside 866.202s.** Item
+5f's all-green run — 10 specs, 708 mutants, a 397-test suite, 71
+reviewed-equivalent — took 893.841s, about 1.26s per mutant. The same ten
+specs and the same 708 mutants took 866.202s at the pre-approval run, so the
+27.6s is unexplained and inside variance. Neither is evidence that approving a
+survivor costs time, because it does not: `_survivors` applies every mutant and
+runs the full suite for each before the ledger is read, which is also what
+makes a stale approval detectable. Budget past 900s and keep rechecking rather
+than anchoring on any of these.
 
 ### `scope = "changed"` in `gauntlet.toml` never reaches the mutation gate — but not because `--changed` goes unused
 
