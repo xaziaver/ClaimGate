@@ -2439,3 +2439,59 @@ finished and approved on this branch. That is the third instance of the
 documentation-lands-on-main convention being missed — item 4a carried two such commits forward,
 item 5c recorded its own, and this is 5f's. The cost is specific and is not stylistic: `main` is
 what a memoryless session reads.
+
+**Item 5f is merged to `main`** (merge commit `96a5e9e`, `--no-ff`, 27 files, +2021/−121),
+2026-08-26. Branch `phase2/5f-siu-separation` ends at `d4ecf1b`. Spec locked at `c82ee92`
+(`features/siu_separation.feature`, blob sha256 `cbde5f6ab716`, 511 lines, 53 mutants), two
+equivalent mutants approved at `1778e25`, close-out at `9a39c0b` and `d4ecf1b`. Ledger: **71
+mutant approvals**, up from 69. Verified after the merge rather than assumed: `main`'s tree is
+byte-identical to the branch tip (`git diff phase2/5f-siu-separation main` is empty), the spec
+digest on `main` matches `gauntlet.lock.json`, and both new approvals pair to live mutants by
+digest.
+
+**No post-merge `gauntlet check` was run, and this entry says so rather than leaving the omission
+to look like a pass.** The convention every prior item follows is to record a post-merge figure.
+Here the merged tree is byte-identical to `d4ecf1b`, which differs from the green-measured
+`23bb58d` only in `QUEUE.md`, `docs/harness-findings.md`, `.gitignore` and a deleted binary — none
+of which any gate reads. So the figures at `23bb58d` carry over: 397/397 tests, coverage 100/100,
+code mutation 100.0% / 342 killed, acceptance 10 specs / 71 reviewed-equivalent / 893.841s. That
+is **reasoned from tree identity, not measured on `main`**, and it is labelled that way
+deliberately: a 900-second run against a byte-identical tree buys nothing, and the next coding
+session's Stop hook will produce a real post-merge figure for free.
+
+**Four corrections, all from the 2026-08-26 advisory session.**
+
+1. **A session report named a commit that does not exist.** Item 5f's close-out report gave `main`
+   as `2448922`; `main` was `244892e`, and `git cat-file -t 2448922` returns "Not a valid object
+   name". Confined to the report — neither committed document contains the string. This is the
+   second instance in this project, after the 2026-08-23 report that attributed item 5b's closure
+   to two `main` commits that did not contain it. The cheap check that settles it, and that neither
+   instance had applied: **every commit a report cites is falsifiable with `git cat-file -t`**, in
+   one command, before the report is written.
+2. **A claim was attributed to the advisor's prompt that the prompt did not make.** The same report
+   said the advisor had stated that a concurrent `gauntlet check` exits 0 having executed zero
+   gates. The prompt said only not to run a second check. The claim is true and is `CLAUDE.md`'s,
+   corroborated by `docs/harness-findings.md`'s record of five lock-rejected runs in 59 seconds —
+   so the decision not to run one was right and only the sourcing was wrong. Recorded because
+   citing the wrong source for a true fact is the same failure as citing a stale one: the next
+   reader checks the named source, does not find it, and cannot tell which half is wrong.
+3. **The advisor's own error, recorded where it was made.** Item 5f's close-out paragraph argues
+   for merging promptly, and it was written into `main`'s copy of this file — a copy no memoryless
+   session reads until after the merge it is arguing for. As a record of the third instance of the
+   documentation-lands-on-main convention failing (items 4a, 5c, 5f) it stands. As an argument for
+   acting it was addressed to a reader who cannot act on it, and it should have gone to `CLAUDE.md`
+   as a standing constraint or been landed on `main` directly the way item 5d's record was. The
+   general shape: **an exhortation written into an artifact only reachable after the moment it
+   describes is inert, however true it is.**
+4. **The prompt that requested this entry carried a wrong anchor, and the stop that caught it is
+   the mechanism working.** The anchor given as "the file's current final line" — "is the copy
+   nobody reads until after the merge…" — appears nowhere in this file at any ref; `git log
+   --all -S` confirms it never has. It is a verbatim sentence from the implementing session's
+   own conversational close-out report, quoted as though it were the document. The advisor had
+   the file at the ref and did not read its tail before writing the anchor. The rule this adds
+   to the anchor convention: **an anchor is quoted from the file at the ref, never from the
+   conversation about the file** — the two can agree closely enough to pass a careless read and
+   still never have shared a byte. The exactly-once assertion plus stop-on-missing converted the
+   error into a question; a guess would have been unrecoverable in one direction, since the
+   plausible alternative reading rewrote a merged record to absorb a criticism of itself, which
+   no later check could distinguish from the record having always said that.

@@ -252,6 +252,40 @@ e.g. `Counter(m.scenario for m in mutation.mutants(...))`. Confirmed a
 comment-only spec edit changed nothing structural in under a second this way,
 with no gate run and no approval required first.
 
+### Mutant counts and locator counts are different numbers, and only one of them is the ledger's
+
+Two mutants can share a locator, and then the ledger cannot tell them apart. `Mutant.locator` is
+`scenario|kind|context`; for `example` kind the context carries the column header and the whole
+row, so it is unique, but for `literal` kind it is the step line and nothing else — and the
+engine's literal pattern matches quoted strings *and* bare numbers. **A step line carrying two
+literals produces two mutants under one key.**
+
+Measured on `main` at `96a5e9e`, all ten specs: **708 mutants, 681 unique locators — 27 mutants the
+ledger has no way to address.** `duplicates.feature` 57/42, worst case four mutants on one locator
+(a `Given` naming a claim id, a policy number, a date and a peril, all quoted);
+`carrier_configuration.feature` 84/75; `siu_separation.feature` 53/50. The other seven are clean.
+
+**One live approval already sits on a colliding locator, and a future session should not be
+surprised by it.** `features/carrier_configuration.feature`, scenario "A recognized carrier's rules
+load with neither SIU threshold configured", step `And "AAAA" configures a duplicate match window
+of 60 days`: the mutants `"AAAA"->"AAAA"_gauntlet` and `60->61` share one key, and the stored
+digest pairs to `60->61`. It is stable today only because the marker mutant dies vacuously at step
+resolution, so just one survivor exists there. If that scenario's step definitions ever change
+shape and the entry starts reporting `MODIFIED`, the cause is this, not a lapsed judgment.
+
+**Technique that follows, in three parts.** Measure unique locators alongside mutants — item 5c did
+this once for `notice_intake.feature` ("48 mutants, 48 unique locators") and it should be standard,
+because equal totals across two refs already hide moved locators and now also hide collapsed ones.
+Prefer one literal per step line in a plain scenario, the same shape as the existing
+one-apostrophe-per-line rule and for a related reason. And before approving any `literal`-kind
+survivor, check whether its locator is shared.
+
+**What this project must not do about it.** Reshape a locked spec to work around it. This is a
+Gauntlet defect, the specs are correct, and letting the tool's addressing scheme drive Gherkin
+shape is the influence running the wrong way — the same objection recorded against approval scope
+doing exactly that. It is written up for Gauntlet with a ready patch that is deliberately withheld
+until this project is done.
+
 ### A mutant has two identities, and one of them moves when a neighbouring row changes
 
 `locator` is `scenario|kind|context` — for an example mutant, the mutated
