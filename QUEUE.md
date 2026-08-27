@@ -543,6 +543,17 @@ Ordered by domain severity, not by effort. One line each on why that position.
     `shell/resolution.py` becomes unreachable and is removed. Both raise `NotImplementedError`
     until then.
 
+    **Carried from item 5g, 2026-08-27: a fourth escalation, and it changes what "resolving this
+    item" means.** Item 5g rebuilt its `NotImplementedError` rather than removing it, in
+    `shell/rules.py`, and the rebuilt raise is this item's class of question. It fires when **this
+    deployment's own jurisdiction map** holds an entry naming no timezone, or naming one the system
+    cannot resolve — `select_jurisdiction`'s `MALFORMED` outcome, a third outcome grown for exactly
+    this. Like the two carrier cases above, it is a deployment-configuration defect rather than
+    anything the reporter did, so it is the same shape of question: what status code a caller sees
+    when the fault is ours. It is undecided, and the raise's own message says so rather than
+    implying a resolution. **Resolving item 5i means deciding all four status codes, not the
+    original three.**
+
 ## What to read
 
 `CLAUDE.md`, this file, and `docs/harness-findings.md` every session. The rest is
@@ -2761,6 +2772,9 @@ than growing `store.py` past the size gate.
    spec. `select_jurisdiction` grew a third outcome, `MALFORMED`, to carry it; the code-mutation
    gate is what forced the question, by surviving three mutants on the defaulted timezone the first
    implementation used.
+   **Ratified 2026-08-27 as built**, and the status-code question it raises is docketed on item
+   5i — see that item's entry, which now names four escalations rather than three. The raise
+   stays; what is undecided is the code a caller sees, not whether to escalate.
 3. **`NO_JURISDICTION_DATE` was added to `tests/api/siu.py`'s `SIU_REASON_CODES`.** That set is the
    leak negatives' exclusion list and had to grow with the enumeration, but it is the enumeration's
    "complete set" claim, which `CLAUDE.md` scopes to one feature.
