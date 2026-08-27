@@ -12,6 +12,16 @@ from datetime import datetime
 from typing import Any
 
 from tests.api.resolution import notice_record
+from tests.api.siu import (
+    LATE_REPORTING_INDICATOR,
+    RECENT_POLICY_INCEPTION_INDICATOR,
+    siu_indicator_events,
+)
+
+INDICATORS = {
+    "late reporting": LATE_REPORTING_INDICATOR,
+    "recent policy inception": RECENT_POLICY_INCEPTION_INDICATOR,
+}
 
 
 def parse_instant(value: str) -> datetime:
@@ -52,3 +62,38 @@ def parse_compact_blockers(value: str) -> list[tuple[str, str]]:
         code, field = pair.split(":", 1)
         pairs.append((code, field))
     return pairs
+
+
+def assert_recorded_indicator(context: dict[str, Any], indicator: str, phrase: str) -> None:
+    """The stored event, not a computed value: conftest.py's "the late reporting
+    indicator is ..." reads what the domain returned and this reads what the
+    trail kept. Two subjects, two phrases, on purpose.
+
+    Shared by features/siu_separation.feature and features/jurisdiction_selection.
+    feature, which state the phrase in the same words. It is here rather than in
+    conftest.py because both files must keep their own step definitions - see
+    assert_notice_state above - and pytest-bdd binds those per module.
+
+    The expected value is compared case-insensitively, and only the value: the
+    acceptance engine substitutes an upper-case TRUE with a lower-case `true`
+    before it ever tries a sibling swap (docs/harness-findings.md, "The boolean
+    substitution is lowercase and preemptive"), so an exact comparison kills
+    every such mutant without testing anything. Folding the case is what makes
+    the mutant a real question about which value was recorded. The reason code is
+    compared exactly - no mutation ever changes its case, and folding it would
+    only widen what an assertion accepts.
+    """
+    event = recorded_indicator_event(context, INDICATORS[indicator])
+    value, _, reason = phrase.partition(" with reason ")
+    assert event.value == value.strip().upper()
+    assert event.reason_code == (reason.strip() or None)
+
+
+def recorded_indicator_event(context: dict[str, Any], indicator: str) -> Any:
+    matching = [
+        event
+        for event in siu_indicator_events(context["store"], context["notice_id"])
+        if event.indicator == indicator
+    ]
+    assert len(matching) == 1
+    return matching[0]

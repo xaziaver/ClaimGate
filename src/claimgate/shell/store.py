@@ -29,8 +29,11 @@ The payload table moved to payloads.py in item 5e - the arrival sequence is what
 that item extends, and this module had four lines of headroom before it did. The
 audit table moved to audit.py in item 5f, which adds a column to every entry and
 a second table beside them, and siu_indicator_events arrived in siu_events.py
-rather than here for the same reason. The methods below that name any of the
-three delegate there so callers keep one store.
+rather than here for the same reason. The notices table itself moved to
+notices.py in item 5g, which adds three columns to it. What is left here is the
+connection, the transaction boundary, and the composition each caller wants; the
+methods below that name a table delegate to its module so callers keep one
+store.
 
 No statement anywhere in this package updates or deletes an SIU indicator event
 (ASSUMPTIONS.md, item 5f decision 3); tests/shell/test_store.py reads the
@@ -43,15 +46,14 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
 
-from claimgate.domain.models import ValidationBlocker
-from claimgate.shell import audit, payloads, siu_events
+from claimgate.domain.models import FutureDatedLossResult, ValidationBlocker
+from claimgate.shell import audit, notices, payloads, siu_events
 from claimgate.shell.records import (
     AuditEntry,
     NoticeRecord,
     PayloadRecord,
     SiuIndicatorEvent,
     SiuIndicatorObservation,
-    dump_blockers,
     notice_from_row,
 )
 from claimgate.shell.schema import SCHEMA_STATEMENTS
@@ -95,12 +97,7 @@ class NoticeStore:
         raw_payload: Mapping[str, Any],
         received_at: datetime,
     ) -> None:
-        self._connection.execute(
-            "INSERT INTO notices"
-            " (notice_id, carrier_code, state, blockers, severity, queue, received_at)"
-            " VALUES (?, ?, 'RECEIVED', '[]', NULL, NULL, ?)",
-            (notice_id, carrier_code, received_at.isoformat()),
-        )
+        notices.receive(self._connection, notice_id, carrier_code, received_at)
         payloads.append(self._connection, carrier_code, raw_payload, received_at, notice_id)
         self.append_audit_entry(
             notice_id, from_state=None, to_state="RECEIVED", actor_type="EXTERNAL",
@@ -115,6 +112,8 @@ class NoticeStore:
         blockers: tuple[ValidationBlocker, ...],
         severity: str | None,
         queue: str | None,
+        jurisdiction_marking: str | None,
+        future_dated_loss: FutureDatedLossResult,
         occurred_at: datetime,
     ) -> None:
         """Intake's decision transaction. A decision that lands in PENDED stamps
@@ -122,6 +121,7 @@ class NoticeStore:
         second clock read (item 5e decision (a))."""
         self.write_notice_decision(
             notice_id, state=state, blockers=blockers, severity=severity, queue=queue,
+            jurisdiction_marking=jurisdiction_marking, future_dated_loss=future_dated_loss,
             pended_at=occurred_at if state == "PENDED" else None, resolved_at=None,
         )
         self.append_audit_entry(
@@ -131,20 +131,16 @@ class NoticeStore:
 
     def write_notice_decision(
         self, notice_id: str, *, state: str, blockers: tuple[ValidationBlocker, ...],
-        severity: str | None, queue: str | None,
+        severity: str | None, queue: str | None, jurisdiction_marking: str | None,
+        future_dated_loss: FutureDatedLossResult,
         pended_at: datetime | None, resolved_at: datetime | None,
     ) -> None:
         """The notice row every decision writes, intake's and a resolution's
-        alike. Both instants go through COALESCE, so each takes a value once and
-        no later write can replace it - item 5e decision (a)'s "written once and
-        never rewritten", enforced by the statement rather than by call order.
-        Passing None leaves whatever is already there."""
-        self._connection.execute(
-            "UPDATE notices SET state = ?, blockers = ?, severity = ?, queue = ?,"
-            " pended_at = COALESCE(pended_at, ?), resolved_at = COALESCE(resolved_at, ?)"
-            " WHERE notice_id = ?",
-            (state, dump_blockers(blockers), severity, queue,
-             _stamp(pended_at), _stamp(resolved_at), notice_id),
+        alike."""
+        notices.write_decision(
+            self._connection, notice_id, state=state, blockers=blockers, severity=severity,
+            queue=queue, jurisdiction_marking=jurisdiction_marking,
+            future_dated_loss=future_dated_loss, pended_at=pended_at, resolved_at=resolved_at,
         )
 
     def refuse_payload(
@@ -162,10 +158,7 @@ class NoticeStore:
         return payloads.append(self._connection, carrier_code, content, received_at, notice_id)
 
     def get_notice(self, notice_id: str) -> NoticeRecord | None:
-        row = self._connection.execute(
-            "SELECT * FROM notices WHERE notice_id = ?", (notice_id,)
-        ).fetchone()
-        return None if row is None else notice_from_row(row)
+        return notices.get(self._connection, notice_id)
 
     def get_audit_trail(self, notice_id: str) -> tuple[AuditEntry, ...]:
         return audit.for_notice(self._connection, notice_id)
@@ -210,8 +203,7 @@ class NoticeStore:
         return payloads.for_notice(self._connection, notice_id)
 
     def count_notices(self) -> int:
-        row = self._connection.execute("SELECT COUNT(*) AS total FROM notices").fetchone()
-        return int(row["total"])
+        return notices.count(self._connection)
 
     def list_payloads(self) -> tuple[PayloadRecord, ...]:
         return payloads.all_records(self._connection)
@@ -242,7 +234,3 @@ class NoticeStore:
 
     def list_siu_events(self) -> tuple[SiuIndicatorEvent, ...]:
         return siu_events.all_records(self._connection)
-
-
-def _stamp(instant: datetime | None) -> str | None:
-    return None if instant is None else instant.isoformat()

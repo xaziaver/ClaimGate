@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from claimgate.domain.models import SiuIndicatorResult
+from claimgate.domain.models import FutureDatedLossResult, SiuIndicatorResult
 from claimgate.shell import store as store_module
 from claimgate.shell.records import SiuIndicatorObservation
 from claimgate.shell.store import NoticeStore
@@ -22,6 +22,7 @@ from claimgate.shell.store import NoticeStore
 _RECEIVED_AT = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
 _PAYLOAD = {"policy_number": "HO-1234567"}
 _EVALUATED_AT = datetime(2026, 6, 2, 9, 0, tzinfo=UTC)
+_UNDER_FLORIDA = FutureDatedLossResult("FALSE")
 _LATE_REPORTING_FIRED = SiuIndicatorObservation("late_reporting", SiuIndicatorResult("TRUE"), 45)
 _INCEPTION_UNEVALUATED = SiuIndicatorObservation(
     "recent_policy_inception", SiuIndicatorResult("NOT_EVALUATED", "NO_CONTINUOUS_COVERAGE_DATE"),
@@ -75,7 +76,7 @@ def test_a_notice_may_still_move_state_the_audit_trail_is_the_history(store: Not
     with store.submission():
         store.record_decision(
             notice_id, state="TRIAGED", blockers=(), severity="LOW", queue="STANDARD",
-            occurred_at=_RECEIVED_AT,
+            jurisdiction_marking=None, future_dated_loss=_UNDER_FLORIDA, occurred_at=_RECEIVED_AT,
         )
 
     record = store.get_notice(notice_id)
@@ -89,7 +90,7 @@ def test_a_decision_that_lands_in_pended_stamps_the_pend_instant(store: NoticeSt
     with store.submission():
         store.record_decision(
             notice_id, state="PENDED", blockers=(), severity=None, queue=None,
-            occurred_at=_RECEIVED_AT,
+            jurisdiction_marking=None, future_dated_loss=_UNDER_FLORIDA, occurred_at=_RECEIVED_AT,
         )
 
     record = store.get_notice(notice_id)
@@ -103,7 +104,7 @@ def test_a_decision_that_lands_in_triaged_stamps_neither_instant(store: NoticeSt
     with store.submission():
         store.record_decision(
             notice_id, state="TRIAGED", blockers=(), severity="standard", queue="standard",
-            occurred_at=_RECEIVED_AT,
+            jurisdiction_marking=None, future_dated_loss=_UNDER_FLORIDA, occurred_at=_RECEIVED_AT,
         )
 
     record = store.get_notice(notice_id)
@@ -123,10 +124,12 @@ def test_an_instant_already_stamped_is_never_replaced_by_a_later_write(
     with store.submission():
         store.write_notice_decision(
             notice_id, state="PENDED", blockers=(), severity=None, queue=None,
+            jurisdiction_marking=None, future_dated_loss=_UNDER_FLORIDA,
             pended_at=_RECEIVED_AT, resolved_at=None,
         )
         store.write_notice_decision(
             notice_id, state="PENDED", blockers=(), severity=None, queue=None,
+            jurisdiction_marking=None, future_dated_loss=_UNDER_FLORIDA,
             pended_at=later, resolved_at=None,
         )
 

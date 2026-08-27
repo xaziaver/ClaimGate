@@ -28,6 +28,17 @@ Two design statements become enforced facts rather than conventions:
   records - which have no notice and no sequence - are exempt from it, which is
   the intended reading.
 
+`notices.jurisdiction_marking`, `notices.future_dated_loss` and
+`notices.future_dated_loss_reason` are item 5g. They sit on the notice row and
+not in a trail of their own because they are the notice's *current* answer,
+rewritten whenever the rules run again - unlike `audit_entries` and
+`siu_indicator_events`, which record what was observed at a moment and carry the
+triggers that make that permanent. `future_dated_loss_reason` is null unless
+`future_dated_loss` is `NOT_EVALUATED`, the same convention
+`siu_indicator_events.reason_code` follows. All three are null until the first
+decision is written: a notice at RECEIVED has had no rule run over it, which is
+not the same fact as a rule having run and found nothing.
+
 `notices.pended_at` and `notices.resolved_at` are item 5e decision (a)
 (ASSUMPTIONS.md): the two ends of the interval Fla. Stat. 627.70131(8)(b)
 defines, which PHASE2_DESIGN.md asks to be recorded "precisely, in UTC, on the
@@ -74,6 +85,9 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
         severity TEXT,
         queue TEXT,
         received_at TEXT NOT NULL,
+        jurisdiction_marking TEXT,
+        future_dated_loss TEXT,
+        future_dated_loss_reason TEXT,
         pended_at TEXT,
         resolved_at TEXT
     ) STRICT

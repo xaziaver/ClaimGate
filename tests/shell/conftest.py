@@ -14,6 +14,7 @@ The values these fixtures build on live in support.py, not here - see its own
 docstring for why that separation is load-bearing rather than tidy.
 """
 
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -29,6 +30,8 @@ from tests.shell.support import (
     DEFAULT_RESOLVED_AT,
     DEFAULT_REVIEWER,
     DEFAULT_SUBMITTED_AT,
+    IDENTITY_REFERENCE,
+    JURISDICTIONS,
     VALID_RULES,
     Resolver,
     RuleEvaluationBugError,
@@ -49,7 +52,8 @@ def submit(store: NoticeStore) -> Submitter:
     def _submit(
         carrier_code: str = "AAAA",
         submitted_at: datetime = DEFAULT_SUBMITTED_AT,
-        jurisdiction_timezone: str = "America/New_York",
+        carrier_identity_reference: Mapping[str, Any] = IDENTITY_REFERENCE,
+        jurisdiction_reference: Mapping[str, Mapping[str, str]] = JURISDICTIONS,
         carrier_rules_source: dict[str, object] | None = None,
         fields: NoticeFields = DEFAULT_FIELDS,
         idempotency_key: str | None = None,
@@ -59,7 +63,8 @@ def submit(store: NoticeStore) -> Submitter:
             store,
             carrier_code=carrier_code,
             submitted_at=submitted_at,
-            jurisdiction_timezone=jurisdiction_timezone,
+            carrier_identity_reference=carrier_identity_reference,
+            jurisdiction_reference=jurisdiction_reference,
             carrier_rules_source=source,
             fields=fields,
             idempotency_key=idempotency_key,
@@ -77,7 +82,7 @@ def resolve(store: NoticeStore) -> Resolver:
         notice_id: str,
         actor_id: str | None = DEFAULT_REVIEWER,
         resolved_at: datetime = DEFAULT_RESOLVED_AT,
-        jurisdiction_timezone: str = "America/New_York",
+        jurisdiction_reference: Mapping[str, Mapping[str, str]] = JURISDICTIONS,
         carrier_rules_source: dict[str, object] | None = None,
         supplied: dict[str, Any] | None = None,
     ) -> ResolutionResponse:
@@ -87,7 +92,7 @@ def resolve(store: NoticeStore) -> Resolver:
             notice_id,
             actor_id=actor_id,
             resolved_at=resolved_at,
-            jurisdiction_timezone=jurisdiction_timezone,
+            jurisdiction_reference=jurisdiction_reference,
             carrier_rules_source=source,
             supplied=supplied if supplied is not None else {},
         )
@@ -105,7 +110,7 @@ def rule_evaluation_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     rule evaluation can go wrong, and only a real raise from inside that step
     proves the transaction boundary is where it is claimed to be."""
 
-    def _raise(*_: object, **__: object) -> tuple[str, tuple[()], None, None]:
+    def _raise(*_: object, **__: object) -> None:
         raise RuleEvaluationBugError("rule evaluation is broken")
 
     monkeypatch.setattr(notice_intake, "apply_domain_rules", _raise)

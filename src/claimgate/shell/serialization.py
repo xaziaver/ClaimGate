@@ -19,6 +19,22 @@ the direction of the leak.
 is its own table, reachable from none of the types these functions accept, so
 there is no field for an allow-list to have to exclude and no future field on
 `notices` that could carry one in by accident.
+
+**Item 5g put a notice column on this surface and deliberately kept a second one
+off it.** `jurisdiction_marking` is here because a marking nobody can read is not
+a marking: the notice is "still received, still triaged, and visible as needing a
+person", and this view is the only surface a person reads a notice from in phase
+2. The future-dated-loss determination beside it on the record is not here, for
+the reason `NoticeRecord.pended_at` and `resolved_at` are not: it is a stored
+fact about the notice rather than part of what the view shows. That choice has a
+second effect worth naming, because it is the kind that is invisible until it
+bites. The determination's reason enumeration contains `NO_JURISDICTION_DATE`,
+which is a different code from the SIU reason code of the same spelling
+(CLAUDE.md, closed enumerations) - but `features/siu_separation.feature`'s leak
+negatives read the whole serialized surface as text and cannot tell two codes of
+one spelling apart. Putting the determination on an ordinary surface would make
+a legitimate value indistinguishable from the leak those negatives exist to
+catch, and the pressure would then be on the negatives to get looser.
 """
 
 from collections.abc import Sequence
@@ -32,7 +48,9 @@ SUBMIT_NOTICE_RESPONSE_FIELDS = (
     "status", "notice_id", "state", "blockers", "severity", "queue", "received_at", "reference",
 )
 RESOLUTION_RESPONSE_FIELDS = ("status", "notice_id", "state", "blockers", "severity", "queue")
-NOTICE_VIEW_FIELDS = ("notice_id", "state", "blockers", "severity", "queue")
+NOTICE_VIEW_FIELDS = (
+    "notice_id", "state", "blockers", "severity", "queue", "jurisdiction_marking",
+)
 AUDIT_ENTRY_FIELDS = (
     "notice_id", "carrier_code", "from_state", "to_state", "actor_id", "actor_type",
     "occurred_at", "blockers", "outcome", "actor_authenticated", "note", "ruleset_version",

@@ -25,6 +25,7 @@ from tests.shell.support import (
     DEFAULT_RESOLVED_AT,
     DEFAULT_REVIEWER,
     DEFAULT_SUBMITTED_AT,
+    JURISDICTIONS,
     PENDING_FIELDS,
     VALID_RULES,
     AuditWriteError,
@@ -158,7 +159,7 @@ def test_a_resolution_naming_a_notice_this_deployment_does_not_have_raises(
             "no-such-notice",
             actor_id=DEFAULT_REVIEWER,
             resolved_at=DEFAULT_RESOLVED_AT,
-            jurisdiction_timezone="America/New_York",
+            jurisdiction_reference=JURISDICTIONS,
             carrier_rules_source={"AAAA": VALID_RULES},
             supplied={},
         )

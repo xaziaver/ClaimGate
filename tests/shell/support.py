@@ -11,8 +11,16 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+from claimgate.domain.carrier_identity import CARRIER_IDENTITY_REFERENCE
+from claimgate.domain.jurisdiction import JURISDICTION_REFERENCE
 from claimgate.shell.messages import NoticeFields, ResolutionResponse, SubmitNoticeResponse
 
+# The two configuration sources every call names explicitly (item 5g). Bound
+# here rather than defaulted inside the shell so a test wanting a different
+# deployment hands over a different mapping - which is what the swappability
+# tests do - instead of patching a module.
+IDENTITY_REFERENCE = CARRIER_IDENTITY_REFERENCE
+JURISDICTIONS = JURISDICTION_REFERENCE
 VALID_RULES: dict[str, Any] = {
     "claimant_name_required": False,
     "claimant_contact_required": False,
@@ -23,13 +31,20 @@ VALID_RULES: dict[str, Any] = {
 }
 DEFAULT_SUBMITTED_AT = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
 DEFAULT_RESOLVED_AT = datetime(2026, 6, 2, 9, 0, tzinfo=UTC)
+# property_state is "FL", which is what makes a jurisdiction date exist for
+# these fixtures at all: without a selected jurisdiction there is no calendar,
+# the future-dated-loss determination is NOT_EVALUATED and the late reporting
+# indicator has no day to count to. Tests that care about that say so with
+# fields of their own.
 DEFAULT_FIELDS = NoticeFields(
-    policy_number="HO-1234567", loss_date="2026-06-01", loss_type="wind_hail", notice_type="INITIAL"
+    policy_number="HO-1234567", loss_date="2026-06-01", loss_type="wind_hail",
+    notice_type="INITIAL", property_state="FL",
 )
 # Lands PENDED on MISSING_REQUIRED_FIELD:policy_number and nothing else, so a
 # resolution against it has exactly one thing to clear.
 PENDING_FIELDS = NoticeFields(
-    policy_number="", loss_date="2026-06-01", loss_type="wind_hail", notice_type="INITIAL"
+    policy_number="", loss_date="2026-06-01", loss_type="wind_hail",
+    notice_type="INITIAL", property_state="FL",
 )
 DEFAULT_REVIEWER = "adjuster-4471"
 

@@ -13,7 +13,14 @@ from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from typing import Any
 
-from claimgate.domain.models import Candidate, CarrierRules, ValidationBlocker
+from claimgate.domain.models import (
+    Candidate,
+    CarrierIdentity,
+    CarrierRules,
+    FutureDatedLossResult,
+    Jurisdiction,
+    ValidationBlocker,
+)
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.store import NoticeStore
 
@@ -21,13 +28,24 @@ from claimgate.shell.store import NoticeStore
 @dataclass(frozen=True)
 class NoticeFields:
     """The reporter-supplied notice content - everything but the carrier_code
-    envelope, the submission instant, the jurisdiction timezone and the
-    idempotency key, which are the shell's inputs, not the notice's."""
+    envelope, the submission instant, the two configuration sources and the
+    idempotency key, which are the shell's inputs, not the notice's.
+
+    `property_state` is notice content and not an input (item 5g): where the
+    insured risk sits is a fact about the risk, reported like any other, and a
+    reviewer can supply it at resolution the way they can any other field. It
+    therefore joins the hashed field set, which answers a byte-identical
+    resubmission under a key remembered before this item with 409 rather than a
+    200 replay - bounded to the 24-hour key lifetime, recorded in QUEUE.md, and
+    accepted. `jurisdiction_timezone` left the surface in the same change: two
+    sources for one fact need a precedence rule nobody has ratified
+    (ASSUMPTIONS.md, 2026-08-26)."""
 
     policy_number: str = ""
     loss_date: str | None = None
     loss_type: str = ""
     notice_type: str = ""
+    property_state: str | None = None
     claimant_name: str | None = None
     claimant_contact: str | None = None
     incident_description: str | None = None
@@ -58,13 +76,24 @@ class NoticeView:
     blockers: tuple[ValidationBlocker, ...]
     severity: str | None
     queue: str | None
+    # The marking is here because it is the whole point of the marking: a
+    # notice this deployment cannot yet judge is "still received, still triaged,
+    # and visible as needing a person", and this is the only surface a person
+    # reads a notice from in phase 2. The future-dated-loss determination beside
+    # it on the record deliberately is not - see serialization.py.
+    jurisdiction_marking: str | None
 
     @classmethod
     def of(cls, record: NoticeRecord) -> "NoticeView":
         """The stored notice as GET /notices/{id} shows it: everything the
         record carries except the receipt timestamp and the carrier, which are
-        envelope and attribution rather than the notice."""
-        return cls(record.notice_id, record.state, record.blockers, record.severity, record.queue)
+        envelope and attribution rather than the notice, and the pend and
+        release instants and the determination, which are stored facts about
+        the notice rather than part of what this view shows."""
+        return cls(
+            record.notice_id, record.state, record.blockers, record.severity, record.queue,
+            record.jurisdiction_marking,
+        )
 
 
 @dataclass(frozen=True)
@@ -75,7 +104,8 @@ class Submission:
     store: NoticeStore
     carrier_code: str
     submitted_at: datetime
-    jurisdiction_timezone: str
+    carrier_identity_reference: Mapping[str, CarrierIdentity]
+    jurisdiction_reference: Mapping[str, Mapping[str, str]]
     carrier_rules_source: Mapping[str, Mapping[str, Any]]
     fields: NoticeFields
     idempotency_key: str | None
@@ -101,7 +131,7 @@ class Resolution:
     notice_id: str
     actor_id: str
     resolved_at: datetime
-    jurisdiction_timezone: str
+    jurisdiction_reference: Mapping[str, Mapping[str, str]]
     carrier_rules_source: Mapping[str, Mapping[str, Any]]
     supplied: Mapping[str, Any]
     note: str | None = None
@@ -124,20 +154,35 @@ class ResolutionResponse:
 
 
 @dataclass(frozen=True)
-class Judgement:
-    """What one transaction's run of the domain rules produced, and the two
-    inputs it produced them from. The inputs travel with the outcome rather than
-    being recomputed because the SIU evaluation the same transaction owes has to
-    apply exactly the rules that transaction resolved (ASSUMPTIONS.md, item 5f
-    decision 6): a second resolve_rules call would be a second reading, and the
-    whole point of the decision is that there is one."""
+class Decision:
+    """What one run of the domain rules concluded about a notice, and the whole
+    of what a decision writes to its row. The determination travels with the
+    state because the blocker and the determination come from one evaluation of
+    the loss-date rule (domain/validation.py) and a row holding one from this
+    run and the other from the last would be a record of neither."""
 
     state: str
     blockers: tuple[ValidationBlocker, ...]
     severity: str | None
     queue: str | None
+    jurisdiction_marking: str | None
+    future_dated_loss: FutureDatedLossResult
+
+
+@dataclass(frozen=True)
+class Judgement:
+    """One transaction's decision, and the three inputs it was produced from.
+    The inputs travel with the outcome rather than being recomputed because the
+    SIU evaluation the same transaction owes has to apply exactly the rules that
+    transaction resolved (ASSUMPTIONS.md, item 5f decision 6) and read its
+    interval under exactly the jurisdiction that transaction selected: a second
+    lookup of either would be a second reading, and the whole point of the
+    decision is that there is one."""
+
+    decision: Decision
     candidate: Candidate
     rules: CarrierRules
+    jurisdiction: Jurisdiction | None
 
 
 @dataclass(frozen=True)
@@ -148,5 +193,9 @@ class AcceptedNotice:
 
     notice_id: str
     candidate: Candidate
-    today: date
+    # None where this notice's property state selected no jurisdiction: there is
+    # no calendar to ask what today is, which is a different fact from today
+    # being some particular date.
+    jurisdiction: Jurisdiction | None
+    today: date | None
     rules: CarrierRules

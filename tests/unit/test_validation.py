@@ -5,11 +5,12 @@ from datetime import date
 
 import pytest
 
-from claimgate.domain.models import Candidate, ValidationBlocker
+from claimgate.domain.models import Candidate, FutureDatedLossResult, ValidationBlocker
 from claimgate.domain.validation import (
     LOSS_DATE_IN_FUTURE,
     LOSS_TYPE_UNRECOGNIZED,
     MISSING_REQUIRED_FIELD,
+    NO_JURISDICTION_DATE,
     NOTICE_TYPE_UNRECOGNIZED,
     POLICY_NUMBER_MALFORMED,
     RECOGNIZED_LOSS_TYPES,
@@ -32,17 +33,27 @@ def test_section_ii_loss_types_are_recognized() -> None:
 
 
 @pytest.mark.parametrize(
-    ("loss_date", "expected_blockers"),
+    ("loss_date", "expected_blockers", "expected_determination"),
     [
-        (date(2027, 6, 1), (ValidationBlocker(LOSS_DATE_IN_FUTURE, "loss_date"),)),
-        (date(2026, 8, 3), (ValidationBlocker(LOSS_DATE_IN_FUTURE, "loss_date"),)),
-        (date(2026, 8, 2), ()),
-        (date(2026, 8, 1), ()),
-        (date(2022, 9, 28), ()),
+        (
+            date(2027, 6, 1),
+            (ValidationBlocker(LOSS_DATE_IN_FUTURE, "loss_date"),),
+            FutureDatedLossResult("TRUE"),
+        ),
+        (
+            date(2026, 8, 3),
+            (ValidationBlocker(LOSS_DATE_IN_FUTURE, "loss_date"),),
+            FutureDatedLossResult("TRUE"),
+        ),
+        (date(2026, 8, 2), (), FutureDatedLossResult("FALSE")),
+        (date(2026, 8, 1), (), FutureDatedLossResult("FALSE")),
+        (date(2022, 9, 28), (), FutureDatedLossResult("FALSE")),
     ],
 )
 def test_loss_date_must_not_be_in_the_future(
-    loss_date: date, expected_blockers: tuple[ValidationBlocker, ...]
+    loss_date: date,
+    expected_blockers: tuple[ValidationBlocker, ...],
+    expected_determination: FutureDatedLossResult,
 ) -> None:
     candidate = dataclasses.replace(BASE_CANDIDATE, loss_date=loss_date)
 
@@ -56,6 +67,38 @@ def test_loss_date_must_not_be_in_the_future(
 
     assert result.blockers == expected_blockers
     assert result.valid is (not expected_blockers)
+    # The determination is asserted on every row beside the blocker it produces,
+    # so a clean evaluation recording nothing would fail here rather than pass
+    # for want of anything looking at it.
+    assert result.future_dated_loss == expected_determination
+
+
+@pytest.mark.parametrize(
+    "loss_date",
+    [date(2027, 6, 1), date(2026, 8, 2), date(2022, 9, 28)],
+)
+def test_no_jurisdiction_date_leaves_the_determination_unevaluated_and_raises_no_blocker(
+    loss_date: date,
+) -> None:
+    # Three loss dates that reach three different answers when there is a
+    # calendar to compare them against, and one answer when there is not: a
+    # result that was not computed is never reported as a negative (CLAUDE.md),
+    # and never blocks - an unsupported jurisdiction must not turn into a pend.
+    candidate = dataclasses.replace(BASE_CANDIDATE, loss_date=loss_date)
+
+    result = validate(
+        candidate,
+        now=None,
+        claimant_name_required=True,
+        claimant_contact_required=True,
+        recognized_policy_number_prefixes={"HO"},
+    )
+
+    assert result.blockers == ()
+    assert result.valid is True
+    assert result.future_dated_loss == FutureDatedLossResult(
+        "NOT_EVALUATED", NO_JURISDICTION_DATE
+    )
 
 
 @pytest.mark.parametrize(

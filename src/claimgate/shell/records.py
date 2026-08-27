@@ -27,6 +27,14 @@ fields are additions this item made rather than found there:
   notice's own order, the rule set that produced it and when. They are two shapes
   rather than one because the ordinal is assigned where the row is written and is
   not something the evaluation knows.
+- `NoticeRecord.jurisdiction_marking` and `NoticeRecord.future_dated_loss`, item
+  5g. The first is what a notice whose property state selects no jurisdiction
+  carries for a person; the second is the loss-date rule's own three-valued
+  determination, which needs a home of its own because the place a positive one
+  goes - the notice's blockers - is the place that would block, and an
+  unsupported jurisdiction must not block. Both are null until a decision is
+  written: a notice resting at RECEIVED has had no rule run over it, which is a
+  different fact from a rule having run and found nothing.
 - `NoticeRecord.pended_at` and `NoticeRecord.resolved_at`, item 5e decision (a):
   the pend instant and the instant of the resolution that released it, the two
   ends of the interval Fla. Stat. 627.70131(8)(b) defines, which
@@ -42,7 +50,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from claimgate.domain.models import SiuIndicatorResult, ValidationBlocker
+from claimgate.domain.models import (
+    FutureDatedLossResult,
+    SiuIndicatorResult,
+    ValidationBlocker,
+)
 
 
 @dataclass(frozen=True)
@@ -57,6 +69,11 @@ class NoticeRecord:
     # set once at capture and never recomputed - and, since 2026-08-24, the
     # single receipt instant every timestamp in a submission is written from.
     received_at: datetime
+    # Rewritten by every decision, unlike the audit trail and the SIU trail
+    # beside it: this is what the notice says now, not what was observed when.
+    # None on both until the first decision - no rule has run yet.
+    jurisdiction_marking: str | None = None
+    future_dated_loss: FutureDatedLossResult | None = None
     # Written once each and never rewritten (item 5e decision (a)); a resolution
     # that is refused moves neither, and its own instant lives on its audit entry.
     pended_at: datetime | None = None
@@ -124,6 +141,14 @@ def _instant(raw: str | None) -> datetime | None:
     return None if raw is None else datetime.fromisoformat(raw)
 
 
+def _future_dated_loss(row: sqlite3.Row) -> FutureDatedLossResult | None:
+    """Null means no decision has been written, not a determination of False."""
+    value = row["future_dated_loss"]
+    if value is None:
+        return None
+    return FutureDatedLossResult(value=value, reason=row["future_dated_loss_reason"])
+
+
 def notice_from_row(row: sqlite3.Row) -> NoticeRecord:
     return NoticeRecord(
         notice_id=row["notice_id"],
@@ -133,6 +158,8 @@ def notice_from_row(row: sqlite3.Row) -> NoticeRecord:
         severity=row["severity"],
         queue=row["queue"],
         received_at=datetime.fromisoformat(row["received_at"]),
+        jurisdiction_marking=row["jurisdiction_marking"],
+        future_dated_loss=_future_dated_loss(row),
         pended_at=_instant(row["pended_at"]),
         resolved_at=_instant(row["resolved_at"]),
     )

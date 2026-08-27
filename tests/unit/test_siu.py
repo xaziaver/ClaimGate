@@ -8,6 +8,7 @@ import pytest
 from claimgate.domain.models import Candidate
 from claimgate.domain.siu import (
     NO_CONTINUOUS_COVERAGE_DATE,
+    NO_JURISDICTION_DATE,
     NO_THRESHOLD_CONFIGURED,
     compute_siu_indicators,
 )
@@ -129,3 +130,39 @@ def test_both_indicators_can_fire_together() -> None:
         "late_reporting",
         "recent_policy_inception",
     }
+
+
+def test_no_jurisdiction_date_outranks_an_absent_threshold() -> None:
+    # Precedence, ratified 2026-08-26: the reason names the gap that would still
+    # block evaluation if the other were closed. A configured threshold cannot
+    # help without a day to count to, so the two rows below name the missing
+    # jurisdiction date whether or not a threshold exists - and the third row is
+    # what keeps the first two from being a test of "whichever check ran first".
+    with_threshold = compute_siu_indicators(
+        BASE_CANDIDATE, None, LATE_REPORTING_THRESHOLD_DAYS, RECENT_INCEPTION_THRESHOLD_DAYS
+    )
+    without_threshold = compute_siu_indicators(
+        BASE_CANDIDATE, None, None, RECENT_INCEPTION_THRESHOLD_DAYS
+    )
+    with_a_date = compute_siu_indicators(
+        BASE_CANDIDATE, TODAY, None, RECENT_INCEPTION_THRESHOLD_DAYS
+    )
+
+    for indicators in (with_threshold, without_threshold):
+        assert indicators.late_reporting.value == "NOT_EVALUATED"
+        assert indicators.late_reporting.reason == NO_JURISDICTION_DATE
+    assert with_a_date.late_reporting.reason == NO_THRESHOLD_CONFIGURED
+
+
+def test_recent_policy_inception_needs_no_jurisdiction_date_at_all() -> None:
+    # It measures loss date against coverage start, so the absent today that
+    # stops late reporting has nothing to do with it. Without this the two
+    # indicators could quietly become one rule with two names.
+    candidate = dataclasses.replace(BASE_CANDIDATE, continuous_coverage_date=date(2026, 6, 1))
+
+    indicators = compute_siu_indicators(
+        candidate, None, LATE_REPORTING_THRESHOLD_DAYS, RECENT_INCEPTION_THRESHOLD_DAYS
+    )
+
+    assert indicators.recent_policy_inception.value == "TRUE"
+    assert indicators.recent_policy_inception.reason is None

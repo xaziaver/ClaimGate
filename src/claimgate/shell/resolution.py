@@ -32,6 +32,16 @@ replaced by that whole result, so the 422 body and the record cannot disagree.
 Either way one audit entry is written, from PENDED to TRIAGED, APPLIED or
 REFUSED: a refused attempt is itself an audit event, not a non-event.
 
+**The jurisdiction comes from the merged view, not from what was known at
+receipt** (item 5g; ASSUMPTIONS.md 2026-08-26). Where the insured property is is
+a fact about the risk rather than about the moment the notice arrived, and a
+reviewer supplies it like any other field, so a notice pended for an unrelated
+blocker while carrying jurisdiction_unsupported becomes judgeable when its
+resolution says where the property is. One selection serves both dates this
+transaction needs: the future-date re-check runs on this resolution's instant
+(decision 2(b)) and the late-reporting interval on the notice's own receipt
+(item 5f decision 2), under the one zone the merged view now yields.
+
 **Every instant written here is the one the caller supplied for this call**, and
 the notice's receipt instant and pend instant are untouched by any of it
 (ASSUMPTIONS.md, "One receipt clock, not two", as extended to the resolution
@@ -61,7 +71,13 @@ from datetime import date, datetime
 from typing import Any
 
 from claimgate.shell import rules, siu
-from claimgate.shell.messages import Judgement, NoticeFields, Resolution, ResolutionResponse
+from claimgate.shell.messages import (
+    Decision,
+    Judgement,
+    NoticeFields,
+    Resolution,
+    ResolutionResponse,
+)
 from claimgate.shell.records import NoticeRecord, PayloadRecord
 from claimgate.shell.store import NoticeStore
 
@@ -72,7 +88,7 @@ def resolve_notice(
     *,
     actor_id: str | None,
     resolved_at: datetime,
-    jurisdiction_timezone: str,
+    jurisdiction_reference: Mapping[str, Mapping[str, str]],
     carrier_rules_source: Mapping[str, Mapping[str, Any]],
     supplied: Mapping[str, Any],
     note: str | None = None,
@@ -81,7 +97,7 @@ def resolve_notice(
         return ResolutionResponse(status=400)
     resolution = Resolution(
         store=store, notice_id=notice_id, actor_id=actor_id, resolved_at=resolved_at,
-        jurisdiction_timezone=jurisdiction_timezone, carrier_rules_source=carrier_rules_source,
+        jurisdiction_reference=jurisdiction_reference, carrier_rules_source=carrier_rules_source,
         supplied=supplied, note=note,
     )
     with store.submission():
@@ -108,16 +124,19 @@ def _evaluate(resolution: Resolution, record: NoticeRecord) -> ResolutionRespons
         record.notice_id, record.carrier_code, resolution.supplied, resolution.resolved_at
     )
     judged = _judge(resolution, record)
-    applied = judged.state == "TRIAGED"
+    decision = judged.decision
+    applied = decision.state == "TRIAGED"
     store.write_notice_decision(
-        record.notice_id, state=judged.state, blockers=judged.blockers,
-        severity=judged.severity, queue=judged.queue,
+        record.notice_id, state=decision.state, blockers=decision.blockers,
+        severity=decision.severity, queue=decision.queue,
+        jurisdiction_marking=decision.jurisdiction_marking,
+        future_dated_loss=decision.future_dated_loss,
         pended_at=None, resolved_at=resolution.resolved_at if applied else None,
     )
     _record_attempt(resolution, record, judged, applied=applied)
     return ResolutionResponse(
-        status=200 if applied else 422, notice_id=record.notice_id, state=judged.state,
-        blockers=judged.blockers, severity=judged.severity, queue=judged.queue,
+        status=200 if applied else 422, notice_id=record.notice_id, state=decision.state,
+        blockers=decision.blockers, severity=decision.severity, queue=decision.queue,
     )
 
 
@@ -134,7 +153,7 @@ def _record_attempt(
     resolution.store.append_audit_entry(
         record.notice_id, from_state="PENDED", to_state="TRIAGED", actor_type="USER",
         actor_id=resolution.actor_id, occurred_at=resolution.resolved_at,
-        blockers=judged.blockers, outcome="APPLIED" if applied else "REFUSED",
+        blockers=judged.decision.blockers, outcome="APPLIED" if applied else "REFUSED",
         note=resolution.note,
     )
     if applied:
@@ -142,7 +161,7 @@ def _record_attempt(
             resolution.store, record.notice_id,
             candidate=judged.candidate, rules=judged.rules,
             received_at=record.received_at,
-            jurisdiction_timezone=resolution.jurisdiction_timezone,
+            jurisdiction=judged.jurisdiction,
             evaluated_at=resolution.resolved_at,
         )
 
@@ -151,18 +170,22 @@ def _judge(resolution: Resolution, record: NoticeRecord) -> Judgement:
     """The whole validation, over the merged view, on the jurisdiction date of
     this resolution's own instant. A blocker the resolution introduces is not a
     new outcome - it is simply among the current blockers the 422 reports. The
-    candidate and the carrier's rules come back with the outcome because the SIU
-    evaluation this transaction may owe has to use these and not a second
-    reading of either."""
+    candidate, the carrier's rules and the jurisdiction come back with the
+    outcome because the SIU evaluation this transaction may owe has to use these
+    and not a second reading of any of them."""
     view = merged_view(resolution.store, record.notice_id)
     candidate = rules.build_candidate(view, _loss_date_of(view))
     carrier_rules = rules.resolve_rules(record.carrier_code, resolution.carrier_rules_source)
-    state, blockers, severity, queue = rules.apply_domain_rules(
+    jurisdiction = rules.resolve_jurisdiction(
+        view.property_state, resolution.jurisdiction_reference
+    )
+    decision: Decision = rules.apply_domain_rules(
         candidate,
-        rules.resolve_today(resolution.resolved_at, resolution.jurisdiction_timezone),
+        jurisdiction,
+        rules.resolve_today(resolution.resolved_at, jurisdiction),
         carrier_rules,
     )
-    return Judgement(state, blockers, severity, queue, candidate, carrier_rules)
+    return Judgement(decision, candidate, carrier_rules, jurisdiction)
 
 
 def merged_view(store: NoticeStore, notice_id: str) -> NoticeFields:

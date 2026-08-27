@@ -20,6 +20,16 @@ the instant of the transaction doing the evaluating. They coincide on the intake
 path and do not on the resolution path, where collapsing them would over-report
 lateness on every notice that ever sat pended.
 
+**One instant, but not one timezone** (item 5g, ASSUMPTIONS.md 2026-08-26).
+Decision 2 fixed the instant and said nothing about the zone that instant is
+converted under, a gap that only opens once the zone comes from the property's
+state rather than from the submission. The jurisdiction handed in here is the
+one the *calling transaction* selected from the notice's merged current view, so
+a reviewer who supplies the property state makes an interval computable that was
+not computable at receipt. Where none was selected the caller hands in None and
+the interval has no day to count to, which the indicator records as
+NOT_EVALUATED with its own reason rather than as a negative.
+
 **The rules are the ones the triaging transaction resolved** (decision 6), handed
 in by the caller rather than read again here, so a threshold a carrier configured
 while the notice sat pended is the one its evaluation uses and the number stored
@@ -33,7 +43,7 @@ indicators siu_indicators.feature specifies and no others.
 
 from datetime import datetime
 
-from claimgate.domain.models import Candidate, CarrierRules, SiuIndicators
+from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction, SiuIndicators
 from claimgate.domain.ruleset import RULESET_VERSION
 from claimgate.domain.siu import compute_siu_indicators
 from claimgate.shell.records import SiuIndicatorObservation
@@ -46,14 +56,14 @@ RECENT_POLICY_INCEPTION = "recent_policy_inception"
 
 def record_evaluation(
     store: NoticeStore, notice_id: str, *, candidate: Candidate, rules: CarrierRules,
-    received_at: datetime, jurisdiction_timezone: str, evaluated_at: datetime,
+    received_at: datetime, jurisdiction: Jurisdiction | None, evaluated_at: datetime,
 ) -> None:
     """`received_at` is the notice's receipt instant and `evaluated_at` this
     transaction's own; passing one value for both is correct on the intake path
     alone, where they are the same event."""
     indicators = compute_siu_indicators(
         candidate,
-        resolve_today(received_at, jurisdiction_timezone),
+        resolve_today(received_at, jurisdiction),
         rules.late_reporting_threshold_days,
         rules.recent_inception_threshold_days,
     )
