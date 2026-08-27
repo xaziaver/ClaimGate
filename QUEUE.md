@@ -497,7 +497,8 @@ Ordered by domain severity, not by effort. One line each on why that position.
     that supplies a placeholder date here has manufactured a determination nobody made, which is the
     exact failure "unevaluated is not negative" exists to prevent.
 
-5g. **The jurisdiction map, and the two swappability proofs.** Statutory configuration is a real map
+5g. **The jurisdiction map, and the two swappability proofs.** *(Closed at merge `e7beee2`,
+    2026-08-27 — see below.)* Statutory configuration is a real map
     keyed by jurisdiction code with exactly one entry populated (`FL`) — a genuine lookup, not a
     constant dressed as one. Jurisdiction derives from the insured property's state, never the
     carrier's domicile and never the reporter's address. An absent or non-`FL` `property_state` does
@@ -2785,3 +2786,55 @@ joining the hashed field set answers a byte-identical resubmission under a key r
 this item with `409` instead of a `200` replay, bounded to the 24-hour key lifetime and accepted
 when the item was specified. Items 5h and 5i are untouched: the 5h preservation test is green and
 all three of 5i's `NotImplementedError` escalations stay and stay tested.
+
+**Item 5g is merged to `main`** (merge commit `e7beee2`, `--no-ff`, 39 files, +1585/−267),
+2026-08-27, and **item 5g is closed**. This paragraph supersedes every remaining-work list above it
+for this item. Branch `phase2/5g-jurisdiction-map` ends at `ef0d906` and is fully contained in
+`origin/main` (`git log --oneline origin/phase2/5g-jurisdiction-map ^origin/main` prints 0). The
+five specs were approved at `402fdeb`; implementation at `951ff06`, swappability proofs at
+`faf8b5f`. **All five digests are byte-identical on `main` after the merge to what they were when
+approved** — `jurisdiction_selection` `d71c9be553ce`, `notice_intake` `dc714fa3bf6f`, `resolution`
+`e3c3a952c1b1`, `idempotency` `c66ea76c75a4`, `siu_separation` `4aa68f2801c1` — measured on the
+merged tree, not carried over from the pre-merge entry. `gauntlet spec list` on `main` after the
+merge shows all eleven specs `approved`, none drafted or modified.
+
+Item 5g's numbered entry above now carries a closed marker. **Items 5a through 5f carry no such
+marker even though all six are merged** — the `*(Done — see below.)*` convention was applied through
+item 4k and then quietly dropped for the 5-series, each of which records its merge in a status
+paragraph instead. The absence of a marker in the numbered list is therefore not evidence that an
+item is open; the status section is the authority. Noted rather than fixed, because back-filling six
+entries is not this session's scope.
+
+**Both flagged judgment calls are ratified, 2026-08-27.** The determination staying off every
+outward surface is now recorded in `ASSUMPTIONS.md` with its basis and with the ordering constraint
+it imposes on any later item that wants it visible. The rebuilt `NotImplementedError` in
+`shell/rules.py` is ratified as built, and the status-code question it raises is docketed on item
+5i, which now names four escalations rather than three. The third call — `NO_JURISDICTION_DATE`
+joining `tests/api/siu.py`'s `SIU_REASON_CODES` — needed no separate ratification: that set is the
+leak negatives' exclusion list and had to grow with the enumeration it mirrors.
+
+**The merged tree is not byte-identical to the branch tip, and that is deliberate.** `main` carries
+two documentation commits the branch does not — `b5d4325` (the `ASSUMPTIONS.md` surfacing entry) and
+`555a167` (the item 5i docket and the item 5g ratification line) — landed on `main` before the merge
+per this file's own convention that documentation lands on `main` and item work stays on its branch.
+`git diff phase2/5g-jurisdiction-map main` is therefore not empty: it is exactly those two files,
++36/−0. No file under `src/` or `tests/` differs, and no spec file differs.
+
+**No post-merge `gauntlet check` was run, and this entry says so rather than leaving the omission to
+look like a pass.** The session that closed this item was scoped to documentation and the merge, with
+`gauntlet spec list` the only gauntlet command authorized. The last measured green run is the one
+recorded above at the implementing ref: 433/433 tests, code mutation 100% with 392 killed, coverage
+100% line and 100% branch, worst function 24/25 lines, duplication 0, acceptance **71
+reviewed-equivalent** — the same figure as before the item, so nothing moved in the ledger. Those
+figures carry to `main` by tree identity on everything a gate reads: the merged tree differs from
+`ef0d906` only in `ASSUMPTIONS.md` and `QUEUE.md`. That is **reasoned from tree identity, not
+measured on `main`**, and is labelled that way on purpose.
+
+**Next queue item: 5h**, read from this file's order rather than from memory — the numbered list runs
+5g, 5h, 5i, and 5h is the first entry below 5g. It is *An absent loss date passes validation and
+reaches `TRIAGED` carrying `0001-01-01` as today's date*: `validate()` has no presence check for
+`loss_date`, `_check_loss_date` tests only the future bound, and `Candidate.loss_date` defaults to
+`date.min`. A phase-1 reopening, so the branch prefix is `reopening/`, not `phase2/`. Its reading
+table row, verbatim: `ASSUMPTIONS.md` — "An absent loss date is a domain blocker, not a schema
+refusal"; `validation.feature`, `validation.py`, `models.py`. Not started — this session ended at
+the save point, on `main` at `e7beee2` with a clean tree and nothing in flight.
