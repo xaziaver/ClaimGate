@@ -831,6 +831,32 @@ already trying to pick a discriminating swap, and in a table where every row
 shares an outcome there is none to pick, so every swap is inert by construction.
 The lever is the table's shape, not the engine's.
 
+### The boolean substitution is lowercase and preemptive, so an upper-case enumeration is unprotected
+
+`mutate_value` looks up `BOOLEANS.get(value.strip().lower())` but returns the *dictionary's*
+lowercase flip, and it returns before `_swap` is ever reached. Both halves matter, and only the
+second one is obvious from the entry above:
+
+- In a specification whose enumeration is upper-case — this project's `TRUE`/`FALSE`/`NOT_EVALUATED`
+  — the substituted token is `true` or `false`, which is outside the enumeration. No implementation,
+  correct or wrong, can produce it, so an exact-string step assertion kills it unconditionally. It
+  is scored as a kill and tests nothing, the same class as the parse-error kills recorded below.
+- The sibling swap that *would* have discriminated is never generated at all. `TRUE` in
+  `triage.feature`'s `recent_inception` column has `NOT_EVALUATED` sitting in the same column and
+  would have been swapped for it; the boolean branch returns first, so that mutant does not exist.
+
+**Measured 2026-08-26 against `main` at `ca0dc3a`, by calling `mutation.mutants()` over every file
+in `features/` at that ref and matching each mutant against `BOOLEANS`: 30 of the ledger's 708
+mutants are this class** — `triage.feature` 15, `siu_indicators.feature` 10,
+`siu_separation.feature` 5. All 30 counted as killed; none tested anything; and the
+`TRUE`/`FALSE`-versus-`NOT_EVALUATED` confusion that queue item 2 exists to prevent has never once
+been exercised by acceptance mutation.
+
+**Technique: treat any `TRUE`/`FALSE` `Examples` cell as unprotected by mutation until the step that
+reads it parses its expected token case-insensitively.** With a case-insensitive read, `true` matches
+an actual `TRUE` and the mutant becomes a real test of the value; the fix converts kills to kills, so
+it moves no locator and no ledger entry.
+
 ### The boundary gate is narrower than its name
 
 It walks only the steps directory and flags absolute imports whose top-level root

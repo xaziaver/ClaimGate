@@ -2111,6 +2111,16 @@ or of the `.gauntlet/mutation-backup/` diagnostic. The ClaimGate-facing half of 
 written and the Gauntlet-facing half was not. Recorded rather than silently fixed: this file
 naming the ref the finding was supposed to land in is the only reason the gap was recoverable.*
 
+*Annotated 2026-08-26, later the same day: the correction above is itself superseded, and is kept
+rather than deleted because the sequence is the point. `agent-gauntlet`'s HEAD is now `f807aaf`
+("record the 2026-08-26 session"), and `gauntlet-findings.md` at that ref carries the 600s-timeout
+entry, the path-order determinism that makes `validation.feature` the deterministically stranded
+file, and the `.gauntlet/mutation-backup/` diagnostic — plus a further entry recording that a
+stop-check is more often killed by an interrupting human reply than by any timeout, which is a class
+neither this file nor that one had named. Verified by reading the file at `f807aaf`, not inferred
+from the commit subject. The Gauntlet-facing half of the finding did land; it landed after the
+correction saying it had not.*
+
 **Note on history.** `ea64069` and `ab12a2b` added `gauntlet-findings.md` to this repository by
 mistake and `c360ce9` reverted them; that file lives in the agent-gauntlet repository and this
 project never reads or edits it.
@@ -2608,3 +2618,99 @@ while proving nothing, the same failure `features/jurisdiction_date.feature` rec
 opposite direction, where a marker landing outside a closing quote killed a mutant at step
 resolution before the domain was reached. The predicted zero survivors is conditional on that, and
 the condition is the implementer's to satisfy.
+
+**That obligation is now settled by reading the step definitions that already exist, and it splits
+in two (2026-08-26).** The four `TRIAGED -> TRIAGED_gauntlet` mutants in Rule 2 die by
+`conftest.check_state`'s exact string comparison — `assert context["response"].state == value` —
+which are **real kills**, provided item 5g's own step module does not shadow that phrase with a
+looser definition of its own. The two empty-`blockers` mutants that take `-> _gauntlet` die
+differently: `parse_compact_blockers` splits each token on `":"` and unpacks two values, so a
+colon-less `_gauntlet` raises `ValueError` on its first line, before the response's blockers are
+ever read. Those are **vacuous kills** of exactly the class `docs/harness-findings.md` already
+records under "A mutant killed by a step definition's own parse error" — not the vacuous *survivors*
+this entry predicted, which is a better outcome than feared but not a test. Read the simulated zero
+survivors as **34 real kills and 2 parse-error kills**, not as 36 assertions firing.
+
+**A second, larger vacuity was found in the same reading, and it is not specific to this file
+(2026-08-26).** Three of the 36 mutants — both determination cells that read `FALSE -> true` and
+`TRUE -> false` — are the boolean substitution class now recorded in `docs/harness-findings.md`:
+`mutate_value` returns `BOOLEANS.get(value.lower())` before `_swap` runs, so an upper-case `TRUE`
+mutates to a lower-case `true` that no implementation can produce, and the sibling swap Rule 3's
+first scenario exists for — `TRUE` becoming `NOT_EVALUATED:NO_JURISDICTION_DATE` — is **never
+generated at all**. *Implementation-phase obligation:* the step definition that reads the
+future-dated-loss determination must parse its expected token case-insensitively, which converts all
+three into real tests. The same treatment of `conftest.py`'s two bare indicator steps
+(`check_late_reporting_indicator`, `check_recent_inception_indicator`) and of
+`test_siu_separation_acceptance.py`'s `check_recorded_indicator` converts the 30 vacuous kills
+measured across `triage.feature`, `siu_indicators.feature` and `siu_separation.feature` likewise.
+It belongs in item 5g's implementation commit, verified by the gate staying green with no locator
+and no approval movement.
+
+**The four-spec reopening is decided and executed, spec-only (2026-08-26)**, per `ASSUMPTIONS.md`'s
+entry of that date: `jurisdiction_timezone` leaves the submission surface rather than living beside
+`property_state`. Measured per file, before -> after, locators and signatures compared pairwise
+rather than by count:
+
+- `features/resolution.feature` 97 -> 97, `features/idempotency.feature` 40 -> 40,
+  `features/siu_separation.feature` 53 -> 53. Background-only: `And the jurisdiction observes
+  "America/New_York"` becomes `And the insured property is in "FL"`. **Zero locators moved and zero
+  signatures changed** in all three.
+- `features/notice_intake.feature` 48 -> 36. The same Background swap, plus Rule 5 deleted whole and
+  replaced by a comment recording where each of its two obligations went. The 12 locators lost are
+  exactly the 12 in those two scenarios; every other locator and signature is byte-identical; **no
+  mutant approval is disturbed, because that file carries none** — verified against
+  `gauntlet.lock.json`, where the 71 mutant approvals sit on `validation` (31), `duplicates` (18),
+  `triage` (11), `siu_indicators` (7), `carrier_configuration` (2) and `siu_separation` (2), none of
+  the last on a Background.
+- `features/jurisdiction_selection.feature` 36 -> 48, from this session's own amendments (the
+  corrected panhandle comment, the threshold-configured corner in Rule 3, and the new merged-view
+  rule). All 36 pre-existing locators and signatures are unchanged; the 12 new ones are all in the
+  three new scenarios.
+
+**All five spec approvals are deferred to the start of the implementing session**, per the
+operational rule in `docs/harness-findings.md`: approving a spec that is about to be edited again
+spends a human action on a digest that will not survive. `gauntlet spec list` will report five specs
+modified-since-approved until then, and the acceptance gate fails cheaply at its approval stage —
+guaranteed by the spec-lock-then-implementation rule, not a defect, and not clearable from the
+agent's side.
+
+**One step-definition note the implementer should not have to rediscover.** The phrase
+`the late reporting indicator recorded for the notice is <value>` that item 5g's new scenarios use is
+already implemented, in `test_siu_separation_acceptance.py`'s `check_recorded_indicator`, and it
+already parses both spellings the new `Examples` cells render (`TRUE`, and `NOT_EVALUATED with
+reason NO_JURISDICTION_DATE`). pytest-bdd binds step definitions per test module, so item 5g either
+duplicates it or the shared form moves to `conftest.py` — `docs/harness-findings.md`'s "Two locked
+specs sharing a Background can only share step definitions through `conftest.py`" is the same
+constraint arriving from a second direction. Duplicating it is the thing that would silently shadow
+`check_state` and turn the four real marker kills above into vacuous survivors.
+
+**The 2026-08-26 correction earlier in this file — that `agent-gauntlet`'s `gauntlet-findings.md`
+never received the stop-hook findings — is itself superseded, and has been annotated in place rather
+than deleted.** `agent-gauntlet`'s HEAD moved to `f807aaf` later the same day and now carries the
+600s-timeout, path-order-determinism and `.gauntlet/mutation-backup/` entries. Verified this session
+by reading `gauntlet-findings.md` at that ref, not inferred from the commit subject.
+
+**Item 5g state as of 2026-08-26, superseding every figure above it in this entry.** The branch is
+`phase2/5g-jurisdiction-map`, tip `263e54e`, a superset of `main`. Three commits carry the work that
+matters: `e1a25cf` is the human's approval of `features/jurisdiction_selection.feature` at `a456913`
+(so the "`gauntlet spec list` reports it `unapproved`" line far above is stale — it was approved, and
+then reopened by the next commit); `0895546` amends that spec to 202 -> 327 lines and 36 -> 48
+mutants; `263e54e` reopens the four Background-bound specs. Nothing under `src/` is touched, no step
+definitions exist, and the two swappability tests are still not written.
+
+**Five specs now read modified-since-approved, and the acceptance gate fails at its approval stage.**
+That is the state the spec-lock-then-implementation rule produces, doubled here because the four
+reopened specs were approved and are now edited and the amended one was approved and is now amended
+again. It is guaranteed, not a defect, and not clearable from the agent's side. **The next action is
+the human's:** `gauntlet spec approve` for all five, deferred to the start of the implementing
+session so the approvals are not spent on digests that another amendment would invalidate.
+
+**What remains before item 5g closes**, replacing the older list above: the five approvals; then the
+jurisdiction map itself, the `property_state` capture through schema, message shape and persistence,
+the removal of `jurisdiction_timezone` from the submission surface, the step definitions — including
+the case-insensitive token parsing recorded above, without which six of the file's 48 mutants and 30
+across three other specs test nothing — and last the two swappability tests, which land as tests
+rather than as feature files because a fictional second jurisdiction is not a business rule of this
+product. Item 5d's idempotency-comparison consequence, recorded above, is unchanged and still
+unaddressed: adding a field to the hashed set answers a byte-identical resubmission under a
+remembered key with `409` instead of a `200` replay, bounded to the 24-hour key lifetime.

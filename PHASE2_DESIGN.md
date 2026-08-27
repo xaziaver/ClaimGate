@@ -262,6 +262,13 @@ anywhere beyond that one config lookup — the requirement is that `FL` is *one 
 structure*, not a second jurisdiction, multi-state feature, or any state-specific logic. Do not
 build either of those in phase 2.
 
+**Note added 2026-08-26: in phase 2 the `FL` map entry holds exactly one value — the jurisdiction's
+IANA timezone.** Every value in `STATUTORY_REGISTER.md` is explicitly non-gating at intake, and
+window selection is not built, so the jurisdiction swap test's "shows the correct values get
+selected" has one value to select, plus the structural claim that the entry is data rather than a
+constant. Stated here so nobody bends that test into asserting statutory values nothing reads —
+which is the failure the "Swappability proofs" section says to *report*, not absorb.
+
 ## Carrier reference
 
 A static, version-controlled file holding **identity only** — no thresholds, no behavior — separate
@@ -344,7 +351,10 @@ artifacts proving the *absence* of hardcoding, not new features:
 - **Jurisdiction swap.** A test loads a **fictional** second jurisdiction fixture with different
   statutory values and shows the correct values get selected. Proves the FL ruleset is one config
   entry, not a hardcoded assumption. Fixture only — no second real jurisdiction, no state-specific
-  logic, no new feature surface.
+  logic, no new feature surface. This test also inherits the two-zone discrimination deleted from
+  `features/notice_intake.feature`'s former Rule 5 (2026-08-26): the fictional second jurisdiction's
+  fixture must carry a timezone that produces a *different resolved date for the same instant*, so
+  the test proves the zone is read from the entry rather than merely that a second entry can exist.
 
 If either test turns out to be hard to write, that difficulty is itself the finding to report — the
 test must not be bent to make it pass.

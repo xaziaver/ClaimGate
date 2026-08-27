@@ -201,8 +201,26 @@ or data. Nothing below was confirmed against a live book.
   5a's implementation lands, not by reopening an approved spec for a name.
 - **One timezone per jurisdiction, and Florida's is `America/New_York` — advisor-recommended,
   human-ratified, 2026-08-26.** Item 5g keys the statutory map by jurisdiction code, so a
-  jurisdiction holds one IANA timezone and Florida's panhandle — Escambia, Santa Rosa, Okaloosa and
-  most of Walton, which are `America/Chicago` — is dated Eastern along with the rest of the state.
+  jurisdiction holds one IANA timezone and Florida's Central-zone counties are dated Eastern along
+  with the rest of the state. **Corrected 2026-08-26: the county list first recorded here was
+  wrong.** The `America/Chicago` zone is Escambia, Santa Rosa, Okaloosa, Walton, Holmes, Washington,
+  Bay, Jackson and Calhoun entirely, plus the part of Gulf County west of the boundary; the line is
+  **49 CFR 71.5(f)**, running down the Apalachicola River to the Jackson River, along the
+  Intracoastal Waterway to the west line of Gulf County, then south. Verified **2026-08-26** against
+  the eCFR text via a search excerpt rather than a full-section fetch — the same weaker provenance
+  class `STATUTORY_REGISTER.md` states for its hurricane and sinkhole entries, and it should be
+  re-verified against the full section before anything depends on the boundary itself rather than on
+  the fact that a boundary exists.
+
+  **The ratified decision is unchanged by the correction.** The skew direction and both tolerant
+  effects below follow from Eastern being ahead of Central, not from how many counties are Central,
+  so nothing that was approved on 2026-08-26 moves. What the correction changes is the *recorded
+  cost*: "most of Walton" made this read as a Pensacola footnote, and the zone in fact contains Bay
+  County — Panama City and Panama City Beach — along with the Destin and Fort Walton Beach corridor,
+  roughly a million residents of a disproportionately coastal, wind-exposed residential market. That
+  is the population this one-entry map dates under the wrong clock for one hour a day, and it is
+  worth knowing accurately even when the effects are tolerant.
+
   The entry above records that this is a real divergence; this entry records that it is accepted for
   phase 2, and what it actually costs, recomputed rather than carried over from the first statement
   of it. **Eastern's date is never behind Central's**, so the skew is one-directional and both of its
@@ -237,12 +255,42 @@ or data. Nothing below was confirmed against a live book.
   riding the submission and starts coming from `property_state`, which a reviewer can supply at
   resolution like any other field. The zone is resolved from the notice's current merged view:
   where the insured property is, is a fact about the risk, not about the moment the notice arrived,
-  and a notice that reached `TRIAGED` unsupported and is later told where the property is should
-  have its interval become computable rather than stay permanently unevaluated. This rewrites
+  and a notice whose property state arrives later should have its interval become computable rather
+  than stay permanently unevaluated. **Corrected 2026-08-26: the path this sentence originally
+  named — "a notice that reached `TRIAGED` unsupported and is later told where the property is" — is
+  unreachable, and the decision does not rest on it.** `features/resolution.feature`'s first rule
+  answers a resolution on any notice that is not `PENDED` with `409` and persists nothing, so a
+  notice that reached `TRIAGED` can never be told anything afterwards. The reachable form, and the
+  one `features/jurisdiction_selection.feature`'s new scenarios are built on, is a notice pended for
+  an unrelated blocker — its policy number absent — whose resolution supplies the property state
+  alongside the missing field. The decision itself stands as ratified. This rewrites
   nothing: the SIU trail is append-only, so the intake-time `NOT_EVALUATED` observation stands as
   the evaluation that was actually made then, and the resolution appends a second one beside it.
   Both carry their own `evaluated_at`, so which is which is readable from the trail without a
   convention.
+- **`jurisdiction_timezone` is removed from the submission surface rather than kept beside
+  `property_state` — advisor-recommended, human-ratified, 2026-08-26.** Once the zone comes from the
+  jurisdiction map keyed on the property's state, a caller-supplied timezone name is a second source
+  for one fact, and two sources need a precedence rule saying which wins when they disagree. Nobody
+  has ratified such a rule, and defaulting one would be exactly the class `CLAUDE.md` forbids — a
+  rule nobody approved, on the field that decides which state's law applies. Keeping the parameter
+  alive only inside step definitions is not a middle course either: that re-creates item 4g's
+  recorded defect, configuration honoured by the harness that no specification states, where the
+  tests pass because the harness supplies something the product does not.
+
+  **Cost, measured rather than estimated (2026-08-26).** Four locked specs reopen. Three —
+  `features/resolution.feature`, `features/idempotency.feature` and `features/siu_separation.feature`
+  — are Background-only re-approvals: `And the jurisdiction observes "America/New_York"` becomes
+  `And the insured property is in "FL"`, Background steps generate no mutants, and all three were
+  verified locator-*and*-signature identical against their locked content, not merely
+  count-identical (97, 40 and 53 mutants, zero locators moved, zero signatures changed).
+  `features/notice_intake.feature` additionally loses its Rule 5 whole, superseded rather than
+  merely edited: 48 mutants to 36, losing exactly the 12 in its two scenarios, every other locator
+  and signature byte-identical, and no mutant approval touched because that file carries none
+  (verified against `gauntlet.lock.json`, not assumed). The two-zone discrimination those scenarios
+  carried is re-homed to item 5g's jurisdiction swappability test, and that obligation is written
+  into `QUEUE.md`'s item 5g entry so the test cannot silently shrink to a single-fixture existence
+  check.
 - **An instant that is not a timezone-aware UTC instant is out of scope for item 5b —
   advisor-recommended, human-ratified, 2026-08-23.** The "Timezone-correct 'now'" contract has the
   shell supply that instant, and it comes from the request pipeline and the server clock rather
