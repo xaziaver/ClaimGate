@@ -217,12 +217,15 @@ def _require_notice(store: NoticeStore, notice_id: str) -> NoticeRecord:
     return record
 
 
-def _loss_date_of(view: NoticeFields) -> date:
-    loss_date = rules.parse_loss_date(view.loss_date)
-    if loss_date is None:
+def _loss_date_of(view: NoticeFields) -> date | None:
+    """None where the merged view states no loss date, which is a blocker the
+    validation raises and not this endpoint's refusal (item 5h). Only a value
+    that is not a date at all is still undecided here."""
+    parsed = rules.parse_loss_date(view.loss_date)
+    if parsed.value == "UNPARSEABLE":
         raise NotImplementedError(
             "a resolution carrying a loss date that is not a date at all has no "
             "decided outcome - intake answers it 400 at the schema boundary and "
             "no decision extends that row to this endpoint"
         )
-    return loss_date
+    return parsed.loss_date

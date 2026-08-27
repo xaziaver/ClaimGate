@@ -35,8 +35,9 @@ scenario reaches any of the three.
 """
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from claimgate.domain.carrier_configuration import resolve_carrier_configuration
 from claimgate.domain.jurisdiction import (
@@ -49,22 +50,38 @@ from claimgate.domain.triage import triage_and_route
 from claimgate.domain.validation import validate
 from claimgate.shell.messages import Decision, NoticeFields
 
+LossDateParseValue = Literal["PARSED", "ABSENT", "UNPARSEABLE"]
 
-def parse_loss_date(raw: str | None) -> date | None:
-    """Absent (None) input is item 5h's gap, preserved deliberately: it flows
-    through as date.min, unchanged from today's behavior, because building 5h's
-    presence check here would decide that reopening the opposite way from what
-    is ratified. A present value that is not a date at all returns None, the
-    schema-invalid signal."""
+
+@dataclass(frozen=True)
+class LossDateParse:
+    """Same convention as the domain's result types: loss_date is populated only
+    when value is PARSED. Three outcomes and not two because one None used to
+    carry two different facts (item 5h) - "the reporter stated no date", which
+    is a domain blocker the notice is pended on, and "what arrived is not a date
+    at all", which is the schema-invalid refusal. Collapsing them made an absent
+    date indistinguishable from a malformed one at the only boundary that can
+    still tell them apart."""
+
+    value: LossDateParseValue
+    loss_date: date | None = None
+
+
+def parse_loss_date(raw: str | None) -> LossDateParse:
+    """ABSENT flows on to the Candidate as None and becomes
+    MISSING_REQUIRED_FIELD:loss_date in the domain (ASSUMPTIONS.md, "An absent
+    loss date is a domain blocker, not a schema refusal"). UNPARSEABLE never
+    reaches a Candidate at all: what each caller does with it is that endpoint's
+    decision, not this function's."""
     if raw is None:
-        return date.min
+        return LossDateParse("ABSENT")
     try:
-        return date.fromisoformat(raw)
+        return LossDateParse("PARSED", date.fromisoformat(raw))
     except ValueError:
-        return None
+        return LossDateParse("UNPARSEABLE")
 
 
-def build_candidate(fields: NoticeFields, loss_date: date) -> Candidate:
+def build_candidate(fields: NoticeFields, loss_date: date | None) -> Candidate:
     """`property_state` is deliberately not carried across. It selects the
     jurisdiction at this boundary and the domain never sees it - a domain that
     could read which state a notice is from is a domain that could branch on

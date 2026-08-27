@@ -8,8 +8,13 @@ from typing import Literal
 
 @dataclass(frozen=True)
 class Candidate:
+    # None is "no loss date was stated", a fact the reporter may genuinely not
+    # have (ASSUMPTIONS.md, "An absent loss date is a domain blocker, not a
+    # schema refusal"). It replaced a date.min default, which was a sentinel
+    # wearing a date's type: every consumer read it as a real 0001-01-01 and
+    # none of them could tell it from one.
     policy_number: str = ""
-    loss_date: date = date.min
+    loss_date: date | None = None
     loss_type: str = ""
     notice_type: str = ""
     loss_amount: Decimal | None = None

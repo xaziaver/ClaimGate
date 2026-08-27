@@ -18,9 +18,15 @@ scenarios("../../features/validation.feature")
 _REQUIRED_BY_TEXT = {"required": True, "not required": False}
 
 
-@given(parsers.parse('the loss date is "{value}"'))
+@given(parsers.re(r'the loss date is "(?P<value>.*)"'))
 def set_loss_date(context: dict[str, Any], value: str) -> None:
-    context["fields"]["loss_date"] = date.fromisoformat(value)
+    """The token "absent" is how the spec states that a notice carries no loss
+    date, and this step is bound with parsers.re like every other field step in
+    this file so a token that is not a date can reach it at all. It is not a
+    date spelled "absent": every other value is still handed to
+    date.fromisoformat, so an unrecognized token is a step-definition error and
+    never resolves to a default."""
+    context["fields"]["loss_date"] = None if value == "absent" else date.fromisoformat(value)
 
 
 @given(parsers.re(r'the policy number is "(?P<value>.*)"'))
@@ -107,6 +113,23 @@ def check_blockers_compact(context: dict[str, Any], value: str) -> None:
     expected = _parse_compact_blockers(value)
     actual = [(b.code, b.field) for b in context["result"].blockers]
     assert actual == expected
+
+
+@then(parsers.re(r"^the future-dated-loss determination is (?P<value>.*)$"))
+def check_future_dated_loss_determination(context: dict[str, Any], value: str) -> None:
+    """The value half is compared case-insensitively and the reason half
+    exactly, the same reading test_jurisdiction_selection_acceptance.py makes of
+    the same column and for the reason recorded there: the acceptance engine
+    substitutes an upper-case TRUE with a lower-case `true` and returns before
+    it tries a sibling swap (docs/harness-findings.md, "The boolean substitution
+    is lowercase and preemptive"), so an exact comparison would kill this
+    outline's four TRUE/FALSE mutants without asking which value was
+    determined. Folding the case widens nothing: TRUE, FALSE and NOT_EVALUATED
+    are the whole enumeration and no two of them differ only in case."""
+    determination = context["result"].future_dated_loss
+    expected, _, reason = value.partition(":")
+    assert determination.value == expected.strip().upper()
+    assert determination.reason == (reason.strip() or None)
 
 
 @then(parsers.parse('the reason codes are "{value}"'))

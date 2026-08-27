@@ -166,3 +166,20 @@ def test_recent_policy_inception_needs_no_jurisdiction_date_at_all() -> None:
 
     assert indicators.recent_policy_inception.value == "TRUE"
     assert indicators.recent_policy_inception.reason is None
+
+
+def test_an_indicator_evaluation_with_no_loss_date_raises() -> None:
+    # Ratified 2026-08-27 (ASSUMPTIONS.md, "Item 5h, three decisions", decision
+    # 3): no third NOT_EVALUATED reason, because the case is unreachable on the
+    # designed path - evaluation runs only on a transition into TRIAGED and an
+    # absent loss date pends the notice instead. Unreachable is exactly why it
+    # is asserted here: nothing else in the suite can reach it, and a raise
+    # nobody exercises is a raise nobody knows still fires.
+    candidate = dataclasses.replace(BASE_CANDIDATE, loss_date=None)
+
+    with pytest.raises(
+        ValueError, match=r"^compute_siu_indicators: candidate states no loss date$"
+    ):
+        compute_siu_indicators(
+            candidate, TODAY, LATE_REPORTING_THRESHOLD_DAYS, RECENT_INCEPTION_THRESHOLD_DAYS
+        )

@@ -11,6 +11,7 @@ from claimgate.domain.validation import (
     LOSS_TYPE_UNRECOGNIZED,
     MISSING_REQUIRED_FIELD,
     NO_JURISDICTION_DATE,
+    NO_LOSS_DATE,
     NOTICE_TYPE_UNRECOGNIZED,
     POLICY_NUMBER_MALFORMED,
     RECOGNIZED_LOSS_TYPES,
@@ -71,6 +72,28 @@ def test_loss_date_must_not_be_in_the_future(
     # so a clean evaluation recording nothing would fail here rather than pass
     # for want of anything looking at it.
     assert result.future_dated_loss == expected_determination
+
+
+def test_an_absent_loss_date_blocks_and_leaves_the_determination_unevaluated() -> None:
+    # validation.feature's outline states this outcome; the unit assertion is
+    # here because mutation runs over tests/unit alone, and without it every
+    # mutant of the reason code and the NOT_EVALUATED value survives untested.
+    # Two separate facts, deliberately asserted together: the blocker, which
+    # does not come from the determination - a NOT_EVALUATED determination
+    # raises none - and the determination, which names which absence stopped it.
+    candidate = dataclasses.replace(BASE_CANDIDATE, loss_date=None)
+
+    result = validate(
+        candidate,
+        now=TODAY,
+        claimant_name_required=True,
+        claimant_contact_required=True,
+        recognized_policy_number_prefixes={"HO"},
+    )
+
+    assert result.blockers == (ValidationBlocker(MISSING_REQUIRED_FIELD, "loss_date"),)
+    assert result.valid is False
+    assert result.future_dated_loss == FutureDatedLossResult("NOT_EVALUATED", NO_LOSS_DATE)
 
 
 @pytest.mark.parametrize(
