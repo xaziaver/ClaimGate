@@ -878,12 +878,41 @@ predictable only if the substitution rule is known:
   ordered **most-different row first**, on the stated theory that a row differing
   elsewhere expects a different outcome. With no alternative, the marker
   `_gauntlet` is appended.
-- An empty cell has no alternative of its own and takes the marker.
+- An empty cell takes the marker.
 
 This is the mechanism behind the same-outcome-table finding: the engine is
 already trying to pick a discriminating swap, and in a table where every row
 shares an outcome there is none to pick, so every swap is inert by construction.
 The lever is the table's shape, not the engine's.
+
+**Correction, 2026-08-27.** The empty-cell line above used to read "has no
+alternative of its own and takes the marker," which describes the wrong cause and
+hides a usable lever. `mutate_value`'s first branch is `if not stripped: return
+MARKER` — it returns before the boolean check, before the numeric check, and
+before `_swap` is ever reached. The column's alternatives are not absent; they are
+never consulted. This is the same preemptive-return shape as the boolean finding
+below it, and it has the same consequence: **an empty cell is unprotected by
+mutation even in a table full of discriminating siblings**, because the marker it
+takes is a value no step can read, so the mutant dies at step resolution having
+tested nothing.
+
+**Technique, and it is cheap: spell absence as a token, not as an empty cell,
+wherever the field's absent value is not the empty string.** Measured while
+drafting item 5h's amendment to `features/validation.feature`, by running
+`mutation.mutants()` over two candidate tables identical but for that one cell:
+`absent` and `""` both produce 192 mutants over 192 locators, and the only
+difference is which class one of them lands in — 81 marker-class for the token
+form against 82 for the empty one. The token is swapped for a sibling date, which
+changes the row's outcome from a missing field to a past one and is a real kill;
+the empty cell takes `_gauntlet`, which is not a date at all. One mutant moves
+from vacuous to real for the cost of a word. `features/jurisdiction_selection.feature`
+already spells `property_state`'s absence this way.
+
+This does **not** argue for replacing the empty cells already in these specs. An
+empty `loss_type` or `policy_number` cell *is* that field's absent value, and
+`blockers` cells are empty because the row asserts no blocker — spelling either as
+a token would state something the field cannot hold. The lever applies only where
+the empty string is standing in for a value the field's type has no room for.
 
 ### The boolean substitution is lowercase and preemptive, so an upper-case enumeration is unprotected
 
