@@ -291,6 +291,28 @@ or data. Nothing below was confirmed against a live book.
   carried is re-homed to item 5g's jurisdiction swappability test, and that obligation is written
   into `QUEUE.md`'s item 5g entry so the test cannot silently shrink to a single-fixture existence
   check.
+- **The future-dated-loss determination is off every outward surface in phase 2; the jurisdiction
+  marking is on `NoticeView` — advisor-recommended, human-ratified, 2026-08-27.** The two halves of
+  item 5g's jurisdiction work are surfaced differently on purpose. The marking is readable, because
+  a marking nobody can read is not a marking. The determination is not, and the basis is three
+  facts rather than a preference: the case that actually blocks already surfaces as the
+  `LOSS_DATE_IN_FUTURE` blocker, so nothing is hidden that a reporter or a reviewer needs; the
+  determination has no phase-2 consumer, so nothing reads it; and surfacing it collides with
+  `features/siu_separation.feature`'s leak negatives, which scan a serialized surface **as text**
+  and would therefore match a legitimate `NO_JURISDICTION_DATE` determination reason — the one
+  spelling deliberately shared by two enumerations, entered into both as ratified. The check that
+  exists to catch a leak would fail on a value that is not one. The determination sits where
+  `pended_at` and `resolved_at` already sit: on the record, not in the view.
+
+  **Ordering constraint for whichever later item wants it visible.** Decide the leak-scan exclusion
+  mechanism *first*, then the surface — not the other way round. By field path rather than by token
+  text is the likely shape, since a text scan cannot distinguish a shared code appearing in its
+  legitimate place from the same code appearing where it leaked, and no renaming of either
+  enumeration's copy is available: the shared spelling is the ratified decision, not an accident.
+  Note that the collision is **latent today only because both leak scenarios use `FL` notices**,
+  whose determination reason is empty. That is a property of the fixtures, not of the design, so a
+  later item that changes either scenario's jurisdiction surfaces the collision without touching
+  the determination at all.
 - **An instant that is not a timezone-aware UTC instant is out of scope for item 5b —
   advisor-recommended, human-ratified, 2026-08-23.** The "Timezone-correct 'now'" contract has the
   shell supply that instant, and it comes from the request pipeline and the server clock rather
