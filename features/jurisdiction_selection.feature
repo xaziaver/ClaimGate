@@ -40,11 +40,17 @@ Feature: Jurisdiction selection
   # from configuration rather than from a reporter.
 
   # A known limit of one entry per jurisdiction, recorded rather than
-  # discovered later: Florida spans two timezones. The western panhandle -
-  # Escambia, Santa Rosa, Okaloosa and most of Walton - is America/Chicago and
-  # the rest of the state is America/New_York (ASSUMPTIONS.md, "The
-  # jurisdiction timezone is a parameter of the conversion, not a constant in
-  # it"). A jurisdiction keyed by state holds one timezone, so a notice on a
+  # discovered later: Florida spans two timezones. The America/Chicago zone is
+  # Escambia, Santa Rosa, Okaloosa, Walton, Holmes, Washington, Bay, Jackson
+  # and Calhoun entirely, plus the part of Gulf County west of the boundary -
+  # the line is 49 CFR 71.5(f), running down the Apalachicola River to the
+  # Jackson River, along the Intracoastal Waterway to the west line of Gulf
+  # County, then south - and the rest of the state is America/New_York
+  # (ASSUMPTIONS.md, "The jurisdiction timezone is a parameter of the
+  # conversion, not a constant in it"). The affected book includes Panama
+  # City, Panama City Beach, Destin and Fort Walton Beach - coastal
+  # wind-exposed residential territory, not a Pensacola footnote. A
+  # jurisdiction keyed by state holds one timezone, so a notice on a
   # Pensacola risk is dated Eastern here. For one hour a day that skews two
   # answers, both in the tolerant direction: a loss dated tomorrow by the
   # Central clock passes the future-date check unflagged (Eastern's today has
@@ -200,3 +206,122 @@ Feature: Jurisdiction selection
         | property_state | reason                  |
         | FL             | NO_THRESHOLD_CONFIGURED |
         | GA             | NO_JURISDICTION_DATE    |
+
+    # The corner the pair above cannot reach: its only unsupported row also
+    # has no threshold configured, so nothing there separates "the reason
+    # names the date that is missing" from "the reason names whichever gap
+    # this carrier happens to have." Here the carrier does have a threshold -
+    # the Background clears it and this scenario's own Given puts one back -
+    # and the unsupported row still names the missing jurisdiction date,
+    # while the supported row evaluates against that same threshold and
+    # returns a value, which is what shows the threshold is really there.
+    #
+    # The two spellings sharing one column are both spellings this project
+    # already states elsewhere, rendered whole rather than assembled from
+    # parts: siu_separation.feature asserts a recorded indicator as a bare
+    # value on one scenario and as not evaluated with a named reason on
+    # another. Neither is the compact NOT_EVALUATED:CODE form the
+    # future-dated-loss determination uses above, and that separation is
+    # deliberate - two subjects, two spellings.
+    #
+    # Arithmetic, recomputed rather than carried: 2026-07-09 is 46 days
+    # before the receipt's jurisdiction date of 2026-08-24, which is more
+    # than 45, so TRUE. 45 is chosen for that and not for being a round
+    # number - 46 days against a 46-day threshold is FALSE, so the asserted
+    # result pins the threshold rather than tolerating it. It is
+    # illustrative: no such value has been approved for any carrier.
+    Scenario Outline: A carrier that does have a late reporting threshold still has the missing jurisdiction date named
+      Given "AAAA" configures a late reporting threshold of 45 days
+      And the notice reports a loss date of "2026-07-09"
+      And the insured property is in "<property_state>"
+      When the notice is submitted for intake
+      Then the notice's state is TRIAGED
+      And the late reporting indicator recorded for the notice is <late_reporting>
+
+      Examples:
+        | property_state | late_reporting                                 |
+        | FL             | TRUE                                           |
+        | GA             | NOT_EVALUATED with reason NO_JURISDICTION_DATE |
+
+  Rule: The jurisdiction is read from the notice's merged current view, not from what was known at receipt
+
+    # RATIFIED 2026-08-26, advisor-recommended - both scenarios in this rule.
+    # ASSUMPTIONS.md, same date: the zone that dates a resolution's SIU
+    # interval comes from the notice's merged view rather than from what was
+    # known when it arrived. Item 5f decision 2 fixed the instant an interval
+    # is counted from and left the timezone open; this rule closes it, and it
+    # closes the same gap for the future-dated-loss determination in the same
+    # breath, because both are counted against one jurisdiction today.
+    #
+    # There is one reachable way into this state and both scenarios below are
+    # built that way. A notice that reached TRIAGED with no supported
+    # jurisdiction can never be told where the property is afterwards:
+    # resolution.feature's first rule answers a resolution on any notice that
+    # is not PENDED with 409 and persists nothing. So the notice here arrives
+    # with its property state absent AND its policy number absent. It pends
+    # for MISSING_REQUIRED_FIELD:policy_number - a blocker with nothing to do
+    # with the jurisdiction, which is the point, since an unsupported
+    # jurisdiction never blocks - while carrying jurisdiction_unsupported,
+    # and the reviewer's resolution supplies both fields together.
+    #
+    # An implementation that resolves the timezone once, at receipt, passes
+    # every other scenario in this file and fails the first row of each
+    # scenario below: it had no jurisdiction when the notice arrived, so it
+    # records NOT_EVALUATED on both rows and the computed value the FL row
+    # asserts never appears.
+
+    Scenario Outline: A future-dated-loss determination is made under the jurisdiction the resolution supplies
+      Given the insured property is in "absent"
+      And the notice reports a policy number of "absent"
+      And the notice is submitted for intake
+      And the notice's state is PENDED
+      And the notice's jurisdiction marking is jurisdiction_unsupported
+      And the reviewer is identified as "adjuster-4471"
+      When the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer supplies a property state of "<supplied_property_state>"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is 200
+      And the notice's state is TRIAGED
+      And the future-dated-loss determination recorded for the notice is <determination>
+
+      Examples:
+        | supplied_property_state | determination                      |
+        | FL                      | FALSE                              |
+        | absent                  | NOT_EVALUATED:NO_JURISDICTION_DATE |
+
+    # The same gap reaching the SIU trail, on the transition item 5f requires
+    # an evaluation on: PENDED to TRIAGED. The interval is counted from the
+    # jurisdiction date of the instant the notice was received, not of the
+    # instant the reviewer released it - item 5f decision 2, inherited here
+    # rather than re-proven, which is siu_separation.feature's own subject.
+    # What this scenario adds is the timezone that date is read in, which
+    # decision 2 left open: it comes from the property state the resolution
+    # supplied, so the row that supplies none has no date to count to and
+    # says so.
+    #
+    # Arithmetic, recomputed rather than carried: the receipt instant is
+    # 12:00 on 2026-08-24 in Florida, and 2026-07-09 is 46 days before it,
+    # which is more than 45, so TRUE. The threshold is pinned by that result
+    # the same way the scenario above pins it, and the second row cannot pass
+    # by coincidence with a FALSE standing in for an unevaluated one, because
+    # FALSE is not what it asserts.
+    Scenario Outline: A late reporting interval is counted under the jurisdiction the resolution supplies
+      Given "AAAA" configures a late reporting threshold of 45 days
+      And the notice reports a loss date of "2026-07-09"
+      And the insured property is in "absent"
+      And the notice reports a policy number of "absent"
+      And the notice is submitted for intake
+      And the notice's state is PENDED
+      And the notice's jurisdiction marking is jurisdiction_unsupported
+      And the reviewer is identified as "adjuster-4471"
+      When the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer supplies a property state of "<supplied_property_state>"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is 200
+      And the notice's state is TRIAGED
+      And the late reporting indicator recorded for the notice is <late_reporting>
+
+      Examples:
+        | supplied_property_state | late_reporting                                 |
+        | FL                      | TRUE                                           |
+        | absent                  | NOT_EVALUATED with reason NO_JURISDICTION_DATE |
