@@ -527,11 +527,13 @@ Feature: FNOL validation
     # mutation grounds, and the distinction is worth stating because the two
     # usually coincide and here they do not: every value in a plain scenario's
     # step takes the marker when mutated, and a marked step no longer resolves,
-    # so all five of this scenario's mutants die without testing anything -
-    # exactly as the five in the scenario above it already do. What it proves
-    # is that an absent loss date composes with the three recognition codes and
-    # sorts into canonical position among them, which no other scenario can
-    # show because no other scenario can reach this combination.
+    # so all five of this scenario's mutants die without testing anything,
+    # exactly as the five in "Policy, notice, and date codes fire together with
+    # an unrecognized loss type" already do. The scenario directly above this
+    # one carries seven, not five. What this one proves is that an absent loss
+    # date composes with the three recognition codes and sorts into canonical
+    # position among them, which no other scenario can show because no other
+    # scenario can reach this combination.
     Scenario: Policy, notice, and loss-type codes fire together with an absent loss date
       Given the policy number is "XX-1234567"
       And the notice type is "SUPPLEMENT"
