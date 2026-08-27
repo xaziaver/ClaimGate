@@ -1,10 +1,22 @@
-"""Pure validation rules for a candidate FNOL record."""
+"""Pure validation rules for a candidate FNOL record.
+
+`now` is the jurisdiction's calendar date, and is None where the notice's
+property state selected no jurisdiction and there is therefore no calendar to
+ask (item 5g). None is not "no future loss": it is the one input the loss-date
+rule cannot proceed without, so the determination records that rather than
+resolving to a negative - see _determine_future_dated_loss.
+"""
 
 import re
 from collections.abc import Collection
 from datetime import date
 
-from claimgate.domain.models import Candidate, ValidationBlocker, ValidationResult
+from claimgate.domain.models import (
+    Candidate,
+    FutureDatedLossResult,
+    ValidationBlocker,
+    ValidationResult,
+)
 
 POLICY_NUMBER_PATTERN = re.compile(r"^([A-Z]{2})-\d{7}$")
 RECOGNIZED_NOTICE_TYPES = frozenset({"INITIAL", "REOPENED", "SUPPLEMENTAL", "LOSS_ASSESSMENT"})
@@ -39,6 +51,14 @@ LOSS_TYPE_UNRECOGNIZED = "LOSS_TYPE_UNRECOGNIZED"
 LOSS_DATE_IN_FUTURE = "LOSS_DATE_IN_FUTURE"
 MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
 
+# The future-dated-loss determination's own closed reason enumeration, whose
+# only member this is. It shares a spelling with domain/siu.py's code of the
+# same name and is not the same code: the two enumerations are scoped to their
+# own subjects and grow independently (CLAUDE.md). The 2026-08-26 ratification
+# recorded in features/jurisdiction_selection.feature's Rule 3 is what adds it
+# to each of them.
+NO_JURISDICTION_DATE = "NO_JURISDICTION_DATE"
+
 # Canonical order is a declared property of the code enumeration, not the
 # order checks happen to run in below. The check order is deliberately
 # different from this so that a mutant deleting the sort in _canonical_order
@@ -55,14 +75,15 @@ _CANONICAL_CODE_ORDER = (
 
 def validate(
     candidate: Candidate,
-    now: date,
+    now: date | None,
     *,
     claimant_name_required: bool,
     claimant_contact_required: bool,
     recognized_policy_number_prefixes: Collection[str],
 ) -> ValidationResult:
+    future_dated_loss = _determine_future_dated_loss(candidate, now)
     blockers = (
-        _check_loss_date(candidate, now)
+        _check_loss_date(future_dated_loss)
         + _check_claimant_fields(
             candidate,
             claimant_name_required=claimant_name_required,
@@ -72,15 +93,32 @@ def validate(
         + _check_loss_type(candidate)
         + _check_policy_number(candidate, recognized_policy_number_prefixes)
     )
-    return ValidationResult(blockers=tuple(_canonical_order(blockers)))
+    return ValidationResult(
+        blockers=tuple(_canonical_order(blockers)), future_dated_loss=future_dated_loss
+    )
 
 
 def _canonical_order(blockers: list[ValidationBlocker]) -> list[ValidationBlocker]:
     return sorted(blockers, key=lambda b: (_CANONICAL_CODE_ORDER.index(b.code), b.field))
 
 
-def _check_loss_date(candidate: Candidate, now: date) -> list[ValidationBlocker]:
-    if candidate.loss_date > now:
+def _determine_future_dated_loss(
+    candidate: Candidate, now: date | None
+) -> FutureDatedLossResult:
+    """A None `now` is not "no future loss". There is no calendar to compare
+    against, which is the one input this rule cannot proceed without, so the
+    determination says so rather than resolving to a negative (CLAUDE.md, "A
+    result that was not computed is never reported as a negative")."""
+    if now is None:
+        return FutureDatedLossResult("NOT_EVALUATED", NO_JURISDICTION_DATE)
+    return FutureDatedLossResult("TRUE" if candidate.loss_date > now else "FALSE")
+
+
+def _check_loss_date(future_dated_loss: FutureDatedLossResult) -> list[ValidationBlocker]:
+    """The blocker is read off the determination rather than recomputed, so the
+    two cannot disagree - and an unevaluated determination raises no blocker,
+    which is what keeps an unsupported jurisdiction from blocking a notice."""
+    if future_dated_loss.value == "TRUE":
         return [ValidationBlocker(LOSS_DATE_IN_FUTURE, "loss_date")]
     return []
 

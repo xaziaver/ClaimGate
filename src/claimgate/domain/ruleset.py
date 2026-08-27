@@ -18,4 +18,4 @@ in CLAUDE.md: a stale label makes every row written after it a claim about rules
 that were not the ones applied.
 """
 
-RULESET_VERSION = "2026-08-25"
+RULESET_VERSION = "2026-08-27"

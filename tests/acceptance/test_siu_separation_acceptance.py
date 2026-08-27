@@ -31,11 +31,15 @@ from typing import Any
 
 from pytest_bdd import given, parsers, scenarios, then
 
-from tests.acceptance.support import assert_notice_state, parse_instant
+from tests.acceptance.support import (
+    assert_notice_state,
+    assert_recorded_indicator,
+    parse_instant,
+    recorded_indicator_event,
+)
 from tests.api.notice_intake import get_notice
 from tests.api.siu import (
     LATE_REPORTING_INDICATOR,
-    RECENT_POLICY_INCEPTION_INDICATOR,
     SIU_INDICATOR_NAMES,
     SIU_REASON_CODES,
     all_siu_indicator_events,
@@ -47,10 +51,6 @@ from tests.api.siu import (
 
 scenarios("../../features/siu_separation.feature")
 
-_INDICATORS = {
-    "late reporting": LATE_REPORTING_INDICATOR,
-    "recent policy inception": RECENT_POLICY_INCEPTION_INDICATOR,
-}
 _COUNTS = {"two": 2, "four": 4}
 # Both spellings of each indicator, because a surface could name one in either.
 _NEVER_ON_AN_ORDINARY_SURFACE = tuple(
@@ -77,13 +77,12 @@ def check_state_against_the_stored_notice(context: dict[str, Any], value: str) -
     )
 )
 def check_recorded_indicator(context: dict[str, Any], indicator: str, phrase: str) -> None:
-    """The stored event, not a computed value: conftest.py's "the late reporting
-    indicator is ..." reads what the domain returned, and this reads what the
-    trail kept. Two subjects, two phrases, on purpose."""
-    event = _indicator_event(context, _INDICATORS[indicator])
-    value, _, reason = phrase.partition(" with reason ")
-    assert event.value == value
-    assert event.reason_code == (reason or None)
+    """The reading is in support.py since item 5g, shared with
+    features/jurisdiction_selection.feature, which states this phrase in the same
+    words. The step definition stays here because pytest-bdd binds those per
+    module and this file overrides conftest.py's "the notice's state is" - see
+    the module docstring."""
+    assert_recorded_indicator(context, indicator, phrase)
 
 
 @then("exactly two SIU indicator events are recorded for the notice")
@@ -148,14 +147,14 @@ def check_every_event_agrees_with_its_own_entry(context: dict[str, Any]) -> None
 
 @then(parsers.re(r"^the late reporting event records a threshold of (?P<days>\d+) days$"))
 def check_recorded_threshold(context: dict[str, Any], days: str) -> None:
-    assert _indicator_event(context, LATE_REPORTING_INDICATOR).threshold_days == int(days)
+    assert recorded_indicator_event(context, LATE_REPORTING_INDICATOR).threshold_days == int(days)
 
 
 @then("the late reporting event records no threshold")
 def check_no_recorded_threshold(context: dict[str, Any]) -> None:
     # Absent, and never a zero: a configured zero is a real carrier choice that
     # makes every notice late, so it has to stay distinguishable from this.
-    assert _indicator_event(context, LATE_REPORTING_INDICATOR).threshold_days is None
+    assert recorded_indicator_event(context, LATE_REPORTING_INDICATOR).threshold_days is None
 
 
 @then("the original notice still has exactly two SIU indicator events")
@@ -203,12 +202,6 @@ def _events(context: dict[str, Any]) -> tuple[Any, ...]:
 
 def _events_for(context: dict[str, Any], notice_id: str) -> tuple[Any, ...]:
     return siu_indicator_events(context["store"], notice_id)
-
-
-def _indicator_event(context: dict[str, Any], indicator: str) -> Any:
-    matching = [event for event in _events(context) if event.indicator == indicator]
-    assert len(matching) == 1
-    return matching[0]
 
 
 def _assert_version_matches_entry(

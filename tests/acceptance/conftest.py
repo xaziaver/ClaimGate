@@ -31,7 +31,14 @@ import pytest
 from pytest_bdd import given, parsers, then, when
 
 from tests.acceptance.support import parse_compact_blockers, parse_instant
-from tests.api.notice_intake import IN_MEMORY_DATABASE, NoticeFields, NoticeStore, submit_notice
+from tests.api.notice_intake import (
+    CARRIER_IDENTITY_REFERENCE,
+    IN_MEMORY_DATABASE,
+    JURISDICTION_REFERENCE,
+    NoticeFields,
+    NoticeStore,
+    submit_notice,
+)
 from tests.api.resolution import resolve_notice
 
 DEFAULT_TODAY = date(2026, 8, 2)
@@ -39,6 +46,7 @@ _SUPPLIED_FIELDS = {
     "policy number": "policy_number",
     "notice type": "notice_type",
     "loss type": "loss_type",
+    "property state": "property_state",
 }
 
 
@@ -69,14 +77,23 @@ def set_recent_inception_threshold(context: dict[str, Any], value: int) -> None:
 # non-NOT_EVALUATED assertions in siu_indicators.feature. The "with reason"
 # form stays local to the siu acceptance test file since only that spec
 # asserts reason codes.
+#
+# Both compare case-insensitively, and that is a test of the specification
+# rather than a tolerance. The acceptance engine substitutes an upper-case TRUE
+# with a lower-case `true` and returns before it tries a sibling swap
+# (docs/harness-findings.md, "The boolean substitution is lowercase and
+# preemptive"), so an exact comparison kills every TRUE/FALSE mutant in these
+# two files without ever asking which value was computed - 25 of them across
+# triage.feature and siu_indicators.feature, measured. Folding the case turns
+# each one into the TRUE-versus-FALSE question the cell was written to ask.
 @then(parsers.parse("the late reporting indicator is {expected:w}"))
 def check_late_reporting_indicator(context: dict[str, Any], expected: str) -> None:
-    assert context["siu_indicators"].late_reporting.value == expected
+    assert context["siu_indicators"].late_reporting.value == expected.upper()
 
 
 @then(parsers.parse("the recent policy inception indicator is {expected:w}"))
 def check_recent_inception_indicator(context: dict[str, Any], expected: str) -> None:
-    assert context["siu_indicators"].recent_policy_inception.value == expected
+    assert context["siu_indicators"].recent_policy_inception.value == expected.upper()
 
 
 def _rules_entry(context: dict[str, Any], carrier: str) -> dict[str, Any]:
@@ -130,9 +147,16 @@ def set_carrier_code(context: dict[str, Any], carrier_code: str) -> None:
     context["carrier_code"] = carrier_code
 
 
-@given(parsers.parse('the jurisdiction observes "{timezone_name}"'))
-def set_jurisdiction_timezone(context: dict[str, Any], timezone_name: str) -> None:
-    context["jurisdiction_timezone"] = timezone_name
+@given(parsers.parse('the insured property is in "{value}"'))
+def set_property_state(context: dict[str, Any], value: str) -> None:
+    """Notice content, not an input: it is reported on the submission like any
+    other field and the jurisdiction is selected from it (item 5g). "absent"
+    omits it entirely, the convention notice_intake.feature already uses for a
+    field that was never supplied - and the one this spec's own Rule 2 row
+    varies against a state this deployment has no entry for."""
+    context["fields"].pop("property_state", None)
+    if value != "absent":
+        context["fields"]["property_state"] = value
 
 
 @given(parsers.parse('the notice is submitted at "{submitted_at}"'))
@@ -182,7 +206,8 @@ def submit(context: dict[str, Any]) -> None:
         store,
         carrier_code=context["carrier_code"],
         submitted_at=context["submitted_at"],
-        jurisdiction_timezone=context["jurisdiction_timezone"],
+        carrier_identity_reference=CARRIER_IDENTITY_REFERENCE,
+        jurisdiction_reference=JURISDICTION_REFERENCE,
         carrier_rules_source=context["carrier_rules_source"],
         fields=NoticeFields(**context["fields"]),
         idempotency_key=context["idempotency_key"],
@@ -229,7 +254,7 @@ def submit_resolution(context: dict[str, Any], instant: str) -> None:
         context["notice_id"],
         actor_id=context["reviewer"],
         resolved_at=parse_instant(instant),
-        jurisdiction_timezone=context["jurisdiction_timezone"],
+        jurisdiction_reference=JURISDICTION_REFERENCE,
         carrier_rules_source=context["carrier_rules_source"],
         supplied=supplied,
     )

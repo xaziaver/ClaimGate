@@ -18,7 +18,11 @@ from datetime import date
 from typing import Any
 
 from claimgate.domain.models import Candidate, SiuIndicators
-from claimgate.domain.siu import NO_CONTINUOUS_COVERAGE_DATE, NO_THRESHOLD_CONFIGURED
+from claimgate.domain.siu import (
+    NO_CONTINUOUS_COVERAGE_DATE,
+    NO_JURISDICTION_DATE,
+    NO_THRESHOLD_CONFIGURED,
+)
 from claimgate.domain.siu import compute_siu_indicators as _compute_siu_indicators
 from claimgate.shell.records import AuditEntry, SiuIndicatorEvent
 from claimgate.shell.serialization import (
@@ -32,7 +36,11 @@ from claimgate.shell.store import NoticeStore
 LATE_REPORTING_INDICATOR = LATE_REPORTING
 RECENT_POLICY_INCEPTION_INDICATOR = RECENT_POLICY_INCEPTION
 SIU_INDICATOR_NAMES = (LATE_REPORTING, RECENT_POLICY_INCEPTION)
-SIU_REASON_CODES = (NO_THRESHOLD_CONFIGURED, NO_CONTINUOUS_COVERAGE_DATE)
+# The complete set of SIU indicator reason codes, taken from the module that
+# declares them so the leak negatives cannot fall behind it. This set is not
+# the future-dated-loss determination's, which contains a code of the same
+# spelling as the third member here and is a different enumeration (CLAUDE.md).
+SIU_REASON_CODES = (NO_THRESHOLD_CONFIGURED, NO_CONTINUOUS_COVERAGE_DATE, NO_JURISDICTION_DATE)
 
 
 def siu_indicators(

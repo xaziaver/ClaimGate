@@ -34,7 +34,7 @@ _RULES_WITH_A_THRESHOLD: dict[str, Any] = {**VALID_RULES, "late_reporting_thresh
 _SOURCE = {"AAAA": _RULES_WITH_A_THRESHOLD}
 _PENDING = NoticeFields(
     policy_number="", loss_date=_LOSS_BEFORE_THE_RECEIPT, loss_type="wind_hail",
-    notice_type="INITIAL",
+    notice_type="INITIAL", property_state="FL",
 )
 _CLEARS_THE_PEND = {"policy_number": "HO-1234567"}
 _LEAVES_IT_BLOCKED: dict[str, Any] = {}

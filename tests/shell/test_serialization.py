@@ -57,7 +57,7 @@ def test_the_two_response_types_are_serialized_through_their_own_lists() -> None
 
 
 def test_a_serialized_notice_view_and_audit_entry_carry_their_own_lists_keys() -> None:
-    view = NoticeView("notice-1", "PENDED", (_BLOCKER,), None, None)
+    view = NoticeView("notice-1", "PENDED", (_BLOCKER,), None, None, None)
     entry = _entry()
 
     assert tuple(serialization.serialize_notice_view(view)) == serialization.NOTICE_VIEW_FIELDS

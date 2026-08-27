@@ -44,9 +44,15 @@ is not remembered against the refusal. A repeat carrying different content is a
 The rules this module runs, and the translations they need, moved to rules.py
 in item 5e: the resolution path has to run the same validation over its merged
 current view, and decision 2(a) says that is because there is one definition of
-"no blocker" rather than one per endpoint. Both NotImplementedError raises moved
-with them, intact - item 5i's unresolvable rules entry and item 5g's
-unresolvable jurisdiction_timezone.
+"no blocker" rather than one per endpoint. Both NotImplementedError raises live
+there too - item 5i's unresolvable rules entry, and item 5g's, which this item
+rebuilt around a misconfigured map rather than a reporter's input.
+
+**Three configuration sources cross this boundary and none of them is a
+default** (item 5g): the carrier identity reference, the jurisdiction map and
+the per-carrier rules source. Production and tests both name all three
+explicitly. A shipped value living in the domain and read from there would make
+the swappability proofs a test of monkeypatching rather than of the seam.
 
 **The SIU evaluation item 5f owes a transition into TRIAGED runs inside the
 decision transaction**, from siu.py, which the resolution path calls too. It runs
@@ -61,8 +67,8 @@ from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Any
 
-from claimgate.domain.carrier_identity import CARRIER_IDENTITY_REFERENCE, resolve_carrier_identity
-from claimgate.domain.models import Candidate, CarrierRules
+from claimgate.domain.carrier_identity import resolve_carrier_identity
+from claimgate.domain.models import Candidate, CarrierIdentity, CarrierRules, Jurisdiction
 from claimgate.shell import siu
 from claimgate.shell.idempotency import (
     answer_repeated_key,
@@ -81,6 +87,7 @@ from claimgate.shell.rules import (
     apply_domain_rules,
     build_candidate,
     parse_loss_date,
+    resolve_jurisdiction,
     resolve_rules,
     resolve_today,
 )
@@ -92,14 +99,17 @@ def submit_notice(
     *,
     carrier_code: str,
     submitted_at: datetime,
-    jurisdiction_timezone: str,
+    carrier_identity_reference: Mapping[str, CarrierIdentity],
+    jurisdiction_reference: Mapping[str, Mapping[str, str]],
     carrier_rules_source: Mapping[str, Mapping[str, Any]],
     fields: NoticeFields,
     idempotency_key: str | None = None,
 ) -> SubmitNoticeResponse:
     submission = Submission(
         store=store, carrier_code=carrier_code, submitted_at=submitted_at,
-        jurisdiction_timezone=jurisdiction_timezone, carrier_rules_source=carrier_rules_source,
+        carrier_identity_reference=carrier_identity_reference,
+        jurisdiction_reference=jurisdiction_reference,
+        carrier_rules_source=carrier_rules_source,
         fields=fields, idempotency_key=idempotency_key,
     )
     received = _receive_or_replay(submission)
@@ -122,7 +132,9 @@ def _receive_or_replay(submission: Submission) -> SubmitNoticeResponse | Accepte
 
 
 def _receive(submission: Submission) -> SubmitNoticeResponse | AcceptedNotice:
-    identity = resolve_carrier_identity(submission.carrier_code, CARRIER_IDENTITY_REFERENCE)
+    identity = resolve_carrier_identity(
+        submission.carrier_code, submission.carrier_identity_reference
+    )
     if identity.value == "REFUSED":
         return SubmitNoticeResponse(status=400)
     remembered = find_remembered_notice(submission)
@@ -144,14 +156,19 @@ def _first_submission(
         )
         return SubmitNoticeResponse(status=400, reference=reference)
     rules = resolve_rules(submission.carrier_code, submission.carrier_rules_source)
-    today = resolve_today(submission.submitted_at, submission.jurisdiction_timezone)
+    jurisdiction = resolve_jurisdiction(
+        submission.fields.property_state, submission.jurisdiction_reference
+    )
+    today = resolve_today(submission.submitted_at, jurisdiction)
     candidate = build_candidate(submission.fields, loss_date)
-    return _create_notice(submission, candidate, today, rules, expired_key=expired_key)
+    return _create_notice(
+        submission, candidate, jurisdiction, today, rules, expired_key=expired_key
+    )
 
 
 def _create_notice(
-    submission: Submission, candidate: Candidate, today: date, rules: CarrierRules,
-    *, expired_key: bool,
+    submission: Submission, candidate: Candidate, jurisdiction: Jurisdiction | None,
+    today: date | None, rules: CarrierRules, *, expired_key: bool,
 ) -> AcceptedNotice:
     """Everything the receipt transaction writes: the payload record and the
     notice at RECEIVED with its audit entry, and the key row, which belongs
@@ -166,7 +183,10 @@ def _create_notice(
             submission.carrier_code, submission.idempotency_key, notice_id,
             replacing_expired=expired_key,
         )
-    return AcceptedNotice(notice_id=notice_id, candidate=candidate, today=today, rules=rules)
+    return AcceptedNotice(
+        notice_id=notice_id, candidate=candidate, jurisdiction=jurisdiction,
+        today=today, rules=rules,
+    )
 
 
 def _decide(submission: Submission, accepted: AcceptedNotice) -> SubmitNoticeResponse:
@@ -174,19 +194,23 @@ def _decide(submission: Submission, accepted: AcceptedNotice) -> SubmitNoticeRes
     raises, the exception propagates and the notice rests at RECEIVED with its
     receipt, its one audit entry and its key - so the client's retry replays
     that notice rather than creating a duplicate of it."""
-    state, blockers, severity, queue = apply_domain_rules(
-        accepted.candidate, accepted.today, accepted.rules
+    decision = apply_domain_rules(
+        accepted.candidate, accepted.jurisdiction, accepted.today, accepted.rules
     )
     with submission.store.submission():
         submission.store.record_decision(
-            accepted.notice_id, state=state, blockers=blockers, severity=severity, queue=queue,
+            accepted.notice_id, state=decision.state, blockers=decision.blockers,
+            severity=decision.severity, queue=decision.queue,
+            jurisdiction_marking=decision.jurisdiction_marking,
+            future_dated_loss=decision.future_dated_loss,
             occurred_at=submission.submitted_at,
         )
-        if state == "TRIAGED":
+        if decision.state == "TRIAGED":
             _record_indicators(submission, accepted)
     return SubmitNoticeResponse(
-        status=201, notice_id=accepted.notice_id, state=state, blockers=blockers,
-        severity=severity, queue=queue, received_at=submission.submitted_at,
+        status=201, notice_id=accepted.notice_id, state=decision.state,
+        blockers=decision.blockers, severity=decision.severity, queue=decision.queue,
+        received_at=submission.submitted_at,
     )
 
 
@@ -202,7 +226,7 @@ def _record_indicators(submission: Submission, accepted: AcceptedNotice) -> None
         candidate=accepted.candidate,
         rules=accepted.rules,
         received_at=submission.submitted_at,
-        jurisdiction_timezone=submission.jurisdiction_timezone,
+        jurisdiction=accepted.jurisdiction,
         evaluated_at=submission.submitted_at,
     )
 

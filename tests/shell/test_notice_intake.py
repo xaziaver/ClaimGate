@@ -2,15 +2,18 @@
 
 Covers what the acceptance suite deliberately does not reach: the two
 scope-wall raises (items 5g, 5i), the deliberately preserved item 5h gap, the
-payload record no scenario can name, and the one receipt clock - no scenario
-asserts a literal timestamp, for the reason notice_intake.feature's own Rule 2
-comment gives.
+payload record no scenario can name, the columns item 5g writes - a spec names
+no table - and the one receipt clock, since no scenario asserts a literal
+timestamp, for the reason notice_intake.feature's own Rule 2 comment gives.
 """
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 import pytest
 
+from claimgate.domain import validation
+from claimgate.domain.jurisdiction import JURISDICTION_UNSUPPORTED
+from claimgate.domain.models import FutureDatedLossResult
 from claimgate.shell.messages import NoticeFields
 from claimgate.shell.notice_intake import get_notice
 from claimgate.shell.records import payload_reference
@@ -144,9 +147,63 @@ def test_a_carrier_recognized_by_identity_but_unresolvable_rules_is_not_handled(
         submit(carrier_rules_source={})
 
 
-def test_an_unrecognized_jurisdiction_timezone_is_not_handled(submit: Submitter) -> None:
+def test_a_jurisdiction_map_holding_an_unrecognized_timezone_is_not_handled(
+    submit: Submitter,
+) -> None:
+    # Item 5g's raise, rebuilt around the input that can still be wrong. No
+    # reporter supplies a timezone name any more, so what is left is this
+    # deployment's own map holding one this system cannot resolve - our defect,
+    # not the reporter's, and its status code is undecided (rules.py).
     with pytest.raises(NotImplementedError):
-        submit(jurisdiction_timezone="Not/AZone")
+        submit(jurisdiction_reference={"FL": {"timezone": "Not/AZone"}})
+
+
+def test_a_property_state_with_no_entry_is_marked_and_never_blocked(
+    store: NoticeStore, submit: Submitter
+) -> None:
+    # The acceptance suite proves the outcome through the spec; what is here is
+    # that the marking and the determination are actually persisted on the row
+    # rather than computed for a response, which no scenario names a table to
+    # assert. The same submission under "FL" is the control.
+    response = submit(fields=replace(DEFAULT_FIELDS, property_state="GA"))
+
+    assert response.status == 201
+    assert response.state == "TRIAGED"
+    assert response.blockers == ()
+    record = store.get_notice(response.notice_id)
+    assert record is not None
+    assert record.jurisdiction_marking == JURISDICTION_UNSUPPORTED
+    assert record.future_dated_loss == FutureDatedLossResult(
+        "NOT_EVALUATED", validation.NO_JURISDICTION_DATE
+    )
+
+
+def test_a_supported_property_state_is_unmarked_and_its_determination_is_made(
+    store: NoticeStore, submit: Submitter
+) -> None:
+    response = submit()
+
+    record = store.get_notice(response.notice_id)
+    assert record is not None
+    assert record.jurisdiction_marking is None
+    assert record.future_dated_loss == FutureDatedLossResult("FALSE")
+
+
+def test_the_notice_at_rest_in_received_carries_no_determination_at_all(
+    store: NoticeStore, submit: Submitter, rule_evaluation_raises: None
+) -> None:
+    # Null is not FALSE. A notice whose rules never ran has had no determination
+    # made about it, which is a different fact from a determination of "not
+    # ahead of today" - CLAUDE.md, "A result that was not computed is never
+    # reported as a negative."
+    with pytest.raises(RuleEvaluationBugError):
+        submit()
+
+    record = store.get_notice(store.list_payloads()[0].notice_id)
+    assert record is not None
+    assert record.state == "RECEIVED"
+    assert record.future_dated_loss is None
+    assert record.jurisdiction_marking is None
 
 
 def test_get_notice_returns_none_for_an_unknown_id(store: NoticeStore) -> None:
@@ -180,3 +237,11 @@ def test_a_bug_in_rule_evaluation_cannot_erase_the_receipt(
     remembered = store.find_key("AAAA", "K-9")
     assert remembered is not None
     assert remembered.notice_id == notice_id
+
+
+def test_a_jurisdiction_map_entry_naming_no_timezone_is_not_handled(submit: Submitter) -> None:
+    # The other half of the same misconfiguration: an entry that exists and
+    # names nothing. It escalates rather than resolving to jurisdiction_
+    # unsupported, which would blame the reporter for our own map.
+    with pytest.raises(NotImplementedError):
+        submit(jurisdiction_reference={"FL": {}})

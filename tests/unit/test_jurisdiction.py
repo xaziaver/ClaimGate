@@ -5,9 +5,19 @@ from datetime import datetime
 import pytest
 
 from claimgate.domain.jurisdiction import (
+    JURISDICTION_REFERENCE,
     JURISDICTION_TIMEZONE_UNRECOGNIZED,
     resolve_jurisdiction_date,
+    select_jurisdiction,
 )
+
+# A fictional second jurisdiction, so the selection tests below ask which entry
+# a key selected rather than only whether one exists. ZZ is user-assigned in
+# ISO 3166-1 and can never be a real one.
+_TWO_JURISDICTIONS = {
+    "FL": {"timezone": "America/New_York"},
+    "ZZ": {"timezone": "Pacific/Kiritimati"},
+}
 
 
 @pytest.mark.parametrize(
@@ -63,3 +73,65 @@ def test_malformed_zone_name_is_refused(timezone_name: str) -> None:
     assert result.value == "REFUSED"
     assert result.resolved_date is None
     assert result.reason == JURISDICTION_TIMEZONE_UNRECOGNIZED
+
+
+@pytest.mark.parametrize(
+    ("jurisdiction_code", "expected_timezone"),
+    [
+        ("FL", "America/New_York"),
+        ("ZZ", "Pacific/Kiritimati"),
+    ],
+)
+def test_a_populated_code_selects_that_entrys_timezone(
+    jurisdiction_code: str, expected_timezone: str
+) -> None:
+    # Two entries, so the assertion is that the value came from the entry the
+    # key selected and not from whatever the map happens to hold first. The
+    # reference is handed in, which is the whole point of the shape.
+    result = select_jurisdiction(jurisdiction_code, _TWO_JURISDICTIONS)
+
+    assert result.value == "SELECTED"
+    assert result.jurisdiction is not None
+    assert result.jurisdiction.timezone == expected_timezone
+
+
+@pytest.mark.parametrize(
+    "jurisdiction_code",
+    [
+        "GA",
+        "fl",
+        "Florida",
+        " FL",
+        "FL ",
+        "",
+        None,
+    ],
+)
+def test_anything_but_an_exact_key_selects_no_jurisdiction(jurisdiction_code: str | None) -> None:
+    # ASSUMPTIONS.md, ratified 2026-08-26: the match is exact and a miss is
+    # marked rather than normalized. Case folding and trimming are each a first
+    # step toward inferring what the reporter meant, on the field that decides
+    # which state's law applies, so each spelling here has to miss.
+    result = select_jurisdiction(jurisdiction_code, _TWO_JURISDICTIONS)
+
+    assert result.value == "UNSUPPORTED"
+    assert result.jurisdiction is None
+
+
+def test_the_shipped_reference_holds_florida_and_nothing_else() -> None:
+    # PHASE2_DESIGN.md: exactly one entry populated, and it is a real lookup
+    # rather than a constant dressed as one - which the parametrized selection
+    # above establishes against a two-entry map. This pins what ships.
+    assert dict(JURISDICTION_REFERENCE) == {"FL": {"timezone": "America/New_York"}}
+
+
+def test_an_entry_naming_no_timezone_is_malformed_and_not_a_miss() -> None:
+    # A configured jurisdiction whose entry cannot be read is our defect, and
+    # it has to stay distinguishable from a state we hold no entry for: the
+    # first escalates, the second marks the notice and lets it through. There
+    # is no default timezone to fall back to, deliberately - a defaulted zone
+    # would date a notice under a calendar nobody chose for it.
+    result = select_jurisdiction("FL", {"FL": {}})
+
+    assert result.value == "MALFORMED"
+    assert result.jurisdiction is None
