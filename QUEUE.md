@@ -2842,3 +2842,112 @@ reaches `TRIAGED` carrying `0001-01-01` as today's date*: `validate()` has no pr
 table row, verbatim: `ASSUMPTIONS.md` — "An absent loss date is a domain blocker, not a schema
 refusal"; `validation.feature`, `validation.py`, `models.py`. Not started — this session ended at
 the save point, on `main` at `e7beee2` with a clean tree and nothing in flight.
+
+**Item 5h is open on `reopening/5h-absent-loss-date`, spec drafted and not approved, 2026-08-27.**
+The branch is cut from `main` at `c55fb21`; its one item commit is `14ef775`, the amendment to
+`features/validation.feature`, which is **547 lines, sha256 `ae36c39d992e`** at that ref. Nothing
+under `src/` or `tests/` is touched and nothing is approved — this session was scoped to the spec
+and to documentation, and `gauntlet spec list` was the only gauntlet command run. It reports
+`features/validation.feature` as `modified`; the other ten stay `approved`.
+
+**The expected gate failure, and why it is guaranteed rather than a defect.** The acceptance gate
+fails on `main`'s own rule that spec lock and implementation are separate commits: the spec is
+drafted ahead of its approval, so a `gauntlet check` on this branch will report
+`features/validation.feature` changed since it was approved. That is the state the separate-commits
+rule produces on every reopening and it does not clear from the agent's side. The remedy the gate
+prints names `gauntlet spec approve`, which is the human's command. Do not retry it, and do not
+look for something adjacent to run.
+
+**What the amendment says.** An absent loss date resolves `MISSING_REQUIRED_FIELD:loss_date` — the
+blank-policy-number case one field over, PENDED rather than refused, per `ASSUMPTIONS.md`'s
+2026-08-24 entry. The rule is renamed *The loss date must be stated, and must not be in the future*,
+its outline renamed *A loss date is stated, absent, or ahead of today* and given an `absent` row, and
+the rule for canonical order gains one scenario for the code combination this item makes reachable.
+Absence is spelled `absent` rather than as an empty cell, deliberately and on measured grounds — see
+`docs/harness-findings.md`'s 2026-08-27 correction to the empty-cell mutation rule.
+
+**Measured, not predicted** (`mutation.mutants()` over the file at each ref, compared against
+`gauntlet.lock.json`; the locked digest was `cd571b5dd976`):
+
+| | locked | amended |
+|---|---|---|
+| mutants | 180 | 192 |
+| unique locators | 180 | 192 |
+| boolean-class | 0 | 4 |
+| marker-class | 76 | 81 |
+
+Twenty locators gained, eight lost, 172 kept, and **no approval is disturbed**: all 31 live mutant
+approvals on this file sit on kept locators and not one of their signatures moved. The eight lost are
+the old outline's own, which move because the scenario is renamed and a column is added to every row.
+Comment inertness was confirmed by locator identity rather than count parity, per this file's
+own rule.
+
+**Survivor counts below are hand-simulated, not measured**, and cannot be measured until the spec is
+approved and step definitions exist. Of the twelve added mutants: three on the `absent` row are real
+discriminating kills (the date swaps to a past one, the blocker cell empties, the determination
+swaps to `FALSE`, and each contradicts what the row asserts); four are the `TRUE`/`FALSE`
+determination cells, which are real kills **only if** the step reading them compares the value half
+case-insensitively — `tests/acceptance/test_jurisdiction_selection_acceptance.py` already does this
+for the same column and says why, and without it all four are vacuous, per the boolean-substitution
+finding; and five are the new plain scenario's literals, every one of which takes the marker, fails
+to resolve, and dies having tested nothing. Those five are a known and accepted cost, identical to
+the five the scenario above it already pays: that scenario earns its place by reaching a code
+combination nothing else can reach, not by killing anything.
+
+**Two things need the human and are not inside an agent's boundary.** First, `NO_LOSS_DATE` as a
+second member of the future-dated-loss determination's closed reason enumeration — the same act the
+2026-08-26 ratification performed for `NO_JURISDICTION_DATE`, and the enumeration is closed. Second,
+its precedence: the amendment proposes `NO_LOSS_DATE` > `NO_JURISDICTION_DATE` >
+`NO_THRESHOLD_CONFIGURED`. The existing tie-break — name the gap that would still block evaluation if
+the other were closed — decides the lower pair and is **silent on the upper one**, because with
+neither a loss date nor a jurisdiction, closing either leaves the other. The proposed ground is that
+the loss date is the determination's subject and today only its yardstick, and a missing subject is
+more basic than a missing yardstick. **The both-absent case is not provable in
+`validation.feature`** — that file's scenarios always have a today, and the vocabulary for a notice
+with no jurisdiction lives in `jurisdiction_selection.feature`'s Rule 3. A row for it belongs there,
+in a second spec this session deliberately did not draft.
+
+**The SIU indicators need no reason code, and this is the item's least obvious finding.** Both count
+an interval against the loss date, so the absent case looks like it needs a third `NOT_EVALUATED`
+reason. It does not: SIU evaluation runs only on a transition into `TRIAGED`, on both the intake path
+(`shell/notice_intake.py`) and the resolution path (`shell/resolution.py`), and once an absent loss
+date is a blocker the notice pends and never transitions. The value becomes unreachable on the
+designed path — the same shape as `find_duplicates` and an unrecognized notice type, resolved in item
+3 by raising rather than by growing the enumeration, on the ground that an unreachable value is a
+caller contract violation and not a business outcome to record. **Recommended: raise, and add no code
+to `siu_indicators.feature`'s enumeration.** Note that this follows from what the code currently does
+— the `TRIAGED`-only guard — rather than from an independent judgment about SIU, and it stops holding
+the moment anything evaluates indicators on a pended notice. `find_duplicates` is the same case and
+is not wired into the shell at all; `triage.py` never reads the loss date.
+
+**The resolution round trip needs no scenario here, decided by measurement rather than by
+assertion.** `jurisdiction_selection.feature`'s merged-view rule proves that a resolution's supplied
+`property_state` is read from the notice's merged current view and that a determination and an
+interval become computable because of it; `resolution.feature` proves that supplying a missing field
+clears its blocker and moves `PENDED` to `TRIAGED`. A reviewer supplying a missing loss date is the
+composition of those two proven mechanisms over a different field, and it cannot be expressed in
+`validation.feature` at all, which has no notice, no state and no endpoint in its vocabulary. If the
+human wants it stated explicitly it belongs in `resolution.feature`, which item 5i already reopens —
+carried there rather than built here.
+
+**Three implementation notes the implementing session should not rediscover.** (1)
+`shell/rules.py`'s `parse_loss_date` currently uses one `None` return for two different facts: a
+`None` input means "absent" and today maps to `date.min`, while a `None` return means "not a date at
+all" and maps to `400`. Under this item those must separate — absence is a blocker and is not a
+`400` — so the function needs two distinct outcomes, and `resolution.py`'s `_loss_date_of` returns
+`date` today and has to widen with it. (2) `validation.feature`'s step for the loss date is bound
+with `parsers.parse`, which cannot match an empty or non-date token; every other field's step in that
+file uses the `parsers.re` form, and this one has to join them to read `absent`. Asserting the
+determination also needs a new `Then` step and a widened `tests/api/validation.py`, which takes
+`now: date` today. (3) `tests/shell/test_notice_intake.py`'s
+`test_an_absent_loss_date_flows_through_unchanged_item_5h_is_not_built_here` **inverts when this item
+lands** — it asserts `201`/`TRIAGED` for exactly the input that must now pend. Rewriting or removing
+it is a deliberate act belonging to the implementing commit; it is recorded here rather than done,
+because doing it now would leave `main` asserting a behaviour no spec states.
+
+**What remains before item 5h closes:** the human's review of the amended spec and `gauntlet spec
+approve` on it; then the implementation commit — `models.py`'s `loss_date` to `date | None`,
+`validation.py`'s presence check and the new reason code, the shell's two-signal split above, the
+step definitions, and the preservation test's inversion; then a green `gauntlet check` and the merge.
+The reason code and its precedence must be ratified before, not during, the implementation: an
+implementation that picks either one has defaulted a rule nobody approved.
