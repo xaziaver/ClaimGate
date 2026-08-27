@@ -213,17 +213,50 @@ Feature: Idempotency on notice submission
     # the notice the first attempt could not. This is what places the
     # uniqueness constraint on the notice itself rather than on a record of
     # attempts.
+    #
+    # The third row is item 5i's, and it is the row this file could not
+    # carry before that item existed. A first use that ended in this
+    # deployment's own defect created no notice, so its key names nothing
+    # and the retry is judged on its own - the same rule the second row
+    # states, reached by a different route. What makes it a separate proof
+    # rather than a second copy is that the retry's payload is identical to
+    # the first attempt's: the first submission was never wrong, only
+    # unanswerable, so the reporter sends exactly what they sent before.
+    # An implementation that remembered a key against the submission's
+    # payload reference instead of against the notice it created would
+    # answer that identical retry 200 with nothing created, and the second
+    # row cannot catch it, because a corrected resubmission necessarily
+    # carries a different payload. Item 5i's own decision that a
+    # deployment fault creates no notice is what makes this row true; the
+    # opposite answer - a notice left behind at RECEIVED with its key
+    # remembered - would make the retry a replay of a notice no rule ever
+    # ran over, and the reporter's corrected deployment would never
+    # produce a decision at all.
+    #
+    # The 500 fault is set on the loss date the first row uses, not the
+    # second's, because the schema boundary is checked before the
+    # configuration is read: a submission whose loss date does not parse is
+    # answered 400 whether or not this deployment can load the carrier's
+    # rules. Two substitutions between rows survive for exactly that reason
+    # and are equivalent - swapping the fault onto the not-a-date row, or
+    # the not-a-date onto the fault row, produces a row whose first attempt
+    # still creates nothing and whose retry still creates. They sit in one
+    # scenario so one approval reason covers the single argument
+    # (.claude/skills/gherkin-specs, constraint 4).
     Scenario Outline: Whether a repeated key finds a notice depends on whether its first use created one
       Given the notice reports a loss date of "<first_loss_date>"
+      And <deployment_fault>
       And the notice is submitted with the idempotency key "K-600"
       And the notice is submitted for intake
       And that submission is remembered as the original
-      When the notice reports a loss date of "2026-06-01"
+      When this deployment is configured correctly
+      And the notice reports a loss date of "2026-06-01"
       And the notice is submitted for intake
       Then the response is <response>
       And the response <notice_relation>
 
       Examples:
-        | first_loss_date | response | notice_relation                            |
-        | 2026-06-01      | 200      | identifies the original notice             |
-        | not-a-date      | 201      | identifies a new notice, not the original  |
+        | first_loss_date | deployment_fault                             | response | notice_relation                            |
+        | 2026-06-01      | this deployment is configured correctly      | 200      | identifies the original notice             |
+        | not-a-date      | this deployment is configured correctly      | 201      | identifies a new notice, not the original  |
+        | 2026-06-01      | the carrier's rules entry cannot be resolved | 201      | identifies a new notice, not the original  |

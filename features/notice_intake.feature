@@ -270,6 +270,67 @@ Feature: Notice intake
         | AAAA         | 201      | creates the notice | is kept, and reachable through the notice |
         | ZZZZ         | 400      | creates no notice  | is not kept                               |
 
+  Rule: A carrier this deployment administers but cannot configure is our defect, and the submission is receipted anyway
+
+    # PENDING RATIFICATION for the status itself - item 5i,
+    # advisor-recommended, not yet approved. Everything about what is
+    # persisted is already ratified: ASSUMPTIONS.md, "A carrier this
+    # deployment administers but cannot configure is our defect, not the
+    # reporter's", 2026-08-24 - 5xx rather than 400, with a receipted
+    # payload record carrying its own reference, and no notice created.
+    #
+    # This is the case the rule above sets aside. There, the carrier is
+    # absent from the identity reference, this deployment does not
+    # administer it, no insurer exists here for a Fla. Stat.
+    # 627.70131(1)(a) duty to arise to, and nothing is kept. Here the
+    # carrier is one this deployment claims to administer and the duty is
+    # real; what failed is this deployment's own configuration. Telling a
+    # reporter their notice was refused for a defect on our side is exactly
+    # what the no-rejected-state rule exists to prevent, so the submission
+    # is receipted and referenced the way any other received communication
+    # is, and the reporter can name it again.
+    #
+    # The second fault is the same shape from a different source: this
+    # deployment's jurisdiction map holding an entry that names no timezone,
+    # or one this system cannot resolve. It is deliberately NOT degraded to
+    # the jurisdiction_unsupported marking - a property state this
+    # deployment supports no jurisdiction for is a fact about the risk and
+    # marks a created notice for a person, while a map entry we wrote badly
+    # is a fact about us and marks nothing, because there is nothing wrong
+    # with the notice to mark. Degrading one into the other would hide a
+    # deployment defect inside an ordinary attribute a person is meant to
+    # search on, and the two would become indistinguishable in the only
+    # place anyone would look.
+    #
+    # One status for both faults, and the machine error code is what tells
+    # them apart. A reporter's client branches on status to decide whether
+    # to retry, and the answer is the same for both - not until someone
+    # fixes this deployment - so a second status would be a distinction
+    # with no consequence, which is the argument PHASE2_DESIGN.md already
+    # makes for the two identical 201s. The error codes are a new closed
+    # enumeration and are escalated with this draft rather than invented
+    # into it. They are also what kills the substitution between the two
+    # refusing rows: without them the rows agree in every column and both
+    # swaps survive as equivalents.
+    #
+    # Nothing here is an audit entry. An audit entry belongs to a notice
+    # and there is no notice, so what carries the fault is the receipted
+    # payload record and the response - measured against the record model
+    # rather than assumed, and reported with this draft.
+    Scenario Outline: A carrier this deployment cannot configure is receipted, refused as our defect, and creates no notice
+      Given <deployment_fault>
+      When the notice is submitted for intake
+      Then the response is <response>
+      And the response names the error <error_code>
+      And intake <notice_outcome>
+      And a record of the submission <record_outcome>
+
+      Examples:
+        | deployment_fault                                    | response | error_code                 | notice_outcome     | record_outcome                              |
+        | this deployment is configured correctly             | 201      | none                       | creates the notice | is kept, and reachable through the notice   |
+        | the carrier's rules entry cannot be resolved        | 500      | CARRIER_RULES_UNRESOLVABLE | creates no notice  | is kept anyway, with a reference of its own |
+        | the jurisdiction map entry names no usable timezone | 500      | JURISDICTION_MAP_UNUSABLE  | creates no notice  | is kept anyway, with a reference of its own |
+
   # Removed 2026-08-26 with item 5g's submission-surface change: the rule that
   # stood here - "A notice is judged against the jurisdiction's calendar date
   # at the instant it was submitted" - set its own timezone with a step the
