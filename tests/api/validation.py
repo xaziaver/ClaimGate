@@ -1,4 +1,9 @@
-"""Thin, stable test API over the validation domain area."""
+"""Thin, stable test API over the validation domain area.
+
+`loss_date` is optional because the domain's is: None is "no loss date was
+stated", which validate() answers with MISSING_REQUIRED_FIELD:loss_date rather
+than with a refusal (item 5h). It is not a default standing in for a date.
+"""
 
 from collections.abc import Collection
 from datetime import date
@@ -14,7 +19,7 @@ def validate_record(
     claimant_contact_required: bool,
     recognized_policy_number_prefixes: Collection[str],
     policy_number: str = "",
-    loss_date: date = date.min,
+    loss_date: date | None = None,
     loss_type: str = "",
     notice_type: str = "",
     claimant_name: str | None = None,

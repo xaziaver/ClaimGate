@@ -149,8 +149,8 @@ def _first_submission(
     """Whatever the key situation was, this submission is now judged the way a
     first-ever one is: past its window there is no idempotency record left to
     find, and a key with no notice behind it never named anything."""
-    loss_date = parse_loss_date(submission.fields.loss_date)
-    if loss_date is None:
+    parsed = parse_loss_date(submission.fields.loss_date)
+    if parsed.value == "UNPARSEABLE":
         reference = submission.store.refuse_payload(
             submission.carrier_code, submission.raw_payload, submission.submitted_at
         )
@@ -160,7 +160,9 @@ def _first_submission(
         submission.fields.property_state, submission.jurisdiction_reference
     )
     today = resolve_today(submission.submitted_at, jurisdiction)
-    candidate = build_candidate(submission.fields, loss_date)
+    # ABSENT is deliberately not refused here: it flows through as None and the
+    # domain pends the notice on MISSING_REQUIRED_FIELD:loss_date (item 5h).
+    candidate = build_candidate(submission.fields, parsed.loss_date)
     return _create_notice(
         submission, candidate, jurisdiction, today, rules, expired_key=expired_key
     )

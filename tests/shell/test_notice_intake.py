@@ -1,7 +1,7 @@
 """Unit tests for claimgate.shell.notice_intake.
 
 Covers what the acceptance suite deliberately does not reach: the two
-scope-wall raises (items 5g, 5i), the deliberately preserved item 5h gap, the
+scope-wall raises (items 5g, 5i), the shell's half of item 5h, the
 payload record no scenario can name, the columns item 5g writes - a spec names
 no table - and the one receipt clock, since no scenario asserts a literal
 timestamp, for the reason notice_intake.feature's own Rule 2 comment gives.
@@ -123,21 +123,28 @@ def test_every_audit_entry_carries_the_carrier_it_is_attributed_to(
     assert [entry.carrier_code for entry in trail] == ["AAAA", "AAAA"]
 
 
-def test_an_absent_loss_date_flows_through_unchanged_item_5h_is_not_built_here(
+def test_an_absent_loss_date_pends_the_notice_rather_than_refusing_it(
     submit: Submitter,
 ) -> None:
+    # The inversion of the test that preserved item 5h's gap, and the reason it
+    # is a shell test rather than only a scenario: validation.feature proves the
+    # blocker, and what is proved here is that the shell carries an absent loss
+    # date into the domain at all instead of refusing it at the schema boundary
+    # beside an unparseable one (ASSUMPTIONS.md, "An absent loss date is a
+    # domain blocker, not a schema refusal"). property_state is stated so the
+    # notice has exactly one absence and the pend is attributable to it.
     fields = NoticeFields(
-        policy_number="HO-1234567", loss_date=None, loss_type="wind_hail", notice_type="INITIAL"
+        policy_number="HO-1234567", loss_date=None, loss_type="wind_hail",
+        notice_type="INITIAL", property_state="FL",
     )
 
     response = submit(fields=fields)
 
-    # Item 5h ("An absent loss date is a domain blocker, not a schema
-    # refusal") is not built: validate() has no presence check for
-    # loss_date, so this reaches TRIAGED carrying date.min as today's date -
-    # a known, recorded defect this item deliberately does not fix.
     assert response.status == 201
-    assert response.state == "TRIAGED"
+    assert response.state == "PENDED"
+    assert [(b.code, b.field) for b in response.blockers] == [
+        ("MISSING_REQUIRED_FIELD", "loss_date")
+    ]
 
 
 def test_a_carrier_recognized_by_identity_but_unresolvable_rules_is_not_handled(

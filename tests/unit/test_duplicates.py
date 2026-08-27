@@ -121,3 +121,37 @@ def test_an_unrecognized_notice_type_raises() -> None:
         ValueError, match=r"^find_duplicates: unrecognized notice_type 'SUPPLEMENT'$"
     ):
         find_duplicates(candidate, [EXISTING_CLAIM], WINDOW_DAYS)
+
+
+def test_a_candidate_with_no_loss_date_raises() -> None:
+    # The same ground as the unrecognized notice type above and the same shape
+    # as domain/siu.py's raise: unreachable on the designed path, since an
+    # absent loss date pends the notice and duplicate candidates are data on a
+    # TRIAGED one (item 5h). ValueError rather than a third NOT_EVALUATED
+    # reason - a caller contract violation, not a business outcome to record.
+    candidate = Candidate(
+        policy_number="HO-1234567",
+        loss_date=None,
+        loss_type="fire",
+        notice_type="INITIAL",
+    )
+
+    with pytest.raises(ValueError, match=r"^find_duplicates: candidate states no loss date$"):
+        find_duplicates(candidate, [EXISTING_CLAIM], WINDOW_DAYS)
+
+
+def test_an_excluded_notice_type_resolves_without_reading_the_loss_date() -> None:
+    # The guard sits after the notice-type exclusion on purpose: an excluded
+    # type needs no loss date to resolve, so raising before it would refuse an
+    # input this function answers without ever reading the date.
+    candidate = Candidate(
+        policy_number="HO-1234567",
+        loss_date=None,
+        loss_type="fire",
+        notice_type="SUPPLEMENTAL",
+    )
+
+    result = find_duplicates(candidate, [EXISTING_CLAIM], WINDOW_DAYS)
+
+    assert result.value == "NOT_EVALUATED"
+    assert result.reason == FOLLOW_ON_NOTICE_TYPE

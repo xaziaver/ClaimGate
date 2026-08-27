@@ -2,9 +2,12 @@
 
 `now` is the jurisdiction's calendar date, and is None where the notice's
 property state selected no jurisdiction and there is therefore no calendar to
-ask (item 5g). None is not "no future loss": it is the one input the loss-date
-rule cannot proceed without, so the determination records that rather than
-resolving to a negative - see _determine_future_dated_loss.
+ask (item 5g). A candidate's loss date is None where the reporter stated none
+(item 5h). Neither None is "no future loss": each is an input the loss-date
+rule cannot proceed without, so the determination records which one was missing
+rather than resolving to a negative - see _determine_future_dated_loss. An
+absent loss date is additionally a blocker in its own right, which the
+determination is deliberately not the carrier of - see _check_loss_date_present.
 """
 
 import re
@@ -51,13 +54,18 @@ LOSS_TYPE_UNRECOGNIZED = "LOSS_TYPE_UNRECOGNIZED"
 LOSS_DATE_IN_FUTURE = "LOSS_DATE_IN_FUTURE"
 MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
 
-# The future-dated-loss determination's own closed reason enumeration, whose
-# only member this is. It shares a spelling with domain/siu.py's code of the
-# same name and is not the same code: the two enumerations are scoped to their
-# own subjects and grow independently (CLAUDE.md). The 2026-08-26 ratification
+# The first member of the future-dated-loss determination's own closed reason
+# enumeration. It shares a spelling with domain/siu.py's code of the same name
+# and is not the same code: the two enumerations are scoped to their own
+# subjects and grow independently (CLAUDE.md). The 2026-08-26 ratification
 # recorded in features/jurisdiction_selection.feature's Rule 3 is what adds it
 # to each of them.
 NO_JURISDICTION_DATE = "NO_JURISDICTION_DATE"
+# The second member of that same closed enumeration, added by the 2026-08-27
+# ratification recorded in ASSUMPTIONS.md's "Item 5h, three decisions" and by
+# nothing else. It is deliberately not added to domain/siu.py's enumeration -
+# see that module for why an absent loss date raises there instead.
+NO_LOSS_DATE = "NO_LOSS_DATE"
 
 # Canonical order is a declared property of the code enumeration, not the
 # order checks happen to run in below. The check order is deliberately
@@ -84,6 +92,7 @@ def validate(
     future_dated_loss = _determine_future_dated_loss(candidate, now)
     blockers = (
         _check_loss_date(future_dated_loss)
+        + _check_loss_date_present(candidate)
         + _check_claimant_fields(
             candidate,
             claimant_name_required=claimant_name_required,
@@ -105,10 +114,22 @@ def _canonical_order(blockers: list[ValidationBlocker]) -> list[ValidationBlocke
 def _determine_future_dated_loss(
     candidate: Candidate, now: date | None
 ) -> FutureDatedLossResult:
-    """A None `now` is not "no future loss". There is no calendar to compare
-    against, which is the one input this rule cannot proceed without, so the
-    determination says so rather than resolving to a negative (CLAUDE.md, "A
-    result that was not computed is never reported as a negative")."""
+    """Neither absence is "no future loss": each is an input this rule cannot
+    proceed without, so the determination names the one that was missing rather
+    than resolving to a negative (CLAUDE.md)."""
+    # Order is deliberate, not incidental. The tie-break the SIU indicators use
+    # - name the gap that would still block evaluation if the other were closed
+    # - is silent here: with neither a loss date nor a jurisdiction, closing
+    # either leaves the other. What decides it is that the loss date is this
+    # determination's subject and today only the yardstick it is held against,
+    # so the missing subject is the more basic absence. NO_LOSS_DATE outranks
+    # NO_JURISDICTION_DATE, ratified 2026-08-27 (ASSUMPTIONS.md, "Item 5h,
+    # three decisions"). Do not reorder these checks. Until item 5j's row lands
+    # in jurisdiction_selection.feature this comment is the ordering's only
+    # protection - nothing asserts which reason the both-absent case names, so
+    # nothing fails on a reordering: item 4k's shape, and why 5j exists.
+    if candidate.loss_date is None:
+        return FutureDatedLossResult("NOT_EVALUATED", NO_LOSS_DATE)
     if now is None:
         return FutureDatedLossResult("NOT_EVALUATED", NO_JURISDICTION_DATE)
     return FutureDatedLossResult("TRUE" if candidate.loss_date > now else "FALSE")
@@ -120,6 +141,18 @@ def _check_loss_date(future_dated_loss: FutureDatedLossResult) -> list[Validatio
     which is what keeps an unsupported jurisdiction from blocking a notice."""
     if future_dated_loss.value == "TRUE":
         return [ValidationBlocker(LOSS_DATE_IN_FUTURE, "loss_date")]
+    return []
+
+
+def _check_loss_date_present(candidate: Candidate) -> list[ValidationBlocker]:
+    """Independent of the determination, and it has to be. _check_loss_date
+    reads its blocker off the determination and a NOT_EVALUATED determination
+    raises none - which is what keeps an unsupported jurisdiction from blocking
+    a notice - so the presence blocker cannot ride that path and needs its own
+    check. An absent loss date is a blocker, not a refusal (ASSUMPTIONS.md, "An
+    absent loss date is a domain blocker, not a schema refusal")."""
+    if candidate.loss_date is None:
+        return [ValidationBlocker(MISSING_REQUIRED_FIELD, "loss_date")]
     return []
 
 
