@@ -358,7 +358,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     than moving existing ones, so no restale: 38 -> 39 mutants, one new, all seven approvals
     byte-identical.
 
-5a. **Carrier configuration: the loader, and the rejection of an unrecognized value.** Phase 1 moved
+5a. **Carrier configuration: the loader, and the rejection of an unrecognized value.** *(Done — see below.)* Phase 1 moved
     six values out of the domain and made them caller-supplied with no default — `validate`'s
     `claimant_name_required`, `claimant_contact_required`, and `recognized_policy_number_prefixes`
     (items 4g, 4j), `compute_siu_indicators`'s two thresholds (item 2), and `find_duplicates`'s
@@ -390,7 +390,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     *Blast radius, unmeasured.* A new feature file and its first `gauntlet spec approve`. Measure
     before drafting, per the technique in `docs/harness-findings.md`.
 
-5b. **Instant-to-jurisdiction-date resolution, as its own named function with its own scenarios.**
+5b. **Instant-to-jurisdiction-date resolution, as its own named function with its own scenarios.** *(Done — see below.)*
     Specified already in `ASSUMPTIONS.md`'s "Timezone-correct 'now'": the shell receives a
     timezone-aware UTC instant and converts it to a calendar date in the jurisdiction's timezone
     before any domain call, and the domain never receives a date derived from server local time.
@@ -403,7 +403,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     field that already blocks intake today.
 
 5c. **Intake: `POST /notices`, `GET /notices/{notice_id}`, the three reachable states, the two-write
-    receipt, and the audit entries those transitions produce.** The core of phase 2 and the largest
+    receipt, and the audit entries those transitions produce.** *(Done — see below.)* The core of phase 2 and the largest
     item in this queue. `PHASE2_DESIGN.md`'s record-state model, audit-log schema, and HTTP-surface
     sections are the specification input; the `400` on an unknown or malformed `carrier_code` is
     this item's, while the reference file it validates against is 5a's.
@@ -446,7 +446,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     scenario, split it — the deciding argument is reason granularity, not the count, per item 4g's
     finding that `gauntlet mutant approve` scopes only by feature file and `--scenario`.
 
-5d. **Idempotency on `POST /notices`.** `Idempotency-Key` as a header, uniqueness on
+5d. **Idempotency on `POST /notices`.** *(Done — see below.)* `Idempotency-Key` as a header, uniqueness on
     `(carrier_code, idempotency_key)` enforced by a database constraint rather than a
     check-then-write, 24-hour expiry, replay returning `200` with the original `notice_id` and
     receipt timestamp but the notice's current state, replays kept out of the audit trail. All
@@ -465,7 +465,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     function regardless, so this is a tripwire, not a blocker — but it means the port has to extract
     rather than grow in place from the first line written, not after the gate fails once.
 
-5e. **`POST /notices/{notice_id}/resolution`.** The `PENDED → TRIAGED` transition, `USER` actor
+5e. **`POST /notices/{notice_id}/resolution`.** *(Done — see below.)* The `PENDED → TRIAGED` transition, `USER` actor
     only, `409` when the notice is not currently `PENDED`, `200` when the supplied data clears every
     blocker, `422` with the current blockers when it does not — and, in that last case, a notice
     that stays `PENDED` while an audit entry is still written with `outcome=REFUSED`. A refused
@@ -481,7 +481,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     half of `PHASE2_DESIGN.md`'s replay rule, which 5d can only half-prove.
 
 5f. **SIU separation: the separate table, the write-side event trail, the allow-list serializer's
-    negative assertions, and SIU computation wired in at all.** `PHASE2_DESIGN.md`'s SIU section is
+    negative assertions, and SIU computation wired in at all.** *(Done — see below.)* `PHASE2_DESIGN.md`'s SIU section is
     the specification input. Indicators live in their own table rather than as columns on the notice
     record, because physical separation is the part that cannot be retrofitted; an append-only
     indicator-event trail records which indicator fired, under which `ruleset_version`, and when.
@@ -2798,12 +2798,16 @@ approved** — `jurisdiction_selection` `d71c9be553ce`, `notice_intake` `dc714fa
 merged tree, not carried over from the pre-merge entry. `gauntlet spec list` on `main` after the
 merge shows all eleven specs `approved`, none drafted or modified.
 
-Item 5g's numbered entry above now carries a closed marker. **Items 5a through 5f carry no such
-marker even though all six are merged** — the `*(Done — see below.)*` convention was applied through
+Item 5g's numbered entry above now carries a closed marker. **Items 5a through 5f carried no such
+marker even though all six were merged** — the `*(Done — see below.)*` convention was applied through
 item 4k and then quietly dropped for the 5-series, each of which records its merge in a status
-paragraph instead. The absence of a marker in the numbered list is therefore not evidence that an
-item is open; the status section is the authority. Noted rather than fixed, because back-filling six
-entries is not this session's scope.
+paragraph instead. **Back-filled 2026-08-27**, at the start of item 5h: all six now carry the plain
+`*(Done — see below.)*` marker the 4-series used, and the numbered list is once again readable on its
+own. Item 5g keeps its richer form naming the merge commit; the two forms are not reconciled, because
+the plain one is what 4a through 4k established and inventing merge refs for six closed entries would
+be a second convention, not a completed one. The rule the gap taught still stands and is why this
+paragraph is annotated rather than deleted: **absence of a marker is not evidence that an item is
+open, and the status section is the authority.**
 
 **Both flagged judgment calls are ratified, 2026-08-27.** The determination staying off every
 outward surface is now recorded in `ASSUMPTIONS.md` with its basis and with the ordering constraint
