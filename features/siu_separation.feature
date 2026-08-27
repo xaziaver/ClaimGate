@@ -106,7 +106,7 @@ Feature: Keeping SIU indicators off the notice
     And "AAAA" configures a recent policy inception threshold of 30 days
     And "AAAA" configures a duplicate match window of 60 days
     And the notice is submitted by carrier "AAAA"
-    And the jurisdiction observes "America/New_York"
+    And the insured property is in "FL"
     And the notice is submitted at "2026-08-24T16:00Z"
     And the notice reports a policy number of "HO-1234567"
     And the notice reports a loss date of "2026-06-01"
