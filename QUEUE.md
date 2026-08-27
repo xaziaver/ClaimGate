@@ -2845,7 +2845,10 @@ the save point, on `main` at `e7beee2` with a clean tree and nothing in flight.
 
 **Item 5h is open on `reopening/5h-absent-loss-date`, spec drafted and not approved, 2026-08-27.**
 The branch is cut from `main` at `c55fb21`; its one item commit is `14ef775`, the amendment to
-`features/validation.feature`, which is **547 lines, sha256 `ae36c39d992e`** at that ref. Nothing
+`features/validation.feature`, which is **547 lines, sha256 `ae36c39d992e`** at that ref. The branch
+tip is not that commit and is not expected to be: documentation lands on `main`, so the tip is
+whichever merge of `main` most recently kept the branch a superset, and it carries no item work of
+its own. Verify the item by the spec's digest at `14ef775`, not by the tip. Nothing
 under `src/` or `tests/` is touched and nothing is approved — this session was scoped to the spec
 and to documentation, and `gauntlet spec list` was the only gauntlet command run. It reports
 `features/validation.feature` as `modified`; the other ten stay `approved`.
