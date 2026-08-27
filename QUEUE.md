@@ -555,6 +555,19 @@ Ordered by domain severity, not by effort. One line each on why that position.
     implying a resolution. **Resolving item 5i means deciding all four status codes, not the
     original three.**
 
+5j. **The reason-code precedence `NO_LOSS_DATE` > `NO_JURISDICTION_DATE` is ratified, will be
+    implemented by item 5h, and is asserted nowhere.** The both-absent case — no loss date and no
+    jurisdiction date — becomes reachable once item 5h makes the loss date optional, and
+    `validation.feature` cannot express it: its scenarios always have a today, and the vocabulary
+    for a notice with no jurisdiction lives in `jurisdiction_selection.feature`'s Rule 3, which
+    this item reopens with one row — an unsupported property state and an absent loss date,
+    asserting `NOT_EVALUATED:NO_LOSS_DATE`. Item 4k is the precedent: an ordering between two
+    absences is invisible to every gate — no test fails on a reordering, and mutation does not
+    reorder statements — so until this row exists the precedence is protected by a source comment
+    and nothing else, the state 4k existed to close. Sequenced after item 5h's implementation,
+    because the behaviour the row asserts does not exist before it; independent of item 5i.
+    *Blast radius, unmeasured — measure at drafting, per `docs/harness-findings.md`.*
+
 ## What to read
 
 `CLAUDE.md`, this file, and `docs/harness-findings.md` every session. The rest is
@@ -581,6 +594,7 @@ later.
 | 5g | `PHASE2_DESIGN.md` — "Jurisdiction axis" and "Swappability proofs" |
 | 5h | `ASSUMPTIONS.md` — "An absent loss date is a domain blocker, not a schema refusal"; `validation.feature`, `validation.py`, `models.py` |
 | 5i | `PHASE2_DESIGN.md` — the status-code table; `ASSUMPTIONS.md` — "A carrier this deployment administers but cannot configure is our defect, not the reporter's" |
+| 5j | `ASSUMPTIONS.md` — the item 5h three-decision entry dated 2026-08-27; `jurisdiction_selection.feature`'s Rule 3; item 4k's entry above |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
 
@@ -2897,7 +2911,10 @@ to resolve, and dies having tested nothing. Those five are a known and accepted 
 the five the scenario above it already pays: that scenario earns its place by reaching a code
 combination nothing else can reach, not by killing anything.
 
-**Two things need the human and are not inside an agent's boundary.** First, `NO_LOSS_DATE` as a
+**Both escalations were ratified on 2026-08-27, together with the creation of item 5j** — see
+`ASSUMPTIONS.md`, "Item 5h, three decisions". The paragraph below is kept as the reasoning that was
+put to the human rather than rewritten, because the implementing session needs the argument and not
+only the outcome; it is no longer an open question and must not be re-escalated. First, `NO_LOSS_DATE` as a
 second member of the future-dated-loss determination's closed reason enumeration — the same act the
 2026-08-26 ratification performed for `NO_JURISDICTION_DATE`, and the enumeration is closed. Second,
 its precedence: the amendment proposes `NO_LOSS_DATE` > `NO_JURISDICTION_DATE` >
@@ -2908,7 +2925,8 @@ the loss date is the determination's subject and today only its yardstick, and a
 more basic than a missing yardstick. **The both-absent case is not provable in
 `validation.feature`** — that file's scenarios always have a today, and the vocabulary for a notice
 with no jurisdiction lives in `jurisdiction_selection.feature`'s Rule 3. A row for it belongs there,
-in a second spec this session deliberately did not draft.
+in a second spec this session deliberately did not draft — **docketed 2026-08-27 as item 5j**, which
+is what carries the assertion this file cannot.
 
 **The SIU indicators need no reason code, and this is the item's least obvious finding.** Both count
 an interval against the loss date, so the absent case looks like it needs a third `NOT_EVALUATED`

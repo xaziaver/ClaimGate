@@ -1043,6 +1043,41 @@ or data. Nothing below was confirmed against a live book.
   `_check_loss_date` gains a presence check. A phase-1 reopening -
   `validation.feature`, `validation.py`, `models.py` - sequenced separately, not built inside item 5c.
 
+- **Item 5h, three decisions, advisor-recommended, human-ratified, 2026-08-27.** Taken together at
+  the point the item's spec was drafted and before any of it was implemented, so the implementation
+  chooses none of them.
+
+  **(1) `NO_LOSS_DATE` enters the future-dated-loss determination's closed reason enumeration** as
+  its second member, beside `NO_JURISDICTION_DATE`. It is not added to the SIU indicator
+  enumeration — see (3). The two enumerations share the `NO_JURISDICTION_DATE` spelling and are not
+  the same set; they are scoped to their own subjects and grow independently, and this decision
+  grows exactly one of them.
+
+  **(2) Precedence: `NO_LOSS_DATE` outranks `NO_JURISDICTION_DATE`, which outranks
+  `NO_THRESHOLD_CONFIGURED`.** The existing tie-break — name the gap that would still block
+  evaluation if the other were closed — decides the lower pair and is silent on the upper one: with
+  neither a loss date nor a jurisdiction, closing either leaves the other. The ground for the
+  direction is that the loss date is the determination's subject and today only the yardstick it is
+  held against, and a missing subject is the more basic absence.
+
+  **The direction is low-stakes; the assertion is not.** In the both-absent case each absence is
+  already independently visible on the record — the loss date as `MISSING_REQUIRED_FIELD:loss_date`
+  among the blockers, the jurisdiction as the unsupported marking — so a reader loses nothing
+  whichever reason the determination names. What is at stake is that **until item 5j's row exists in
+  `jurisdiction_selection.feature`, this ordering is protected by a source comment and nothing
+  else**: no test fails on a reordering and mutation does not reorder statements. That is item 4k's
+  exact shape, and it is why this decision is ratified together with the creation of item 5j rather
+  than separately from it.
+
+  **(3) The SIU indicators gain no third `NOT_EVALUATED` reason for an absent loss date.** An
+  indicator evaluation reached with no loss date raises — the `find_duplicates` shape from item 3,
+  where an unreachable value is a caller contract violation rather than a business outcome to
+  record. Basis and fragility belong together here: this holds **because** evaluation runs only on a
+  transition into `TRIAGED`, on both the intake and the resolution paths, and an absent loss date
+  now pends the notice so that transition never happens. It stops holding the moment anything
+  evaluates indicators on a pended notice, and whoever builds that revisits this decision then
+  rather than discovering it as a crash.
+
 ## Data we do not have at intake
 
 - **`policy_inception_date` is available at FNOL via a lookup against the policy administration
