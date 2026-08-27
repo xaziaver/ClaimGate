@@ -862,6 +862,22 @@ or data. Nothing below was confirmed against a live book.
   **Decided moot, 2026-08-13:** loss amount is removed from the severity rule entirely, not
   re-thresholded — see "Carried requirements — decided, not yet built" above.
 
+- **Not a threshold, recorded beside them because it is the project's other hand-declared value and
+  fails the same way: `RULESET_VERSION` is a bare date and cannot label two rule changes made on one
+  day.** Advisor-found, human-ratified 2026-08-27. First hit that day, when items 5g and 5h both
+  changed rule behaviour under `src/claimgate/domain/`: 5g bumped the label to `2026-08-27`, and 5h -
+  which changed the loss-date rule, the future-dated-loss determination and the SIU entry contract -
+  had no distinct value left to bump it to. **Accepted without a code change**, on two grounds.
+  `main` only ever exposes the merged state, and 5g's ruleset reached `main` the same day 5h's did,
+  so no consumer ever observed the 5g-only ruleset and no stored row is mislabelled against anything
+  that was in force on `main`. And nothing yet distinguishes same-day rulesets: no consumer reads the
+  label finer than by day. **Revisit with an edition-plus-revision label** - the date plus a
+  within-day counter - **before any consumer must make that distinction**, because the moment one
+  does, every row written on a two-ruleset day becomes ambiguous retroactively and no later change
+  can disambiguate it. `tests/unit/test_ruleset.py`'s ISO-format assertion is the deliberate
+  tripwire: the format cannot be widened by accident, so anyone who needs a finer label has to
+  decide it consciously rather than append a suffix and move on.
+
 ## Domain defects found, not yet fixed
 
 - **SIU flag overrides queue routing.** An SIU-flagged record is routed to `siu_review` instead of
@@ -1077,6 +1093,25 @@ or data. Nothing below was confirmed against a live book.
   now pends the notice so that transition never happens. It stops holding the moment anything
   evaluates indicators on a pended notice, and whoever builds that revisits this decision then
   rather than discovering it as a crash.
+
+  **(4) Ratified 2026-08-27, post-implementation: duplicate detection reached with no loss date
+  raises `ValueError`.** Advisor-recommended, human-ratified. Recorded as a fourth decision rather
+  than folded into (3) because it was taken *after* the implementation, not before it: (1)-(3) were
+  settled at drafting and the implementation chose none of them, while this question only appeared
+  when `date | None` forced `find_duplicates` to answer it. The entry keeps its "three decisions"
+  title deliberately - `domain/siu.py`, `domain/validation.py` and `QUEUE.md` all cite it by that
+  name, and renaming it would silently break every pointer.
+
+  Grounds, in the order they decide it. The match window is arithmetic on the loss date, so with no
+  loss date there is no coherent result to return - not a `NOT_EVALUATED` outcome, an absence of any
+  outcome to name. `find_duplicates` has no shell caller at all yet, so the guard is a contract on an
+  unwired function; the item that wires it decides where the check runs on the wired path, and this
+  decision does not pre-empt that. The guard sits after the notice-type exclusion, so an excluded
+  notice type still resolves without ever reading a date, and that placement is asserted by a test
+  rather than left to the reading. **The alternative - a reason code in duplicate detection's closed
+  enumeration - was considered and declined**, on the ground (3) uses for SIU: an unreachable value
+  is a caller contract violation, not a business outcome to record, and both enumerations stay closed
+  at two.
 
 ## Data we do not have at intake
 

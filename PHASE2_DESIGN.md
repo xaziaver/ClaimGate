@@ -128,6 +128,11 @@ Four endpoints:
 | `POST /notices/{id}/resolution`, body schema-invalid, including an absent or blank `actor_id` or an unparseable loss date | `400`, nothing persisted — row added 2026-08-25, ratified; `ASSUMPTIONS.md` item 5e decisions 4 and (e) |
 | `POST /notices/{id}/resolution`, unknown notice id | `404`, nothing persisted — row added 2026-08-25, ratified; `ASSUMPTIONS.md` item 5e decision (d) |
 
+**`LossDateParse` (`shell/rules.py`), added at item 5h**, is the three-valued parse that splits two
+of those rows for one field: `PARSED` carries the date, `ABSENT` reaches the domain as a blocker and
+lands `201`/`PENDED`, and `UNPARSEABLE` is the schema-invalid `400` with the submission recorded and
+nothing else persisted.
+
 The two `201`s being identical is deliberate, not an oversight: a notice is created and
 addressable at `GET /notices/{notice_id}` in both cases, which is what `201` means. `202` would
 imply processing is incomplete, but the state is final and present in the body the moment the

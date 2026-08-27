@@ -91,6 +91,21 @@ gets noticed, because someone eventually asks why an implausible mutant
 survived. Clear `mutants/` and rerun before quoting a score on any commit that
 adds or deletes a function or a test.
 
+**First measured instance of the false-PASS direction, 2026-08-27 (item 5h).** The paragraph above
+says that direction is the one nobody notices; this is the run that caught it, and only because a
+survivor on a line a scenario already asserted looked wrong. A full `gauntlet check` on the
+implementation reported `mutation … score 98.58%, 416 killed, 6 unresolved` and **PASSED** - 98.58%
+is far above the 90% floor, so the six were printed as diagnostics on a green gate and nothing asked
+for a second look. Clearing `mutants/` and re-running cold showed the warm figure understated the
+damage by half: on that same tree, before the guarding unit test existed, the true count is **12
+survivors - 6 in `_check_loss_date_present` and 6 in `_determine_future_dated_loss`**, score 97.16%,
+410 killed. With the test, cold: **0 survivors, 422 killed, 100%**. Verified by removing the test,
+clearing `mutants/`, re-running, then restoring the file from a copy, so both figures are cold runs
+over the same source differing only in the test. The commit added both a function and a test, which
+is exactly the case this entry names. What is new is the direction and its consequence: **a passing
+mutation gate is not evidence the cache was fresh**, so "clear `mutants/` and rerun" applies to a
+green run as much as to a red one.
+
 ### A gate failure awaiting a human decision is not a failure to retry
 
 An unapproved or modified spec, a stale or unreviewed mutant approval, and a

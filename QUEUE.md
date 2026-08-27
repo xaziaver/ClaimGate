@@ -516,8 +516,9 @@ Ordered by domain severity, not by effort. One line each on why that position.
     the test to make it pass.**
 
 5h. **An absent loss date passes validation and reaches `TRIAGED` carrying `0001-01-01` as
-    today's date.** `validate()` has no presence check for `loss_date`: `_check_loss_date` tests
-    only the future bound, and `Candidate.loss_date` defaults to `date.min`. No scenario anywhere
+    today's date.** *(Closed at merge `e8e76c0`, 2026-08-27 — see below.)* `validate()` has no
+    presence check for `loss_date`: `_check_loss_date` tests only the future bound, and
+    `Candidate.loss_date` defaults to `date.min`. No scenario anywhere
     covers it. A phase-1 reopening — `validation.feature`, `validation.py`, `models.py` — not item
     5c's, even though item 5c's own Rule 3 title ("A notice is created only if its loss date is a
     real date") implies an answer its table does not contain: an absent date is neither "a real
@@ -567,6 +568,19 @@ Ordered by domain severity, not by effort. One line each on why that position.
     and nothing else, the state 4k existed to close. Sequenced after item 5h's implementation,
     because the behaviour the row asserts does not exist before it; independent of item 5i.
     *Blast radius, unmeasured — measure at drafting, per `docs/harness-findings.md`.*
+
+    **Premise corrected, and the sequencing precondition satisfied, 2026-08-27, after item 5h's
+    implementation merged at `e8e76c0`.** The both-absent case is not unreachable and never was: a
+    `NoticeFields` carrying no `property_state` and no loss date reaches it through the shell today,
+    which is exactly the shape the test that preserved item 5h's gap already had. What is true is
+    narrower than what this entry claimed - **nothing asserts which reason the determination names**,
+    so no test fails on a reordering, and mutation does not reorder statements. The shortcut that
+    follows was considered and **declined**: a shell or unit test could assert the precedence without
+    touching any spec, but such a test is agent-editable and sits outside the approval ledger, and
+    this item exists precisely so the ordering is protected by a human-locked spec row rather than by
+    something a later session can rewrite without anyone approving it. A test alongside the row is
+    fine; it is not a substitute for the row. Item 5h's source comment in
+    `_determine_future_dated_loss` is written to the corrected claim, not the original one.
 
 ## What to read
 
@@ -2848,43 +2862,36 @@ figures carry to `main` by tree identity on everything a gate reads: the merged 
 `ef0d906` only in `ASSUMPTIONS.md` and `QUEUE.md`. That is **reasoned from tree identity, not
 measured on `main`**, and is labelled that way on purpose.
 
-**Next queue item: 5h**, read from this file's order rather than from memory — the numbered list runs
-5g, 5h, 5i, and 5h is the first entry below 5g. It is *An absent loss date passes validation and
-reaches `TRIAGED` carrying `0001-01-01` as today's date*: `validate()` has no presence check for
-`loss_date`, `_check_loss_date` tests only the future bound, and `Candidate.loss_date` defaults to
-`date.min`. A phase-1 reopening, so the branch prefix is `reopening/`, not `phase2/`. Its reading
-table row, verbatim: `ASSUMPTIONS.md` — "An absent loss date is a domain blocker, not a schema
-refusal"; `validation.feature`, `validation.py`, `models.py`. Not started — this session ended at
-the save point, on `main` at `e7beee2` with a clean tree and nothing in flight.
+**Item 5h is done and merged to `main`** (merge commit `e8e76c0`, 2026-08-27). An absent loss date is
+a domain blocker, not a schema refusal: `Candidate.loss_date` is `date | None`, `date.min` is gone as
+a sentinel anywhere, and a notice stating no loss date lands `201`/`PENDED` carrying
+`MISSING_REQUIRED_FIELD:loss_date` instead of reaching `TRIAGED` with `0001-01-01` as today's date.
+The presence check is its own, and had to be: `_check_loss_date` still reads its blocker off the
+future-dated-loss determination and a `NOT_EVALUATED` determination still raises none — which is what
+keeps an unsupported jurisdiction from blocking a notice — so the presence blocker could not ride
+that path. `_determine_future_dated_loss` checks the loss date before the jurisdiction date, so
+`NOT_EVALUATED:NO_LOSS_DATE` outranks `NOT_EVALUATED:NO_JURISDICTION_DATE`. The shell's
+`parse_loss_date` returned one `None` for two facts and now returns three outcomes — `LossDateParse`
+in `shell/rules.py`, recorded in `PHASE2_DESIGN.md`'s HTTP surface — so absence flows through to the
+domain and only an unparseable value is still the schema-invalid `400` with the payload record and
+nothing else persisted. An indicator evaluation or a duplicate comparison reached with no loss date
+raises `ValueError` rather than growing a `NOT_EVALUATED` enumeration (`ASSUMPTIONS.md`, "Item 5h,
+three decisions", decisions 3 and 4). The spec is `features/validation.feature` at blob `8fe71ee`,
+549 lines, sha256 `d32ba62f5a3d`, approved at `4836212`; the implementation is `e521e58`. Spec lock
+and implementation are separate commits in that order, so the sequence is visible in the log itself.
 
-**Item 5h is open on `reopening/5h-absent-loss-date`, spec drafted and not approved, 2026-08-27.**
-The branch is cut from `main` at `c55fb21`; its one item commit is `14ef775`, the amendment to
-`features/validation.feature`, which is **547 lines, sha256 `ae36c39d992e`** at that ref. The branch
-tip is not that commit and is not expected to be: documentation lands on `main`, so the tip is
-whichever merge of `main` most recently kept the branch a superset, and it carries no item work of
-its own. Verify the item by the spec's digest at `14ef775`, not by the tip. Nothing
-under `src/` or `tests/` is touched and nothing is approved — this session was scoped to the spec
-and to documentation, and `gauntlet spec list` was the only gauntlet command run. It reports
-`features/validation.feature` as `modified`; the other ten stay `approved`.
+**`gauntlet check` passes on `main` post-merge, measured on `main` rather than reasoned from tree
+identity** — 439/439 tests, coverage 100% line and 100% branch, code mutation **100%, 422 killed, no
+survivors**, worst function 24/25 lines, complexity 5/6, duplication 0, protect 3/3 unchanged,
+acceptance 11 specs with **71 reviewed-equivalent** and no unreviewed survivors. The acceptance gate
+took 1233s. **This deliberately closes the gap the item 5g entry above flags about itself**: that
+entry records that no post-merge check was run and that its figures carry to `main` by tree identity,
+labelled that way on purpose. These figures were measured at `e8e76c0`.
 
-**The expected gate failure, and why it is guaranteed rather than a defect.** The acceptance gate
-fails on `main`'s own rule that spec lock and implementation are separate commits: the spec is
-drafted ahead of its approval, so a `gauntlet check` on this branch will report
-`features/validation.feature` changed since it was approved. That is the state the separate-commits
-rule produces on every reopening and it does not clear from the agent's side. The remedy the gate
-prints names `gauntlet spec approve`, which is the human's command. Do not retry it, and do not
-look for something adjacent to run.
-
-**What the amendment says.** An absent loss date resolves `MISSING_REQUIRED_FIELD:loss_date` — the
-blank-policy-number case one field over, PENDED rather than refused, per `ASSUMPTIONS.md`'s
-2026-08-24 entry. The rule is renamed *The loss date must be stated, and must not be in the future*,
-its outline renamed *A loss date is stated, absent, or ahead of today* and given an `absent` row, and
-the rule for canonical order gains one scenario for the code combination this item makes reachable.
-Absence is spelled `absent` rather than as an empty cell, deliberately and on measured grounds — see
-`docs/harness-findings.md`'s 2026-08-27 correction to the empty-cell mutation rule.
-
-**Measured, not predicted** (`mutation.mutants()` over the file at each ref, compared against
-`gauntlet.lock.json`; the locked digest was `cd571b5dd976`):
+**Measured blast radius of the spec amendment**, kept here because it is recorded nowhere else. The
+table was measured at drafting with `mutation.mutants()` over the file at each ref against
+`gauntlet.lock.json`, when the locked digest was `cd571b5dd976`; the amended column has since been
+re-measured at the merge ref and confirmed, the locked column has not been re-derived and is carried:
 
 | | locked | amended |
 |---|---|---|
@@ -2893,82 +2900,45 @@ Absence is spelled `absent` rather than as an empty cell, deliberately and on me
 | boolean-class | 0 | 4 |
 | marker-class | 76 | 81 |
 
-Twenty locators gained, eight lost, 172 kept, and **no approval is disturbed**: all 31 live mutant
-approvals on this file sit on kept locators and not one of their signatures moved. The eight lost are
-the old outline's own, which move because the scenario is renamed and a column is added to every row.
-Comment inertness was confirmed by locator identity rather than count parity, per this file's
-own rule.
+Twenty locators gained, eight lost, 172 kept, and **no approval was disturbed**: all 31 live mutant
+approvals on this file sat on kept locators and not one signature moved. Counted against the ledger
+at the merge ref, `features/validation.feature` still carries 31 of the project's 71 mutant
+approvals, and the eleven specs measure 756 mutants in total.
 
-**Survivor counts below are hand-simulated, not measured**, and cannot be measured until the spec is
-approved and step definitions exist. Of the twelve added mutants: three on the `absent` row are real
-discriminating kills (the date swaps to a past one, the blocker cell empties, the determination
-swaps to `FALSE`, and each contradicts what the row asserts); four are the `TRUE`/`FALSE`
-determination cells, which are real kills **only if** the step reading them compares the value half
-case-insensitively — `tests/acceptance/test_jurisdiction_selection_acceptance.py` already does this
-for the same column and says why, and without it all four are vacuous, per the boolean-substitution
-finding; and five are the new plain scenario's literals, every one of which takes the marker, fails
-to resolve, and dies having tested nothing. Those five are a known and accepted cost, identical to
-the five the scenario above it already pays: that scenario earns its place by reaching a code
-combination nothing else can reach, not by killing anything.
+**One harness finding, and it is why the mutation figure above can be trusted.** The first full
+`gauntlet check` on the implementation reported `mutation … 98.58%, 416 killed, 6 unresolved` and
+**passed** — 98.58% is far above the 90% floor, so the six were printed as diagnostics on a green
+gate and nothing asked for a second look. That figure was mutmut's stale `mutants/` cache
+under-reporting: cleared and re-run cold, the same tree without the guarding unit test shows **12**
+survivors, and with the test 0 survivors at 422 killed. It is the first measured instance of the
+false-PASS direction that `docs/harness-findings.md` says goes unnoticed — see "A mutation score is
+only meaningful from a cold run when the commit adds or removes code", extended there with this
+measurement. Practical consequence for the next session: **clear `mutants/` before quoting any
+mutation score, including a green one.**
 
-**Both escalations were ratified on 2026-08-27, together with the creation of item 5j** — see
-`ASSUMPTIONS.md`, "Item 5h, three decisions". The paragraph below is kept as the reasoning that was
-put to the human rather than rewritten, because the implementing session needs the argument and not
-only the outcome; it is no longer an open question and must not be re-escalated. First, `NO_LOSS_DATE` as a
-second member of the future-dated-loss determination's closed reason enumeration — the same act the
-2026-08-26 ratification performed for `NO_JURISDICTION_DATE`, and the enumeration is closed. Second,
-its precedence: the amendment proposes `NO_LOSS_DATE` > `NO_JURISDICTION_DATE` >
-`NO_THRESHOLD_CONFIGURED`. The existing tie-break — name the gap that would still block evaluation if
-the other were closed — decides the lower pair and is **silent on the upper one**, because with
-neither a loss date nor a jurisdiction, closing either leaves the other. The proposed ground is that
-the loss date is the determination's subject and today only its yardstick, and a missing subject is
-more basic than a missing yardstick. **The both-absent case is not provable in
-`validation.feature`** — that file's scenarios always have a today, and the vocabulary for a notice
-with no jurisdiction lives in `jurisdiction_selection.feature`'s Rule 3. A row for it belongs there,
-in a second spec this session deliberately did not draft — **docketed 2026-08-27 as item 5j**, which
-is what carries the assertion this file cannot.
+**Carried to item 5i, decided at item 5h's drafting and deliberately not built:** a scenario for a
+reviewer supplying a missing loss date at resolution. It is the composition of two mechanisms already
+proved — `jurisdiction_selection.feature`'s merged-view rule and `resolution.feature`'s
+supplying-a-missing-field rule — over a different field, and it cannot be expressed in
+`validation.feature` at all, which has no notice, no state and no endpoint in its vocabulary. If it
+is wanted stated explicitly it belongs in `resolution.feature`, which item 5i already reopens.
 
-**The SIU indicators need no reason code, and this is the item's least obvious finding.** Both count
-an interval against the loss date, so the absent case looks like it needs a third `NOT_EVALUATED`
-reason. It does not: SIU evaluation runs only on a transition into `TRIAGED`, on both the intake path
-(`shell/notice_intake.py`) and the resolution path (`shell/resolution.py`), and once an absent loss
-date is a blocker the notice pends and never transitions. The value becomes unreachable on the
-designed path — the same shape as `find_duplicates` and an unrecognized notice type, resolved in item
-3 by raising rather than by growing the enumeration, on the ground that an unreachable value is a
-caller contract violation and not a business outcome to record. **Recommended: raise, and add no code
-to `siu_indicators.feature`'s enumeration.** Note that this follows from what the code currently does
-— the `TRIAGED`-only guard — rather than from an independent judgment about SIU, and it stops holding
-the moment anything evaluates indicators on a pended notice. `find_duplicates` is the same case and
-is not wired into the shell at all; `triage.py` never reads the loss date.
+**Next queue item: 5i**, read from this file's order rather than from memory — the numbered list runs
+5g, 5h, 5i, 5j, and 5i is the first entry below 5h. It is *The status code for a carrier present in
+the identity reference whose rules entry resolves `CARRIER_NOT_CONFIGURED` or malformed has no row in
+`PHASE2_DESIGN.md`'s closed status-code table*, and resolving it means deciding **all four** status
+codes its entry now carries rather than the original three — the fourth is item 5g's rebuilt raise in
+`shell/rules.py`. Its reading table row, verbatim: `PHASE2_DESIGN.md` — the status-code table;
+`ASSUMPTIONS.md` — "A carrier this deployment administers but cannot configure is our defect, not the
+reporter's". Not started.
 
-**The resolution round trip needs no scenario here, decided by measurement rather than by
-assertion.** `jurisdiction_selection.feature`'s merged-view rule proves that a resolution's supplied
-`property_state` is read from the notice's merged current view and that a determination and an
-interval become computable because of it; `resolution.feature` proves that supplying a missing field
-clears its blocker and moves `PENDED` to `TRIAGED`. A reviewer supplying a missing loss date is the
-composition of those two proven mechanisms over a different field, and it cannot be expressed in
-`validation.feature` at all, which has no notice, no state and no endpoint in its vocabulary. If the
-human wants it stated explicitly it belongs in `resolution.feature`, which item 5i already reopens —
-carried there rather than built here.
+**Item 5j is unblocked and is not next.** Its only sequencing precondition was item 5h's
+implementation, which is merged, and it is independent of 5i, so the order between the two is a free
+choice rather than a constraint. Its entry above now carries a dated correction to its own premise:
+the both-absent case is reachable from the shell today, so what 5j closes is that nothing *asserts*
+which reason the determination names — not that the case cannot be reached. Asserting it in a shell
+or unit test instead was considered and declined there, with the reason.
 
-**Three implementation notes the implementing session should not rediscover.** (1)
-`shell/rules.py`'s `parse_loss_date` currently uses one `None` return for two different facts: a
-`None` input means "absent" and today maps to `date.min`, while a `None` return means "not a date at
-all" and maps to `400`. Under this item those must separate — absence is a blocker and is not a
-`400` — so the function needs two distinct outcomes, and `resolution.py`'s `_loss_date_of` returns
-`date` today and has to widen with it. (2) `validation.feature`'s step for the loss date is bound
-with `parsers.parse`, which cannot match an empty or non-date token; every other field's step in that
-file uses the `parsers.re` form, and this one has to join them to read `absent`. Asserting the
-determination also needs a new `Then` step and a widened `tests/api/validation.py`, which takes
-`now: date` today. (3) `tests/shell/test_notice_intake.py`'s
-`test_an_absent_loss_date_flows_through_unchanged_item_5h_is_not_built_here` **inverts when this item
-lands** — it asserts `201`/`TRIAGED` for exactly the input that must now pend. Rewriting or removing
-it is a deliberate act belonging to the implementing commit; it is recorded here rather than done,
-because doing it now would leave `main` asserting a behaviour no spec states.
-
-**What remains before item 5h closes:** the human's review of the amended spec and `gauntlet spec
-approve` on it; then the implementation commit — `models.py`'s `loss_date` to `date | None`,
-`validation.py`'s presence check and the new reason code, the shell's two-signal split above, the
-step definitions, and the preservation test's inversion; then a green `gauntlet check` and the merge.
-The reason code and its precedence must be ratified before, not during, the implementation: an
-implementation that picks either one has defaulted a rule nobody approved.
+**This session ended at the save point**, on `main` with a clean tree and nothing in flight. There is
+no open branch: `reopening/5h-absent-loss-date` is merged and remains on `origin` at `e521e58`, so
+deleting it is optional and nothing depends on it.
