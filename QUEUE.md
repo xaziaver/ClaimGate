@@ -2714,3 +2714,60 @@ rather than as feature files because a fictional second jurisdiction is not a bu
 product. Item 5d's idempotency-comparison consequence, recorded above, is unchanged and still
 unaddressed: adding a field to the hashed set answers a byte-identical resubmission under a
 remembered key with `409` instead of a `200` replay, bounded to the 24-hour key lifetime.
+
+**Item 5g is implemented on `phase2/5g-jurisdiction-map` and is not merged, 2026-08-27, and this entry supersedes every figure and every remaining-work list above it for this item.** Two
+commits carry it: `951ff06` is the implementation, `faf8b5f` the two swappability proofs, which the
+item sequences last because they are demo artifacts rather than the feature. The five specs were
+approved at `402fdeb` at the start of the implementing session and **their digests are byte-identical
+now to what they were then** — `jurisdiction_selection` `d71c9be553ce`, `notice_intake`
+`dc714fa3bf6f`, `resolution` `e3c3a952c1b1`, `idempotency` `c66ea76c75a4`, `siu_separation`
+`4aa68f2801c1` — verified against `gauntlet.lock.json` before the final gate run. **The human's
+review is the next action; nothing about this merge is automatic.**
+
+**Measured, not read off the gate.** Eleven specs, **744 mutants** across them
+(`validation` 180, `resolution` 97, `triage` 90, `carrier_configuration` 84, `duplicates` 57,
+`siu_separation` 53, `jurisdiction_selection` 48, `idempotency` 40, `siu_indicators` 39,
+`notice_intake` 36, `jurisdiction_date` 20), against `gauntlet.acceptance.mutation.mutants()` at the
+implementing ref. `gauntlet check` is green: 433/433 tests, code mutation 100% with 392 killed,
+coverage 100% line and 100% branch, worst function 24/25 lines, duplication 0, and the acceptance
+gate **71 reviewed-equivalent — the same figure as before the item**, so `jurisdiction_selection`
+produced no survivor, the four reopened files produced none either, and no approval moved.
+
+**What was built.** The jurisdiction map is a real lookup keyed by jurisdiction code, injected at the
+shell boundary and structurally identical to the carrier rules lookup — the check QUEUE.md item 5a
+names. The carrier identity reference gained the same seam, which item 5c left for this item.
+`property_state` is notice content: hashed, persisted, part of the merged view, and overlayable by a
+resolution. `jurisdiction_timezone` is gone from both surfaces. The future-dated-loss determination
+is a recorded three-valued outcome on the notice row, rewritten by every decision; `NO_JURISDICTION_
+DATE` entered both closed enumerations as ratified, outranking a missing threshold. Both zones come
+from the merged current view, so a reviewer supplying the property state makes an interval
+computable that was not computable at receipt. The notices table moved to `shell/notices.py` rather
+than growing `store.py` past the size gate.
+
+**Three judgment calls the reviewer should look at rather than take on trust.**
+
+1. **The determination is deliberately off every outward surface**, unlike the marking, which is on
+   `NoticeView` and its allow-list because a marking nobody can read is not a marking. The reason is
+   measured, not stylistic: `features/siu_separation.feature`'s leak negatives scan a serialized
+   surface as text, and `NO_JURISDICTION_DATE` is a code of one spelling in two enumerations, so a
+   legitimate determination reason on an ordinary surface matches the exclusion list and fails the
+   check that exists to catch a leak. It does not bite today only because both leak scenarios use
+   `FL`. The determination sits where `pended_at` and `resolved_at` already sit — on the record, not
+   in the view. **If the reviewer wants it visible, the leak negatives need a decision first.**
+2. **Item 5g's raise is rebuilt, not removed.** The reporter-supplied timezone that caused it is
+   gone; what escalates now is this deployment's own map holding an entry that names no timezone, or
+   one this system cannot resolve. That is item 5i's class of question, not this item's, and it is
+   an escalation nobody has ratified — recorded here rather than presented as a consequence of the
+   spec. `select_jurisdiction` grew a third outcome, `MALFORMED`, to carry it; the code-mutation
+   gate is what forced the question, by surviving three mutants on the defaulted timezone the first
+   implementation used.
+3. **`NO_JURISDICTION_DATE` was added to `tests/api/siu.py`'s `SIU_REASON_CODES`.** That set is the
+   leak negatives' exclusion list and had to grow with the enumeration, but it is the enumeration's
+   "complete set" claim, which `CLAUDE.md` scopes to one feature.
+
+**What remains before item 5g closes:** the human's review of the two commits, and then the merge.
+Item 5d's idempotency consequence is unchanged and still unaddressed by design: `property_state`
+joining the hashed field set answers a byte-identical resubmission under a key remembered before
+this item with `409` instead of a `200` replay, bounded to the 24-hour key lifetime and accepted
+when the item was specified. Items 5h and 5i are untouched: the 5h preservation test is green and
+all three of 5i's `NotImplementedError` escalations stay and stay tested.

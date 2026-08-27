@@ -1417,3 +1417,57 @@ been raised, with the traceback showing the other spelling of the same name.
 here. `conftest.py` then imports from that module like everything else, one object exists, and
 `except`/`isinstance` behave. The failure mode is worth knowing because it is silent for the cheap
 cases (constants, type aliases) and only appears once something identity-sensitive crosses the line.
+
+### A swappability proof can pass without the thing being swapped
+
+Written for item 5g's jurisdiction proof and found by breaking it on purpose, which is
+the only reason it was found at all. The test submitted one notice under `FL` and one
+under a fictional `ZZ` whose entry holds a timezone that puts the same instant on a
+different calendar day, and asserted the two outcomes that follow: `PENDED` with
+`LOSS_DATE_IN_FUTURE` under Florida, `TRIAGED` with no blockers under the second
+jurisdiction. Replacing the injected map with the shipped one — the exact hardcoding the
+test exists to forbid — left it green.
+
+The reason is that "judged under a calendar that had already reached the loss date" and
+"not judged at all" produce the same two observable values. With no entry for `ZZ` there
+is no jurisdiction, so no today, so no future-dated-loss determination and therefore no
+blocker: `TRIAGED`, blockers `()`. The assertion could not tell the swap from its own
+absence.
+
+What fixed it was asserting a value only the presence of an entry can produce — the
+recorded determination, `FALSE` where a calendar answered and `NOT_EVALUATED` /
+`NO_JURISDICTION_DATE` where none did — plus the jurisdiction marking, which is `None`
+only when the lookup hit. With both, hardcoding the map fails the test.
+
+**Technique: for any test whose subject is "configuration X was really consulted", find
+the observable that differs between *X supplied* and *X absent*, not between *X* and
+*some other X*.** The absent case is usually the one that silently agrees. Verify by
+substituting the hardcoded value and confirming the test goes red; a swappability proof
+that has never been run against the hardcoding it forbids is an assertion about the
+fixture, not about the seam.
+
+### A reason code shared by two enumerations defeats a text-scanning leak negative
+
+`features/siu_separation.feature`'s leak negatives serialize a whole surface, lower-case
+it, and assert that no SIU indicator name and no SIU reason code appears anywhere in the
+text. That is deliberately name-blind, so a field added later is caught by the assertion
+rather than by someone remembering to list it.
+
+Item 5g's ratification put `NO_JURISDICTION_DATE` into two closed enumerations as two
+codes of one spelling — the future-dated-loss determination's reasons and the SIU
+indicator reasons. The two are different codes and `CLAUDE.md` keeps them apart, but a
+serialized surface is text, and text has no room for the distinction. Measured rather
+than argued: a notice view carrying the determination's reason for an unsupported
+jurisdiction matches `no_jurisdiction_date` in the leak negatives' exclusion list, so an
+entirely legitimate value would fail the check that exists to catch a leak.
+
+It does not bite today only because both leak scenarios use `FL`, where the determination
+is `FALSE` and carries no reason at all — an accident of the fixture, not a property of
+the design. The determination was therefore kept off every ordinary surface (item 5g,
+`serialization.py`), which is also where `NoticeRecord.pended_at` and `resolved_at`
+already sit.
+
+**The general shape: a text-scanning negative cannot distinguish two enumerations that
+share a spelling, so a spelling shared across a restricted and an unrestricted
+enumeration is a design decision about that negative, not only about the two
+enumerations.** The pressure, when it lands, is on the negative to get looser.
