@@ -517,6 +517,60 @@ happening to this file. Corrected rather than left standing; what actually
 produced that corruption is unconfirmed, and is not this entry's finding to
 claim.
 
+**Two more events, both 2026-08-27, and the recovery held exactly as written each
+time.** The 2026-08-14 correction above says what produced that occurrence is
+unconfirmed. These two are better evidenced, and together they make the strand a
+recurring condition rather than an anecdote.
+
+- **Second event, found at the session start of the item 5g close-out.** A
+  *numeric* in-place strand in `features/siu_indicators.feature`: a late-reporting
+  threshold of `45` incremented to `46`. Restored from
+  `.gauntlet/mutation-backup/`. This is the class the 2026-08-26 correction above
+  named: a numeric strand carries no `_gauntlet` token, so on the page it reads as
+  a deliberate threshold edit — a plausible one, on a value this project has
+  argued about — and nothing but the digest comparison against
+  `gauntlet.lock.json` distinguishes it from intended work.
+- **Third event, found at the session start immediately after that one**, and
+  measured here rather than inherited: `features/carrier_configuration.feature`,
+  scenario "A recognized carrier's rules resolve to every value the domain will
+  receive", `And "AAAA" configures a late reporting threshold of 45 days` with
+  `"AAAA"` mutated to `"AAAA"_gauntlet` — the marker class, on the same step line
+  as the numeric above and therefore on a colliding locator (see "Mutant counts
+  and locator counts are different numbers"). `.gauntlet/mutation-backup/` was
+  byte-identical to `HEAD`, so the working-tree file was the strand and
+  `git checkout --` restored it; all eleven digests then matched the lock.
+
+**What the log shows about the third one, and what it does not.** `gauntlet
+events` has a full gate sequence beginning `2026-08-27T13:40:39Z` with no
+`gate.finished` for `acceptance` after it and no `run.finished` at all — a
+stop-check, per "`stop-check` runs the full gauntlet but never emits
+`run.started` or `run.finished`", fired 25 seconds after commit `b67b220` and
+killed inside the acceptance gate. Only `carrier_configuration.feature` carries a
+`.gauntlet/mutation-backup/` mtime from that run (13:40:47Z); every other spec's
+is from the completed 13:01:43Z→13:18:25Z run. Specs are mutated in sorted path
+order, so the run died inside the first file it opened. **The cause of the kill is
+UNCONFIRMED.** Operator interruption at the terminal is plausible and is what the
+timing is consistent with — the kill lands between two agent sessions, not inside
+one — but the log records no reason, and this entry does not claim one. What is
+worth stating is the standing incentive: that same run's completed predecessor
+took **995.9s**. A gate that occupies a terminal for sixteen minutes invites the
+interruption that strands a spec, so the strand rate is a property of the gate's
+wall time, not of any one person's care.
+
+**The discipline this implies is the operator's as much as the agent's.** The
+existing guidance — check `git diff` after an interrupted mutation run — assumes
+the interrupter and the diagnoser are the same session. In both events above they
+were not: the run was killed in one session and the strand found at the start of
+the next, by an agent with no memory that a run had ever been interrupted. Two
+rules follow, and neither is conditional on having witnessed a failure:
+
+1. **A clean tree before any gate run, verified rather than assumed.** A gate run
+   started over a dirty tree mutates a file that already differs from its
+   approved digest, and the backup then preserves the wrong baseline.
+2. **A digest check at every session start**, not only after an agent-visible
+   failure. It is the only test that catches the numeric class, it costs one
+   command, and it has now fired on two consecutive sessions.
+
 ### The acceptance gate's wall time is growing, not fixed at ~150s
 
 Across 162 acceptance-gate runs in the log, the maximum observed is 260.3s,
