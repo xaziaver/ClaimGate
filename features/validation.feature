@@ -33,19 +33,87 @@ Feature: FNOL validation
     And claimant contact is "required" by configuration
     And the recognized policy-number prefixes are "HO" by configuration
 
-  Rule: The loss date must not be in the future
+  Rule: The loss date must be stated, and must not be in the future
 
-    Scenario Outline: Loss date must not be in the future
+    # DRAFTED FOR REVIEW, item 5h, 2026-08-27. Not ratified. Two things below
+    # need the human's approval and neither is inside an agent's boundary: the
+    # reason code NO_LOSS_DATE entering a closed enumeration, and the
+    # precedence it is given against NO_JURISDICTION_DATE.
+    #
+    # An absent loss date is a blocker, not a refusal (ASSUMPTIONS.md, "An
+    # absent loss date is a domain blocker, not a schema refusal", ratified
+    # 2026-08-24). A reporter genuinely may not know when a loss began - water
+    # under a sink, a roof that has been leaking a while - and carriers pend
+    # for the date rather than refusing the call. It is the blank-policy-number
+    # case one field over, and it lands PENDED like every other blocker, since
+    # there is no rejected or discarded state anywhere in the record state
+    # model. Fla. Stat. 627.70131(4)(b) makes the claim record, dates included,
+    # the statutory duty: recording a date nobody supplied is worse than
+    # recording its absence.
+    #
+    # Absence is spelled "absent" here rather than as an empty cell, unlike the
+    # loss-type and notice-type rules below. Those two fields are text, and an
+    # empty string IS their absent value; a loss date's is not a date at all,
+    # so an empty cell would state absence in a spelling the field cannot hold.
+    # The token also matters to what mutation can protect, measured rather than
+    # assumed: an empty cell is replaced by the marker regardless of what else
+    # sits in its column, which the step cannot read as a date and so kills
+    # without testing anything, while "absent" is swapped for a sibling date -
+    # a real change of outcome from a missing field to a past one, and a real
+    # kill. jurisdiction_selection.feature already uses "absent" for exactly
+    # this shape of field, one whose absent value is not a value.
+    #
+    # The determination column asserts what the row produced rather than only
+    # what it blocked, and that is the reason it covers the four pre-existing
+    # rows too rather than the absent one alone. A row asserting a blocker and
+    # nothing else leaves the determination unstated, and an unstated
+    # determination is indistinguishable from "checked, and not ahead of
+    # today" - the precise confusion CLAUDE.md's "a result that was not
+    # computed is never reported as a negative" exists to prevent, and the one
+    # jurisdiction_selection.feature's Rule 3 already had to answer for a
+    # missing jurisdiction. Widening the column is therefore part of stating
+    # the new row, not scope taken alongside it.
+    #
+    # NO_LOSS_DATE is proposed as a second member of the future-dated-loss
+    # determination's own closed reason enumeration, whose only member today is
+    # NO_JURISDICTION_DATE. It is not shared with the SIU indicator
+    # enumeration: the two are scoped to their own subjects and grow
+    # independently (CLAUDE.md), and nothing here proposes adding it to that
+    # one - see the queue entry for why the SIU side is a different question
+    # with a different answer.
+    #
+    # Precedence, proposed: NO_LOSS_DATE outranks NO_JURISDICTION_DATE, which
+    # outranks NO_THRESHOLD_CONFIGURED. The existing tie-break - name the gap
+    # that would still block evaluation if the other were closed - decides the
+    # lower pair and is silent on the upper one, because with no loss date and
+    # no jurisdiction, closing either leaves the other. What decides it is what
+    # the determination is a statement about: the loss date is its subject and
+    # today is only the yardstick it is held against, and a missing subject is
+    # a more basic absence than a missing yardstick. The both-absent case is
+    # not provable here - this rule's scenarios always have a today, and the
+    # vocabulary for a notice with no jurisdiction lives in
+    # jurisdiction_selection.feature's Rule 3, which is where a row for it
+    # belongs. It is left to that file deliberately rather than overlooked.
+    #
+    # Arithmetic, recomputed against the Background's today of 2026-08-02
+    # rather than carried: 2026-08-03 is one day after it and 2026-08-02 is it,
+    # so the threshold is exercised on each side by adjacent days, and the
+    # comparison is strictly after rather than on-or-after. 2027-06-01 and
+    # 2026-08-01 are the same two outcomes at a distance, proving the rule is
+    # not a same-day special case.
+    Scenario Outline: A loss date is stated, absent, or ahead of today
       Given the loss date is "<loss_date>"
       When the candidate FNOL record is validated
       Then the blockers are <blockers>
+      And the future-dated-loss determination is <determination>
 
       Examples:
-        | loss_date  | blockers                       |
-        | 2027-06-01 | LOSS_DATE_IN_FUTURE:loss_date  |
-        | 2026-08-03 | LOSS_DATE_IN_FUTURE:loss_date  |
-        | 2026-08-02 |                                 |
-        | 2026-08-01 |                                 |
+        | loss_date  | blockers                         | determination              |
+        | 2027-06-01 | LOSS_DATE_IN_FUTURE:loss_date    | TRUE                       |
+        | 2026-08-03 | LOSS_DATE_IN_FUTURE:loss_date    | TRUE                       |
+        | 2026-08-02 |                                  | FALSE                      |
+        | 2026-08-01 |                                  | FALSE                      |
+        | absent     | MISSING_REQUIRED_FIELD:loss_date | NOT_EVALUATED:NO_LOSS_DATE |
 
     # Late notice is a coverage determination made downstream on the facts
     # of prejudice and tolling, not an intake rule.
@@ -357,21 +425,39 @@ Feature: FNOL validation
     # No candidate reaches all five codes at once. POLICY_NUMBER_MALFORMED,
     # NOTICE_TYPE_UNRECOGNIZED, and LOSS_TYPE_UNRECOGNIZED each require their
     # own field to be non-empty - a field that's empty produces
-    # MISSING_REQUIRED_FIELD instead, never both from the same field. The
-    # only other source of MISSING_REQUIRED_FIELD is the Section II claimant
-    # fields (claimant_name, claimant_contact, incident_description), and
-    # those only apply when the loss type is injury or liability, both of
-    # which are recognized and so never the source of
-    # LOSS_TYPE_UNRECOGNIZED. So whenever all three of those field-recognition
-    # codes fire together, every field that could still supply
-    # MISSING_REQUIRED_FIELD is already accounted for, and a fifth code has
-    # nowhere left to come from. Four is the maximum reachable, and it is
-    # reachable more than one way, not just the one example below:
-    # exhaustively checked against a simulated closed loss-type set, four
-    # distinct four-code combinations exist (true as of 2026-08-16; nothing
-    # revalidates this if a sixth code or a sixth field-recognition check is
-    # added). The scenarios below prove that a fixed emission sequence in the
-    # implementation cannot satisfy every case: two different maximal
+    # MISSING_REQUIRED_FIELD instead, never both from the same field.
+    # LOSS_DATE_IN_FUTURE and MISSING_REQUIRED_FIELD:loss_date stand in that
+    # same relation to one another, which is why the loss date does not break
+    # the argument it now takes part in. The other sources of
+    # MISSING_REQUIRED_FIELD are the Section II claimant fields (claimant_name,
+    # claimant_contact, incident_description), which only apply when the loss
+    # type is injury or liability, both of which are recognized and so never
+    # the source of LOSS_TYPE_UNRECOGNIZED. So whenever all three
+    # field-recognition codes fire together with a loss date present, every
+    # field that could still supply MISSING_REQUIRED_FIELD is already
+    # accounted for, and a fifth code has nowhere left to come from.
+    #
+    # **Amended for item 5h, 2026-08-27: four distinct four-code combinations
+    # became five, and the fifth is the one this item makes reachable.** Four
+    # is still the maximum - the argument above is unchanged by an absent loss
+    # date, since absence and futurity are the two mutually exclusive outcomes
+    # of one field. What changes is the count of ways to reach four. Before
+    # this item, a maximal combination always contained LOSS_DATE_IN_FUTURE,
+    # because the only way to raise MISSING_REQUIRED_FIELD alongside all three
+    # recognition codes was a Section II claimant field, and Section II loss
+    # types are recognized. An absent loss date is a source of
+    # MISSING_REQUIRED_FIELD that costs no recognition code, so
+    # POLICY_NUMBER_MALFORMED, NOTICE_TYPE_UNRECOGNIZED, LOSS_TYPE_UNRECOGNIZED
+    # and MISSING_REQUIRED_FIELD can now fire together with no loss-date code
+    # at all - the only maximal combination that omits LOSS_DATE_IN_FUTURE, and
+    # the last scenario in this rule. Re-derived by exhaustive enumeration over
+    # the same simulated closed loss-type set on 2026-08-27, which reproduced
+    # the earlier figure of four for the pre-item model before producing five
+    # for this one; nothing revalidates either number if a sixth code or a
+    # sixth field-recognition check is added.
+    #
+    # The scenarios below prove that a fixed emission sequence in the
+    # implementation cannot satisfy every case: three different maximal
     # combinations, a subset that skips the earliest codes, and a subset that
     # is non-contiguous in the canonical order.
 
@@ -435,3 +521,27 @@ Feature: FNOL validation
         | code                     | field                 |
         | POLICY_NUMBER_MALFORMED  | policy_number         |
         | MISSING_REQUIRED_FIELD   | incident_description  |
+
+    # The maximal combination that omits LOSS_DATE_IN_FUTURE, unreachable
+    # before this item. It is here on reachability grounds rather than
+    # mutation grounds, and the distinction is worth stating because the two
+    # usually coincide and here they do not: every value in a plain scenario's
+    # step takes the marker when mutated, and a marked step no longer resolves,
+    # so all five of this scenario's mutants die without testing anything -
+    # exactly as the five in the scenario above it already do. What it proves
+    # is that an absent loss date composes with the three recognition codes and
+    # sorts into canonical position among them, which no other scenario can
+    # show because no other scenario can reach this combination.
+    Scenario: Policy, notice, and loss-type codes fire together with an absent loss date
+      Given the policy number is "XX-1234567"
+      And the notice type is "SUPPLEMENT"
+      And the loss type is "watr_damage"
+      And the loss date is "absent"
+      When the candidate FNOL record is validated
+      Then the blockers are:
+        | code                     | field         |
+        | POLICY_NUMBER_MALFORMED  | policy_number |
+        | NOTICE_TYPE_UNRECOGNIZED | notice_type   |
+        | LOSS_TYPE_UNRECOGNIZED   | loss_type     |
+        | MISSING_REQUIRED_FIELD   | loss_date     |
+      And the reason codes are "POLICY_NUMBER_MALFORMED;NOTICE_TYPE_UNRECOGNIZED;LOSS_TYPE_UNRECOGNIZED;MISSING_REQUIRED_FIELD"
