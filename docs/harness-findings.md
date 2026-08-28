@@ -1285,6 +1285,43 @@ assumed, and the reason the row removal was safe to schedule before the lock rat
 after. **Where a file with approvals loses an Examples row, pair by digest and expect the
 locator to be useless for it.**
 
+**Correction, 2026-08-28, to the "Consequence for the ledger" paragraph above: it
+inverts the truth, and it was reasoned from the key's shape instead of read from the
+verifier.** The measured mechanics and the three-identity table above are correct and
+stand unchanged; only the consequence drawn from them was wrong.
+
+What the paragraph got right is that the ledger key is the locator —
+`mutants.key_for` is `f"{subject_key}#{mutant.locator}"`. What it missed is that the key
+is not the only thing compared. `mutants.subjects` stores each approval's digest over
+`m.signature`, and for an acceptance mutant `signature` is
+`f"{self.original}->{self.mutated}"` (`acceptance/mutation.py`) — **the substitution
+itself, not the key.** So a re-aimed survivor resolves its key and then fails the digest
+comparison: `registry.verify` returns `MODIFIED` when an entry exists and the digests
+differ, `mutants._bucket_for` puts `MODIFIED` in `changed`, and `Classification.failing`
+is `unreviewed + changed`. `gates/acceptance.py` builds its diagnostics from
+`verdict.failing` and passes only on `not outcome.diagnostics`, so **the gate goes red and
+names the mutant.** Nothing is silently mis-attributed; that was the paragraph's central
+claim and it is false.
+
+The other direction surfaces too, and `verify_all` is what makes it free: it verifies
+"every subject, plus every approved key the subjects omit," so an approval whose mutant no
+longer survives verifies with `content=None`, returns `MISSING`, and `_place` files it in
+`stale`. **The two are not symmetric, and the asymmetry is deliberate.** A `MODIFIED`
+mutant fails the gate; a `MISSING` one is counted in the summary as "N stale approval(s)"
+and appended as a diagnostic *after* the pass/fail boolean is computed, under the comment
+"Stale approvals are housekeeping, not a defect: report, do not fail." One goes red, the
+other is reported.
+
+**So the real consequence of removing an `Examples` row from a file carrying approvals is a
+re-approval ceremony, not a silent wrong reason.** Every re-aimed survivor comes back
+unapproved-in-effect and has to be judged again on what it now substitutes, and every
+mutant the removal eliminated is named stale for pruning. That is a cost to schedule, and a
+larger one than "harmless" — but it is a cost the gate collects for you rather than one that
+escapes it. The closing advice above still stands: pair by digest when a row moves. The
+reason is not that the locator is useless — it resolves fine — but that the locator is
+exactly what *cannot* tell you which of these two things happened, and the digest is the
+field the verifier actually compares.
+
 ### Comment inertness is confirmed by locator identity, not count parity
 
 Item 4f's comment-only edit was scheduled on `d344ab3`'s count match — before and after, the same
