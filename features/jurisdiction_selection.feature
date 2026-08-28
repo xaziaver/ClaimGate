@@ -26,10 +26,16 @@ Feature: Jurisdiction selection
   # third negative, that the carrier does not select the jurisdiction, is
   # assertable in principle but not affordably here: a second carrier reaches
   # intake only with a full rules entry of its own, and a carrier the identity
-  # reference recognizes whose rules cannot be resolved is QUEUE.md item 5i's
-  # undecided status code, which no scenario in this file may reach. That
-  # claim is left to the carrier-set swappability test, which is where an
-  # absence of hardcoding is proven structurally rather than by example.
+  # reference recognizes whose rules cannot be resolved is a decided answer as
+  # of 2026-08-28 - 500 with CARRIER_RULES_UNRESOLVABLE, this deployment's own
+  # fault and not the reporter's - stated by the specs that own the
+  # deployment-fault subject rather than by this one. No scenario here reaches
+  # it, and that is a scope choice rather than a consequence of the question
+  # having been open: a carrier whose rules will not load is answered before a
+  # jurisdiction is ever selected, so such a scenario would have no selection
+  # left to assert. That claim is left to the carrier-set swappability test,
+  # which is where an absence of hardcoding is proven structurally rather than
+  # by example.
 
   # "Today" reaches the domain from the jurisdiction's own timezone, never
   # from server local time or the UTC calendar day - jurisdiction_date.feature
