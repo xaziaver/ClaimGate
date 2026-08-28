@@ -1408,6 +1408,22 @@ or data. Nothing below was confirmed against a live book.
      5i, the item that makes that state reachable by a specified path; today the only way to produce
      it is an exception from unbuilt code, and a spec whose setup depends on that is not a spec.
 
+     **Premise false, measured from the code 2026-08-28; the ruling itself stands.** The `409`, the
+     body carrying the notice's current state, and the absence of a new status row are all unchanged
+     and unchallenged. What is false is the sentence deferring the scenario: item 5i does not make
+     `RECEIVED` reachable by a specified path, it confirms the state is unreachable.
+     `shell/notice_intake.py`'s `_first_submission` resolves the carrier's rules and the jurisdiction
+     — every raise item 5i decides — and only then calls `_create_notice`, which writes the receipt.
+     Both deployment faults are therefore answered **before any notice exists**, so neither leaves one
+     behind. The two answers are also mutually exclusive: a fault that left a notice at `RECEIVED`
+     with its idempotency key remembered would make the reporter's retry after the fix a `200` replay
+     of a notice no rule ever ran over, which is exactly the outcome item 5i's own idempotency row
+     forbids. The only producer of a notice at rest in `RECEIVED` is a process that stops between the
+     receipt transaction and the decision transaction — a durability fact, not a Given anyone can
+     write. **A durability or recovery item owns that state if it is ever specified, and nothing in
+     item 5i does.** The row was drafted against this decision, measured, and removed the same day
+     (branch `reopening/5i-deployment-fault-status-codes`, `079a346`).
+
   Statutory citations in this entry and in `resolution.feature`'s header were re-verified 2026-08-25
   by the advisor against flsenate.gov's 2024 statutes text of 627.70131 (history ending s. 15 ch.
   2022-271, matching `STATUTORY_REGISTER.md`): (1)(a), (4)(b)1–7, (5)(b), (7)(a), (8)(b), (9) all as
@@ -1446,6 +1462,77 @@ or data. Nothing below was confirmed against a live book.
   in-transaction parse that currently raises is unreachable once this lands. Ratified 2026-08-25.
 
   Both carried to item 5i's reopening of `resolution.feature`.
+
+- **Item 5i decisions, advisor-recommended, human-ratified, 2026-08-28.** Six escalations raised at
+  the drafting of item 5i, ruled together. The item's own entry in `QUEUE.md` names four status
+  codes; these are the rulings that close them, plus the three questions drafting turned up that no
+  document had anticipated.
+
+  1. **Both deployment faults are `500`, ratified.** A `carrier_code` present in the identity
+     reference whose rules entry resolves `CARRIER_NOT_CONFIGURED` or malformed, and a jurisdiction
+     map entry naming no timezone or one this system cannot resolve, both answer `500` on the intake
+     path with a receipted payload record carrying its own reference and **no notice created**; both
+     answer `500` on the resolution path with the transaction rolled back and **nothing recorded**.
+     This ratifies the status the 2026-08-24 entry below left open ("A carrier this deployment
+     administers but cannot configure is our defect, not the reporter's" decided 5xx and the
+     persistence shape, not the code). The two paths differ deliberately: an intake submission is a
+     reporter's statutory communication under 627.70131(1)(a) and is receipted whatever this
+     deployment does with it, while a resolution is an internal staff action against a notice whose
+     receipt duty was discharged long before, so a failed attempt at one creates no record-keeping
+     duty of its own. Keeping a payload record on the resolution path would put an unanswered request
+     into the sequence the notice's current view is derived from.
+
+  2. **The error-code enumeration is ratified: `CARRIER_RULES_UNRESOLVABLE` and
+     `JURISDICTION_MAP_UNUSABLE`.** One status for both faults, told apart by machine error code and
+     never by status. A caller's client branches on status to decide whether to retry, and the answer
+     is the same for both — not until someone fixes this deployment — so a second status would be a
+     distinction with no consequence, the same argument `PHASE2_DESIGN.md` already makes for the two
+     identical `201`s. This is a **closed enumeration scoped to the intake and resolution surfaces**,
+     shared between `notice_intake.feature` and `resolution.feature` because it is one vocabulary for
+     one fault class; it is not duplicate detection's and not SIU's, and adding a code to it is an
+     escalation like adding one to either of those. The codes are also load-bearing on mutation:
+     without them the two refusing rows agree in every column and both substitutions survive as
+     equivalents needing a human approval each.
+
+  3. **The jurisdiction fault is not degraded to the `jurisdiction_unsupported` marking, ratified.**
+     A property state this deployment supports no jurisdiction for is a fact about the risk: the
+     notice is created, triaged, and marked for a person to search on. A map entry this deployment
+     wrote badly is a fact about us, and marks nothing, because there is nothing wrong with the notice
+     to mark. Degrading one into the other would hide a deployment defect inside an ordinary
+     attribute and make the two indistinguishable in the only place anyone would look.
+     `jurisdiction_selection.feature` is untouched by item 5i, so its four marking rows remain the
+     sole statement of the marking.
+
+  4. **The advisor's "in body and audit" instruction is corrected against the schema, and the
+     correction is accepted.** The brief for item 5i's drafting said the error code should be carried
+     "in body and audit". It cannot be: `audit_entries.notice_id` is `NOT NULL REFERENCES notices
+     (notice_id)` in `shell/schema.py`, so no audit entry can exist without a notice, and ruling 1
+     creates none. **The response body and the receipted payload record carry the code**;
+     `payload_records.notice_id` is nullable, which is already how the schema-invalid `400` keeps its
+     record. Recorded because it is a correction of the instruction rather than of the code, and a
+     later session reading the brief alone would try to build the impossible half.
+
+  5. **The `RECEIVED` row is removed from the draft, not held.** See the dated annotation on item 5e
+     decision 5 above for the measurement and the reason. The ruling that a notice at rest in
+     `RECEIVED` gets the existing `409` stands; it has no scenario anywhere, and that is correct
+     rather than a gap.
+
+  6. **`RULESET_VERSION` does not bump for item 5i.** The two error codes are shell vocabulary: they
+     name a fault in this deployment's configuration, not an outcome any rule under
+     `src/claimgate/domain/` computed, and no stored decision's meaning changes because one exists.
+     **If implementation finds otherwise — if either code ends up produced by or stored through the
+     domain layer — that is a stop-and-escalate, not a judgment call to make at the keyboard.**
+
+  **Two implementation notes, ruled here so they are not rediscovered.** The symmetric carrier fault
+  on the resolution path stands and is specified: `shell/resolution.py`'s `_judge` calls
+  `resolve_rules` exactly as it calls the two jurisdiction resolvers, inside the transaction and
+  after the payload append, so the carrier fault has the identical shape there and is drafted with a
+  row of its own rather than left implicit. Separately, **two `NotImplementedError` messages are
+  stale against ratifications that landed after they were written** and must be corrected when their
+  raises are removed: `_loss_date_of` says no decision covers a resolution's unparseable loss date,
+  which decision (e) of 2026-08-25 does; `_require_notice` says an unknown notice id has no status
+  code in the closed table, which decision (d) of the same date added. `_conflict`'s docstring
+  carries the same false premise ruling 5 corrects.
 
 - **Item 5f, SIU separation — six decisions, advisor-recommended, human-ratified, 2026-08-25.** All
   six were open in `PHASE2_DESIGN.md`'s "SIU handling"; none is a new indicator. New indicators are
