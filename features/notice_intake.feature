@@ -256,8 +256,10 @@ Feature: Notice intake
     # is untouched by it.
     #
     # Not this rule's case: a carrier present in the identity reference
-    # whose rules entry cannot be resolved. That is item 5i, deliberately
-    # unbuilt here.
+    # whose rules entry cannot be resolved. That is the rule directly
+    # below, item 5i's - a carrier this deployment does claim to
+    # administer, whose rules it cannot load, which is our defect and not
+    # the reporter's and is receipted rather than refused.
     Scenario Outline: A carrier absent from the identity reference is refused before any record is made
       Given the notice is submitted by carrier "<carrier_code>"
       When the notice is submitted for intake
@@ -272,12 +274,14 @@ Feature: Notice intake
 
   Rule: A carrier this deployment administers but cannot configure is our defect, and the submission is receipted anyway
 
-    # PENDING RATIFICATION for the status itself - item 5i,
-    # advisor-recommended, not yet approved. Everything about what is
-    # persisted is already ratified: ASSUMPTIONS.md, "A carrier this
-    # deployment administers but cannot configure is our defect, not the
-    # reporter's", 2026-08-24 - 5xx rather than 400, with a receipted
-    # payload record carrying its own reference, and no notice created.
+    # The status is advisor-recommended and human-ratified, 2026-08-28 -
+    # ASSUMPTIONS.md, "Item 5i decisions". What is persisted was ratified
+    # earlier and separately: ASSUMPTIONS.md, "A carrier this deployment
+    # administers but cannot configure is our defect, not the reporter's",
+    # 2026-08-24 - 5xx rather than 400, with a receipted payload record
+    # carrying its own reference, and no notice created. That entry named
+    # the shape and left the code open; the 2026-08-28 ruling is what
+    # closed it at 500.
     #
     # This is the case the rule above sets aside. There, the carrier is
     # absent from the identity reference, this deployment does not

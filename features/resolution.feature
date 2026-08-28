@@ -274,8 +274,9 @@ Feature: Resolving a pended notice
 
   Rule: A fault in this deployment's own configuration is answered as ours, and the reviewer's attempt leaves no trace
 
-    # PENDING RATIFICATION - item 5i, advisor-recommended, not yet
-    # approved. The two faults below are this deployment's own
+    # The status is advisor-recommended and human-ratified, 2026-08-28 -
+    # ASSUMPTIONS.md, "Item 5i decisions". The two faults below are this
+    # deployment's own
     # misconfiguration reached from the resolution path: a carrier whose
     # rules entry cannot be resolved, and a jurisdiction map entry that
     # names no timezone or names one this system cannot resolve. Both are
