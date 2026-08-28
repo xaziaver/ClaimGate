@@ -56,10 +56,12 @@ Feature: Resolving a pended notice
   #      The reviewer's identity is a required caller-asserted string, and
   #      a body without one is schema-invalid: 400, nothing persisted.
   #   5. A notice at rest in RECEIVED gets the existing 409, whose body
-  #      carries the notice's current state. No new status row. That
-  #      scenario is owed to item 5i, which is what makes the state
-  #      reachable by a specified path; today it is only producible by an
-  #      exception from unbuilt code.
+  #      carries the notice's current state. No new status row. The ruling
+  #      stands and has no scenario anywhere: decision 5 owed one to item
+  #      5i on the premise that item 5i makes the state reachable, and item
+  #      5i does the opposite. Nothing in phase 2 produces it. See Rule 1's
+  #      own comment below, and ASSUMPTIONS.md's item 5i entry dated
+  #      2026-08-28.
   #
   # One correction the ratification forced, recorded here because this
   # header is where the wrong claim was made: the 2026-08-25 draft said it
@@ -114,29 +116,21 @@ Feature: Resolving a pended notice
     # resolution to an already-triaged notice would look identical on state
     # alone and is caught by the trail.
     #
-    # The third row is the RECEIVED one decision 5 deferred to this item. A
-    # notice at rest in RECEIVED gets the same 409 a TRIAGED one gets, its
-    # own current state in the body, and no new status row - one code for
-    # two states, because state is read from the body and never inferred
-    # from status. The audit column is what separates them: a TRIAGED
-    # notice carries both of its intake entries, a RECEIVED one carries
-    # only the receipt, because no rule ever ran over it. An implementation
-    # that answered 409 off the state name alone would agree on status and
-    # be caught there.
-    #
-    # ITEM 5i DRAFTING FINDING - this row is drafted to a ratified decision
-    # whose setup does not exist, and that is escalated rather than papered
-    # over. Decision 5 deferred this scenario here on the premise that item
-    # 5i is what makes RECEIVED reachable by a specified path. Item 5i's
-    # own decisions do the opposite: both deployment faults are answered
-    # before a notice exists, so neither leaves one behind. This
-    # deployment resolves the carrier's rules and the jurisdiction before
-    # it writes the receipt, so a fault in either is answered with a
-    # receipted payload record and no notice at all. The only remaining
-    # producer of a notice at rest in RECEIVED is a process that stops
-    # between the receipt and the decision, which is a durability fact and
-    # not a business rule anyone can state as a Given. The row states the
-    # ratified behaviour; nothing can set it up.
+    # There are two rows and there is no RECEIVED one. Decision 5's ruling
+    # itself stands unchanged - a notice at rest in RECEIVED gets this same
+    # 409, its own current state in the body, no new status row - and what
+    # was wrong was never the ruling but the premise under which decision 5
+    # deferred its scenario to item 5i: that item 5i is what makes RECEIVED
+    # reachable by a specified path. Measured from the code on 2026-08-28
+    # and ratified the same day, that premise is false. This deployment
+    # resolves the carrier's rules and the jurisdiction before it writes the
+    # receipt, so both of item 5i's deployment faults are answered before
+    # any notice exists and neither leaves one behind. The only producer of
+    # a notice at rest in RECEIVED is a process that stops between the
+    # receipt and the decision - a durability fact, not a Given anyone can
+    # write. Whichever item ever specifies recovery owns that state; it is
+    # not this one, and a row here would have been a scenario with no setup.
+    # ASSUMPTIONS.md, item 5i, 2026-08-28.
     #
     # The records column is what turns the 409's "no state change, no audit
     # entry" into a complete claim rather than half of one. Decision 3
@@ -158,10 +152,9 @@ Feature: Resolving a pended notice
       And the notice's records <records>
 
       Examples:
-        | policy_number | state_before | response | state_after | audit_effect                              | records                                             |
-        | absent        | PENDED       | 200      | TRIAGED     | gains a third entry, for the resolution   | are two, the submission and the resolution           |
-        | HO-1234567    | TRIAGED      | 409      | TRIAGED     | still holds only its two intake entries   | are one, the submission it was created from          |
-        | HO-1234567    | RECEIVED     | 409      | RECEIVED    | still holds only its single receipt entry | are one, the submission it was created from          |
+        | policy_number | state_before | response | state_after | audit_effect                            | records                                             |
+        | absent        | PENDED       | 200      | TRIAGED     | gains a third entry, for the resolution | are two, the submission and the resolution           |
+        | HO-1234567    | TRIAGED      | 409      | TRIAGED     | still holds only its two intake entries | are one, the submission it was created from          |
 
   Rule: A resolution the endpoint cannot read is refused before the notice is read at all
 
