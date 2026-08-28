@@ -132,6 +132,30 @@
       "reason": "Three mechanisms across ten mutants, recorded under one reason because approval is scoped per scenario and not per mutant - and because approve stamps every survivor in the scenario, not only the ones the gate reports as unapproved. Read this as three records. (a) Rows already excluded on a single dimension - the policy-mismatch row and the loss-type-mismatch row - yield no match whatever the mutated column holds, so mutating any other dimension on them is inert. Four mutants. (b) Rows excluded by loss-date distance: their policy number and their loss type both agree with the existing claim, so neither is what excludes them, and substituting either leaves the outcome unchanged. Four mutants. (c) Matching rows whose loss date is swapped for another in-window date: the substituted date is also inside the window, so the match survives - a swap to an out-of-window date flips the result and is killed, which means the boundary is proven by the in-window and out-of-window rows jointly and never by a single row. Two mutants. Rows are described by role rather than by literal value, per the convention in docs/harness-findings.md: example data is what a vocabulary pass changes, so a reason quoting it decays while its locator stays valid. REVISIT TRIGGER: void if the window changes from 60 days, if policy or loss-type equality stops being part of the match key, or if this Examples table gains a second row whose policy number matches the existing claim.",
       "reviewer": "xaziaver"
     },
+    "mutant:features/idempotency.feature#Whether a repeated key finds a notice depends on whether its first use created one|example|deployment_fault|not-a-date|this deployment is configured correctly|201|identifies a new notice, not the original": {
+      "approved_at": "2026-08-28T10:17:26+00:00",
+      "digest": "sha256:a19f4ea02bee1bc6430fdfd0ec0ce18be590def75764a1468c975b6b43d4d14a",
+      "reason": "The schema boundary is checked before the deployment configuration is read: a first attempt whose loss date does not parse is 400 whether or not the carrier rules load, the key is remembered by neither failure, and both retries create the notice on retry.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/idempotency.feature#Whether a repeated key finds a notice depends on whether its first use created one|example|first_loss_date|2026-06-01|the carrier's rules entry cannot be resolved|201|identifies a new notice, not the original": {
+      "approved_at": "2026-08-28T10:17:26+00:00",
+      "digest": "sha256:df28294e5cd24cb01035e41e19bc46d0cd45a3f5385defeb7d94e326ecfbeefc",
+      "reason": "The schema boundary is checked before the deployment configuration is read: a first attempt whose loss date does not parse is 400 whether or not the carrier rules load, the key is remembered by neither failure, and both retries create the notice on retry.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/resolution.feature#Whether a resolution is read at all depends on whether its body can be read|example|reviewer|adjuster-4471|not-a-date|400|PENDED|still holds only its two intake entries|are one, the submission it was created from": {
+      "approved_at": "2026-08-28T10:16:04+00:00",
+      "digest": "sha256:4e5ce8bc9f0880cb67b7595eea9872db8e441428fbfc454bde8919df28e60a4d",
+      "reason": "A body this endpoint cannot read is refused before the notice is read, whichever half is unreadable: an absent reviewer and an unparseable loss date map to the same 400 persisting nothing, so swapping the refusing rows cells cannot change any asserted outcome.",
+      "reviewer": "xaziaver"
+    },
+    "mutant:features/resolution.feature#Whether a resolution is read at all depends on whether its body can be read|example|supplied_loss_date|absent|2026-06-02|400|PENDED|still holds only its two intake entries|are one, the submission it was created from": {
+      "approved_at": "2026-08-28T10:16:04+00:00",
+      "digest": "sha256:a6457c7ac68e86e0db1824979990e5c163db63b94b899c9db754df92a029048c",
+      "reason": "A body this endpoint cannot read is refused before the notice is read, whichever half is unreadable: an absent reviewer and an unparseable loss date map to the same 400 persisting nothing, so swapping the refusing rows cells cannot change any asserted outcome.",
+      "reviewer": "xaziaver"
+    },
     "mutant:features/siu_indicators.feature#A continuous coverage date later than the loss date does not fire the indicator|literal|And the recent policy inception threshold is 30 days": {
       "approved_at": "2026-08-15T15:53:09+00:00",
       "digest": "sha256:65735f2c30a33c3f6195f3316b3b649c231cfbeea0cc53d390fc003f89cd29a0",
