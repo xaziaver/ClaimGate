@@ -1245,6 +1245,46 @@ confirmed before the ledger commit rather than assumed from the rename. Six matc
 mutants moved, not six replaced by six different ones. Reusable whenever a rename moves locators:
 count parity is consistent with either story, and only digest pairing tells them apart.
 
+### Removing an Examples row rewrites the surviving rows' swap targets, so locators hold still while digests move
+
+The exact inverse of the pairing above, and worth stating beside it because the two
+failure modes look identical in a count and are opposites underneath. A rename moves
+every locator and leaves each digest alone. **Removing a row leaves the locators alone
+and moves digests** — a sibling swap is generated against whatever *other* rows offer in
+that column, so deleting one row silently re-aims the mutants of the rows that remain.
+
+Measured on item 5i's `RECEIVED` removal, `321b3a2` -> `079a346`, one row out of
+`resolution.feature` Rule 1, whole file:
+
+| identity compared | lost | gained | net |
+|---|---|---|---|
+| `locator` alone | 6 | 0 | −6 |
+| `locator` + `mutated` | 10 | 4 | −6 |
+| full mutant, including `line` | 12 | 6 | −6 |
+
+All three are correct; they answer different questions, and quoting one without saying
+which is how a number like this goes wrong. The net is −6 in every case and is the
+removed row's own mutants. **The 4 that matter are mutants that kept their locator and
+changed what they substitute** — the ledger's key held still while the mutation under it
+became a different question:
+
+- `state_before`: `PENDED->RECEIVED` became `PENDED->TRIAGED`. The swap target rotated to
+  the nearest surviving sibling.
+- `state_after`: `TRIAGED->TRIAGED_gauntlet`, twice. That column had two distinct values
+  while the `RECEIVED` row existed; with both surviving rows reading `TRIAGED` there is no
+  differing sibling left, so the engine falls back to the literal `_gauntlet` strand. **A
+  column can lose its sibling swap entirely and still report a mutant** — the same strand
+  the start-up check tells you to look for after an interrupted run.
+- `audit_effect`: re-aimed onto the surviving row's phrasing.
+
+**Consequence for the ledger.** Approval keys are content-addressed on the locator, so
+none of these four would have been reported stale: the key still resolves, and the
+approved reason would now be attached to a substitution nobody approved. It was harmless
+here only because `resolution.feature` carried zero approvals at the time — measured, not
+assumed, and the reason the row removal was safe to schedule before the lock rather than
+after. **Where a file with approvals loses an Examples row, pair by digest and expect the
+locator to be useless for it.**
+
 ### Comment inertness is confirmed by locator identity, not count parity
 
 Item 4f's comment-only edit was scheduled on `d344ab3`'s count match — before and after, the same

@@ -528,8 +528,9 @@ Ordered by domain severity, not by effort. One line each on why that position.
 
 5i. **The status code for a carrier present in the identity reference whose rules entry resolves
     `CARRIER_NOT_CONFIGURED` or malformed has no row in `PHASE2_DESIGN.md`'s closed status-code
-    table.** Found while drafting item 5c: the table's two `400` rows cover an unknown/malformed
-    `carrier_code` and a schema-invalid body, neither of which is this case — a carrier this
+    table.** *(Closed at merge `5ae5762`, 2026-08-28 — see below.)* Found while drafting item 5c:
+    the table's two `400` rows cover an unknown/malformed `carrier_code` and a schema-invalid
+    body, neither of which is this case — a carrier this
     deployment's identity reference recognizes but whose rules were never onboarded, or were
     onboarded wrongly. See `ASSUMPTIONS.md`, "A carrier this deployment administers but cannot
     configure is our defect, not the reporter's" — 5xx, not 400, still with a receipted payload
@@ -581,6 +582,18 @@ Ordered by domain severity, not by effort. One line each on why that position.
     something a later session can rewrite without anyone approving it. A test alongside the row is
     fine; it is not a substitute for the row. Item 5h's source comment in
     `_determine_future_dated_loss` is written to the corrected claim, not the original one.
+
+    **Rider, added 2026-08-28 at item 5i's close: this item also corrects
+    `jurisdiction_selection.feature`'s line-29 comment.** That comment says a carrier the identity
+    reference recognizes whose rules cannot be resolved "is QUEUE.md item 5i's undecided status
+    code, which no scenario in this file may reach." The case is built, ratified and merged — it is
+    `500` with `CARRIER_RULES_UNRESOLVABLE` — so the claim is false on both halves. It is the one
+    known stale claim item 5i left standing, and it survives outside `src/`: that item's sweep
+    corrected every falsified comment under `src/`, and this one is in an approved spec, where a
+    comment fix costs an approval cycle of its own — which this item's reopening pays anyway.
+    The second half of the sentence needs judgment, not just a factual fix — whether a scenario in this file *may* now reach the case is a scope question for
+    whoever drafts the reopening, and the answer that keeps Rule 3's subject intact is probably
+    still no. Do not let the correction quietly widen the rule.
 
 ## What to read
 
@@ -2923,79 +2936,75 @@ supplying-a-missing-field rule — over a different field, and it cannot be expr
 `validation.feature` at all, which has no notice, no state and no endpoint in its vocabulary. If it
 is wanted stated explicitly it belongs in `resolution.feature`, which item 5i already reopens.
 
-**Item 5i is implemented and awaiting mutant approval, 2026-08-28.** Branch
-`reopening/5i-deployment-fault-status-codes`, pushed and a superset of `origin/main`. **The
-implementation is `5606e74`**; the branch tip above it is the merge of `main` that carries this
-paragraph, so the tip is documentation and `5606e74` is the work. Six commits before that merge: the
-spec drafts (`321b3a2`), the `RECEIVED` removal (`079a346`), an earlier merge of `main` (`5fcdaeb`),
-two spec-comment corrections (`d571e21`), the approval of the three amendments (`15b8a34`), and the
-implementation. **The next action
-is the human's — `gauntlet mutant approve` on four survivors, listed below. Nothing else moves until
-then.** Nothing is merged.
+**Item 5i is done and merged to `main`** (merge commit `5ae5762`, 2026-08-28). Both deployment
+faults — a carrier present in the identity reference whose rules entry will not resolve, and this
+deployment's own jurisdiction map naming no timezone or one the system cannot resolve — are answered
+`500` with a machine error code from a new closed shell-side enumeration (`shell/faults.py`:
+`CARRIER_RULES_UNRESOLVABLE`, `JURISDICTION_MAP_UNUSABLE`). One typed fault is raised from
+`shell/rules.py` and answered by whichever endpoint catches it, because the fault is one fact and the
+answer is not: intake receipts the submission and keeps its payload with its own reference and the
+code, creating no notice and remembering no key, while a resolution rolls the whole transaction back
+including the payload record appended before the configuration is read. `_require_notice`'s raise
+became the ratified `404`; the unparseable resolution loss date moved to the schema boundary beside
+`actor_id`, taking the merged-view parse in `_loss_date_of` with it as unreachable. **All four
+`NotImplementedError` raises are gone and none remains anywhere in `src/`.**
 
-All three specs are locked and unchanged, verified this session against `gauntlet.lock.json`:
-`resolution.feature` `bd8b4fd8324a`, `notice_intake.feature` `5eca27f7aa6a`,
-`idempotency.feature` `a366d5b00a93`, all approved 2026-08-28 07:50-07:51.
-`jurisdiction_selection.feature` was not touched and still carries item 5j's stale line-29 comment.
-Measured against the engine after implementation, unchanged from the drafting prediction:
-`resolution.feature` 133, `notice_intake.feature` 51, `idempotency.feature` 46, project total 813.
+**`gauntlet check` passes on `main` post-merge, from a cold cache with `mutants/` cleared first**:
+453/453 tests, code mutation 100.0% at **422 killed**, acceptance 11 specs, **0 surviving**, **75
+reviewed-equivalent**, 1439.7s. The cold run matters here rather than being ceremony — a warm score
+is only meaningful when the commit neither adds nor removes code (`docs/harness-findings.md`), and
+this one added a module, two endpoint answers and a database column.
 
-**Ten gates are green and the acceptance gate is red with exactly four survivors — the four
-hand-simulated at drafting, no others, and none of the four killed.** That is the predicted state,
-not a defect, and its remedy names a command that is mine:
+**The code-mutation count did not move, and that is ruling 6 holding rather than a gap.** 422 before
+the implementation and 422 after it, against a 493-line change: `mutmut`'s source scope is
+`src/claimgate/domain/` alone and this item is shell-side by ruling, so a *risen* count would have
+been the finding. The only `domain/` change was two comments claiming the shell escalates what it
+now answers. `RULESET_VERSION` is untouched. Recorded in `docs/harness-findings.md`.
+
+**Four mutant approvals landed at `b31e341`, before the merge, under two scenario-scoped reasons —
+one reason per argument, not one per mutant.** Both pairs are substitutions between two rows that
+already agree on their outcome, which each scenario's own comment named in advance as a measured and
+accepted cost:
 
 | file | line | mutation |
 |---|---|---|
-| `features/idempotency.feature` | 261 | `this deployment is configured correctly` -> `the carrier's rules entry cannot be resolved` |
-| `features/idempotency.feature` | 262 | `2026-06-01` -> `not-a-date` |
-| `features/resolution.feature` | 229 | `adjuster-4471` -> `absent` |
-| `features/resolution.feature` | 228 | `2026-06-02` -> `not-a-date` |
+| `idempotency.feature` | 261 | `this deployment is configured correctly` -> `the carrier's rules entry cannot be resolved` |
+| `idempotency.feature` | 262 | `2026-06-01` -> `not-a-date` |
+| `resolution.feature` | 229 | `adjuster-4471` -> `absent` |
+| `resolution.feature` | 228 | `2026-06-02` -> `not-a-date` |
 
-Both pairs are substitutions between two rows that already agree on their outcome, which each
-scenario's own comment states in advance as a measured and accepted cost: idempotency's two rows
-both have a first attempt that creates nothing and a retry that creates, and resolution's two
-refusing rows both answer 400 with nothing persisted. Each pair sits in one scenario so one approval
-reason covers one argument (`.claude/skills/gherkin-specs`, constraint 4). 71 approvals are
-reviewed-equivalent and none was disturbed: all three files still carry zero mutant approvals of
-their own.
+`idempotency.feature`'s reason is that the schema boundary is read before the deployment
+configuration, so a first attempt whose loss date does not parse is `400` whether or not the
+carrier's rules load, neither failure remembers the key, and both retries create. `resolution.feature`'s
+is that a body this endpoint cannot read is refused before the notice is read, whichever half is
+unreadable. **The ledger now holds 75 approvals**, up from 71.
 
-**Code mutation is unchanged at `422 killed`, score 100.0%, and that is ruling 6 holding rather than
-a gap.** The item's brief expected the figure to rise. It did not, because `mutmut`'s source scope is
-`src/claimgate/domain/` alone and this item is shell-side by ruling — a risen count would have been
-the finding. Recorded in `docs/harness-findings.md`. The only `domain/` change is two comments that
-claimed the shell escalates what it now answers; `RULESET_VERSION` is untouched.
-
-**What was built.** All four `NotImplementedError` raises are gone and none remains anywhere in
-`src/`. A new closed shell-side enumeration (`shell/faults.py`, `CARRIER_RULES_UNRESOLVABLE` /
-`JURISDICTION_MAP_UNUSABLE`) and one typed fault raised from `shell/rules.py`, answered by whichever
-endpoint catches it: intake receipts the submission and keeps its payload with its own reference and
-the code, creating no notice and remembering no key; a resolution rolls the whole transaction back,
-including the payload record appended before the configuration is read. `_require_notice`'s raise
-became the 404; the unparseable resolution loss date moved to the schema boundary beside `actor_id`
-and `_loss_date_of` went with it as unreachable. The three stale source messages
-`ASSUMPTIONS.md` named are corrected, along with two in `domain/` that the removals falsified.
+**Spec mutant counts, re-measured against the engine after implementation** and unchanged from the
+drafting prediction: `resolution.feature` 133, `notice_intake.feature` 51, `idempotency.feature` 46,
+project total 813 (from 756). No approval on any of the three predates this item.
 
 **Five implementation shapes are recorded in `ASSUMPTIONS.md`, "Item 5i implementation shapes"** —
 none is a rule, and two are visible on a surface: `payload_records.error_code` as a new nullable
 column, `error` on both response types and both serialization allow-lists (the allow-list test
 forced that decision rather than defaulting it), which half of the jurisdiction fault each test layer
 exercises, how the carrier fault is produced, and why `_loss_date_of` is deleted rather than guarded.
-**That entry also records that `shell/notice_intake.py` and `shell/resolution.py` are now at exactly
-250 of 250 lines** — the next item touching either splits it first.
+**That entry also records that `shell/notice_intake.py` and `shell/resolution.py` now sit at exactly
+250 of 250 lines** — neither has room for another comment paragraph, and the next item touching
+either splits it first, on `messages.py`'s precedent.
 
-**What remains before item 5i closes:** the four mutant approvals, then merge to `main`. Nothing
-else is outstanding.
+**Item 5j is next, and it is the last item in the queue.** Its only sequencing precondition was item
+5h's implementation, merged at `e8e76c0`; it was independent of 5i, so the order between them was a
+free choice and 5i went first. Its entry above already carries the 2026-08-27 correction to its own
+premise — the both-absent case is reachable from the shell today, so what 5j closes is that nothing
+*asserts* which reason the determination names, not that the case cannot be reached — and asserting
+it in a shell or unit test instead was considered and declined there, with the reason. Its entry
+also now carries a rider added at this item's close: the reopening of
+`jurisdiction_selection.feature` must also correct that file's line-29 comment, which still calls
+the unresolvable-rules case item 5i's undecided status code. That comment is the one known survivor
+of item 5i's stale-claim sweep, left deliberately because correcting it costs an approval cycle that
+5j's reopening pays anyway. **Blast radius is unmeasured — measure at drafting.**
 
-**Item 5i's numbered entry above still reads as not started and is not amended**; this status section
-is the authority, per the convention recorded under item 5g.
-
-**Item 5j is unblocked and is not next.** Its only sequencing precondition was item 5h's
-implementation, which is merged, and it is independent of 5i, so the order between the two is a free
-choice rather than a constraint. Its entry above now carries a dated correction to its own premise:
-the both-absent case is reachable from the shell today, so what 5j closes is that nothing *asserts*
-which reason the determination names — not that the case cannot be reached. Asserting it in a shell
-or unit test instead was considered and declined there, with the reason.
-
-**This session ended at the save point**, on `main` with a clean tree and nothing in flight. There is
-no open branch: `reopening/5h-absent-loss-date` is merged and remains on `origin` at `e521e58`, so
-deleting it is optional and nothing depends on it.
+**This session ended at the save point**, on `main` with a clean tree and nothing in flight. There
+is no open branch: item 5i's `reopening/5i-deployment-fault-status-codes` is merged and remains on
+`origin` at `b8b5268`, as does `reopening/5h-absent-loss-date` at `e521e58`; deleting either is
+optional and nothing depends on them.
