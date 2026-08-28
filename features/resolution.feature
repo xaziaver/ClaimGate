@@ -56,10 +56,12 @@ Feature: Resolving a pended notice
   #      The reviewer's identity is a required caller-asserted string, and
   #      a body without one is schema-invalid: 400, nothing persisted.
   #   5. A notice at rest in RECEIVED gets the existing 409, whose body
-  #      carries the notice's current state. No new status row. That
-  #      scenario is owed to item 5i, which is what makes the state
-  #      reachable by a specified path; today it is only producible by an
-  #      exception from unbuilt code.
+  #      carries the notice's current state. No new status row. The ruling
+  #      stands and has no scenario anywhere: decision 5 owed one to item
+  #      5i on the premise that item 5i makes the state reachable, and item
+  #      5i does the opposite. Nothing in phase 2 produces it. See Rule 1's
+  #      own comment below, and ASSUMPTIONS.md's item 5i entry dated
+  #      2026-08-28.
   #
   # One correction the ratification forced, recorded here because this
   # header is where the wrong claim was made: the 2026-08-25 draft said it
@@ -114,13 +116,21 @@ Feature: Resolving a pended notice
     # resolution to an already-triaged notice would look identical on state
     # alone and is caught by the trail.
     #
-    # The second row is a TRIAGED notice, not a RECEIVED one. Decision 5
-    # settles that a notice at rest in RECEIVED gets this same 409, with
-    # its current state in the body and no new status row - but the
-    # scenario for it belongs to item 5i, the item that makes that state
-    # reachable by a specified path. Today the only way to produce it is an
-    # exception raised from code nobody has written, and a scenario whose
-    # setup depends on that is not a scenario. There is no row for it here.
+    # There are two rows and there is no RECEIVED one. Decision 5's ruling
+    # itself stands unchanged - a notice at rest in RECEIVED gets this same
+    # 409, its own current state in the body, no new status row - and what
+    # was wrong was never the ruling but the premise under which decision 5
+    # deferred its scenario to item 5i: that item 5i is what makes RECEIVED
+    # reachable by a specified path. Measured from the code on 2026-08-28
+    # and ratified the same day, that premise is false. This deployment
+    # resolves the carrier's rules and the jurisdiction before it writes the
+    # receipt, so both of item 5i's deployment faults are answered before
+    # any notice exists and neither leaves one behind. The only producer of
+    # a notice at rest in RECEIVED is a process that stops between the
+    # receipt and the decision - a durability fact, not a Given anyone can
+    # write. Whichever item ever specifies recovery owns that state; it is
+    # not this one, and a row here would have been a scenario with no setup.
+    # ASSUMPTIONS.md, item 5i, 2026-08-28.
     #
     # The records column is what turns the 409's "no state change, no audit
     # entry" into a complete claim rather than half of one. Decision 3
@@ -146,7 +156,7 @@ Feature: Resolving a pended notice
         | absent        | PENDED       | 200      | TRIAGED     | gains a third entry, for the resolution | are two, the submission and the resolution           |
         | HO-1234567    | TRIAGED      | 409      | TRIAGED     | still holds only its two intake entries | are one, the submission it was created from          |
 
-  Rule: A resolution with no reviewer behind it is refused before anything is written
+  Rule: A resolution the endpoint cannot read is refused before the notice is read at all
 
     # Decision 4: the actor's type is not a caller input - this endpoint
     # stamps USER, because an unauthenticated caller asserting SYSTEM would
@@ -174,11 +184,38 @@ Feature: Resolving a pended notice
     # file; this rule's own Given overrides it per row, and "absent" means
     # the identity is not in the body at all - the same sentinel intake's
     # own steps already give the word.
-    Scenario Outline: Whether a resolution is read at all depends on whether it says who is making it
+    #
+    # The third row is decision (e), ratified 2026-08-25 and carried to
+    # item 5i with decision (d): a loss date in a resolution body that is
+    # not a date at all is the same schema-invalid 400, checked here beside
+    # the reviewer's identity, before the notice is read. Intake answers
+    # the same input the same way at its own schema boundary, so the merged
+    # current view can never carry one - which is the whole reason this
+    # check belongs at the boundary rather than deeper in, where a parse
+    # over the merged view would sit on an input that cannot reach it.
+    #
+    # Two independent refusals share one table because they share one
+    # answer, and the rule's subject is the answer rather than either
+    # cause: a body this endpoint cannot read is refused before the notice
+    # is read, whichever half of it is unreadable. The cost is measured and
+    # accepted - a substitution between the two refusing rows produces a
+    # row that still refuses, so those two mutants survive as genuine
+    # equivalents. Keeping them in one scenario is what lets one approval
+    # reason cover both (.claude/skills/gherkin-specs, constraint 4);
+    # splitting the rule in two would cost two reasons for the same
+    # argument and would state twice that a 400 persists nothing.
+    #
+    # The loss date the accepting row supplies is a correction, not a
+    # missing field - decision 1 lets a resolution carry any notice-content
+    # field, and the notice is pended for its policy number. It has to be a
+    # real date on that row for the row to reach 200 at all, which is what
+    # makes the third row's column the only thing separating them.
+    Scenario Outline: Whether a resolution is read at all depends on whether its body can be read
       Given the notice reports a policy number of "absent"
       And the notice is submitted for intake
       And the reviewer is identified as "<reviewer>"
       When the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer supplies a loss date of "<supplied_loss_date>"
       And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
       Then the response is <response>
       And the notice's state is <state>
@@ -186,9 +223,111 @@ Feature: Resolving a pended notice
       And the notice's records <records>
 
       Examples:
-        | reviewer      | response | state   | audit_effect                            | records                                              |
-        | adjuster-4471 | 200      | TRIAGED | gains a third entry, for the resolution | are two, the submission and the resolution           |
-        | absent        | 400      | PENDED  | still holds only its two intake entries | are one, the submission it was created from          |
+        | reviewer      | supplied_loss_date | response | state   | audit_effect                            | records                                              |
+        | adjuster-4471 | 2026-06-02         | 200      | TRIAGED | gains a third entry, for the resolution | are two, the submission and the resolution           |
+        | absent        | 2026-06-02         | 400      | PENDED  | still holds only its two intake entries | are one, the submission it was created from          |
+        | adjuster-4471 | not-a-date         | 400      | PENDED  | still holds only its two intake entries | are one, the submission it was created from          |
+
+  Rule: A resolution names a notice this deployment has, or it is answered without anything being read
+
+    # Decision (d), ratified 2026-08-25 and carried here: a resolution
+    # against an id nobody has is 404, nothing persisted. A resolution
+    # naming a notice that does not exist is not a notice event - there is
+    # no pend to release, no reviewer request it answers, and nothing for
+    # its content to be the answer to, which is the unknown-carrier 400's
+    # reasoning rather than the schema-invalid one's.
+    #
+    # It is not a 409 and it is not a 400. A 409 would claim the endpoint
+    # found a notice and disagreed with its state; a 400 would claim the
+    # body could not be read, when it read perfectly well. The distinction
+    # matters to the reviewer's own client, which retries a 409 after
+    # looking at the state in the body and must never retry a 404 at all.
+    #
+    # The order these three refusals run in is what the two rules above and
+    # this one assert between them, and it is the order the reasons force:
+    # a body that cannot be read is refused before any notice is fetched,
+    # an id nobody has is refused before any state is examined, and only a
+    # notice that exists and is not pended reaches the 409. Nothing below
+    # asserts the order directly - each rule asserts its own answer, and an
+    # implementation that reordered them would answer one of these rows
+    # with another row's status.
+    #
+    # The notice in both rows is a real, pended one, so the records column
+    # means the same thing on each: the accepting row's resolution joins
+    # the sequence, and the refused row's does not touch a notice it never
+    # named.
+    Scenario Outline: Whether a resolution is read depends on whether the notice it names exists
+      Given the notice reports a policy number of "absent"
+      And the notice is submitted for intake
+      When the reviewer's resolution names <named_notice>
+      And the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is <response>
+      And the notice's state is <state>
+      And the notice's audit trail <audit_effect>
+      And the notice's records <records>
+
+      Examples:
+        | named_notice                   | response | state   | audit_effect                            | records                                              |
+        | the notice that was created    | 200      | TRIAGED | gains a third entry, for the resolution | are two, the submission and the resolution           |
+        | an identifier nobody has       | 404      | PENDED  | still holds only its two intake entries | are one, the submission it was created from          |
+
+  Rule: A fault in this deployment's own configuration is answered as ours, and the reviewer's attempt leaves no trace
+
+    # The status is advisor-recommended and human-ratified, 2026-08-28 -
+    # ASSUMPTIONS.md, "Item 5i decisions". The two faults below are this
+    # deployment's own
+    # misconfiguration reached from the resolution path: a carrier whose
+    # rules entry cannot be resolved, and a jurisdiction map entry that
+    # names no timezone or names one this system cannot resolve. Both are
+    # 500. Neither is a 4xx, for the same reason the intake path's are not:
+    # a 4xx tells the caller their request was wrong, and nothing about
+    # this reviewer's request was.
+    #
+    # One status for both, and the machine error code is what tells them
+    # apart. A caller's client branches on status to decide whether to
+    # retry, and the answer is the same for both - not until someone fixes
+    # this deployment - so a second status would be a distinction with no
+    # consequence, the same argument that keeps the two 201s identical at
+    # intake. The error codes are a new closed enumeration and are
+    # escalated with this draft rather than invented into it: they are the
+    # only reason a substitution between the two refusing rows below is
+    # killed rather than surviving as an equivalent.
+    #
+    # Nothing is recorded. Unlike a 422, which keeps what the reviewer
+    # supplied because the release was refused and the data was not, a 500
+    # refuses nothing the reviewer sent - it never got far enough to judge
+    # it. The notice stays pended with the records and the audit trail it
+    # already had, and the reviewer's own client still holds what it sent
+    # and can send it again once this deployment is fixed. Keeping a
+    # payload record here would put an unanswered request into the
+    # sequence the notice's current view is derived from, and the next
+    # resolution would be judged over data no rule ever ran on.
+    #
+    # This is the opposite of the intake path's answer to the same two
+    # faults, and deliberately so: there, the submission is a reporter's
+    # statutory communication and is receipted whatever this deployment
+    # does with it; here, the notice was already received and the
+    # 627.70131(1)(a) duty already discharged, so a reviewer's failed
+    # attempt at an internal action creates no record-keeping duty of its
+    # own.
+    Scenario Outline: Whether a resolution is judged at all depends on whether this deployment can read its own configuration
+      Given the notice reports a policy number of "absent"
+      And the notice is submitted for intake
+      And <deployment_fault>
+      When the reviewer supplies a policy number of "HO-7654321"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is <response>
+      And the response names the error <error_code>
+      And the notice's state is <state>
+      And the notice's audit trail <audit_effect>
+      And the notice's records <records>
+
+      Examples:
+        | deployment_fault                                        | response | error_code                 | state   | audit_effect                            | records                                              |
+        | this deployment is configured correctly                 | 200      | none                       | TRIAGED | gains a third entry, for the resolution | are two, the submission and the resolution           |
+        | the carrier's rules entry cannot be resolved            | 500      | CARRIER_RULES_UNRESOLVABLE | PENDED  | still holds only its two intake entries | are one, the submission it was created from          |
+        | the jurisdiction map entry names no usable timezone     | 500      | JURISDICTION_MAP_UNUSABLE  | PENDED  | still holds only its two intake entries | are one, the submission it was created from          |
 
   Rule: The notice moves only when the resolution clears every blocker, and either way the attempt is audited
 

@@ -20,6 +20,15 @@ is its own table, reachable from none of the types these functions accept, so
 there is no field for an allow-list to have to exclude and no future field on
 `notices` that could carry one in by accident.
 
+**Item 5i put `error` on both response surfaces, and this file is where that was
+decided rather than defaulted.** Adding the field to the two response types made
+this module's test fail until someone chose, which is the mechanism working. It
+is named because both specs assert the caller reads it: one status carries both
+deployment faults, so a client that could not read the code from the body would
+have no way to tell them apart at all. It carries no SIU detail and cannot -
+`faults.py`'s enumeration is closed, two members, both about this deployment's
+configuration.
+
 **Item 5g put a notice column on this surface and deliberately kept a second one
 off it.** `jurisdiction_marking` is here because a marking nobody can read is not
 a marking: the notice is "still received, still triaged, and visible as needing a
@@ -46,8 +55,11 @@ from claimgate.shell.records import AuditEntry
 
 SUBMIT_NOTICE_RESPONSE_FIELDS = (
     "status", "notice_id", "state", "blockers", "severity", "queue", "received_at", "reference",
+    "error",
 )
-RESOLUTION_RESPONSE_FIELDS = ("status", "notice_id", "state", "blockers", "severity", "queue")
+RESOLUTION_RESPONSE_FIELDS = (
+    "status", "notice_id", "state", "blockers", "severity", "queue", "error",
+)
 NOTICE_VIEW_FIELDS = (
     "notice_id", "state", "blockers", "severity", "queue", "jurisdiction_marking",
 )

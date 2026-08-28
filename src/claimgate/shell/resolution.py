@@ -11,14 +11,18 @@ actually arrived. There is still no rejected, invalid, or discarded state
 (CLAUDE.md) - a resolution that does not clear the pend leaves the notice
 exactly where it was, and is answered rather than discarded.
 
-**The order the three refusals run in, and why.** The reviewer's identity is
-checked first, before the notice is read at all: a caller who has not said who
-they are does not get to learn a notice's state, and decision 4 makes that body
-schema-invalid - 400, nothing persisted, operational log only. The state check
-is second and needs no transaction of its own, because decision 3 says the 409
-persists nothing: there is no pend, no request for information, and nothing for
-a reviewer's content to be the answer to. Everything after that is one
-transaction.
+**The order the four refusals run in, and why.** A body this endpoint cannot
+read is refused first, before the notice is read at all - an identity nobody
+supplied or a loss date that is not a date, both 400 with nothing persisted
+(decisions 4 and (e)); a caller who has not said who they are does not get to
+learn a notice's state. An id nobody has is 404, refused before any state is
+examined (decision (d)): there is no pend to release and nothing for the content
+to be the answer to. A notice that exists and is not pended is the 409, which
+decision 3 says persists nothing. Last is item 5i's 500, no refusal of anything
+the reviewer sent: this deployment could not read its own configuration, so the
+whole transaction rolls back and the notice keeps the records and the trail it
+had (ruling 1). Nothing asserts the order directly - each rule asserts its own
+answer, and reordering them would answer one case with another's status.
 
 **What the transaction does, in order.** The reviewer's payload record is
 appended to the notice's arrival sequence first, so the current view it is
@@ -63,14 +67,17 @@ downstream legal determination and no phase-2 code goes near it.
 Duplicate-candidate detection is untouched; and there is no
 idempotency key on this endpoint - PHASE2_DESIGN.md scopes the header to
 POST /notices, so a network retry of a resolution that already succeeded meets a
-TRIAGED notice and is answered by the 409 below.
+TRIAGED notice and is answered by the 409 below. No NotImplementedError remains
+anywhere in this module: item 5i ratified the answer to every state that had
+one.
 """
 
 from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any
 
 from claimgate.shell import rules, siu
+from claimgate.shell.faults import DeploymentFaultError
 from claimgate.shell.messages import (
     Decision,
     Judgement,
@@ -93,25 +100,57 @@ def resolve_notice(
     supplied: Mapping[str, Any],
     note: str | None = None,
 ) -> ResolutionResponse:
-    if actor_id is None or not actor_id.strip():
+    reviewer = _reviewer_of(actor_id, supplied)
+    if reviewer is None:
         return ResolutionResponse(status=400)
     resolution = Resolution(
-        store=store, notice_id=notice_id, actor_id=actor_id, resolved_at=resolved_at,
+        store=store, notice_id=notice_id, actor_id=reviewer, resolved_at=resolved_at,
         jurisdiction_reference=jurisdiction_reference, carrier_rules_source=carrier_rules_source,
         supplied=supplied, note=note,
     )
-    with store.submission():
-        record = _require_notice(store, notice_id)
-        if record.state != "PENDED":
-            return _conflict(record)
-        return _evaluate(resolution, record)
+    try:
+        with store.submission():
+            return _answer(resolution)
+    except DeploymentFaultError as fault:
+        return ResolutionResponse(status=500, error=fault.code)
+
+
+def _reviewer_of(actor_id: str | None, supplied: Mapping[str, Any]) -> str | None:
+    """The reviewer this body names, or None where the endpoint cannot read the
+    body at all - which is the same 400 either way, before the notice is read.
+
+    Two halves, both about the body. The reviewer's identity is required and
+    caller-asserted (decision 4). A supplied loss date that is not a date at all
+    is the same schema-invalid refusal (decision (e), 2026-08-25), checked here
+    rather than deeper in: intake answers that input the same way at its own
+    boundary, so no merged view can ever carry one and a parse over the merged
+    view would sit on an input that cannot reach it."""
+    if actor_id is None or not actor_id.strip():
+        return None
+    if rules.parse_loss_date(supplied.get("loss_date")).value == "UNPARSEABLE":
+        return None
+    return actor_id
+
+
+def _answer(resolution: Resolution) -> ResolutionResponse:
+    """The three answers a notice-shaped question has, in the order their own
+    reasons force: an id nobody has is refused before any state is examined, and
+    only a notice that exists and is not pended reaches the 409."""
+    record = resolution.store.get_notice(resolution.notice_id)
+    if record is None:
+        return ResolutionResponse(status=404)
+    if record.state != "PENDED":
+        return _conflict(record)
+    return _evaluate(resolution, record)
 
 
 def _conflict(record: NoticeRecord) -> ResolutionResponse:
     """409 with the notice's current state in the body. A notice at rest in
-    RECEIVED gets this same answer and no row of its own (decision 5); its
-    scenario is item 5i's, the item that makes that state reachable by a
-    specified path."""
+    RECEIVED would get this same answer and no row of its own (decision 5), but
+    nothing in phase 2 produces that state: both of item 5i's deployment faults
+    are answered before a notice exists, so the premise that deferred a scenario
+    here was false and no scenario is owed (ASSUMPTIONS.md, item 5i, ruling
+    5)."""
     return ResolutionResponse(
         status=409, notice_id=record.notice_id, state=record.state,
         blockers=record.blockers, severity=record.severity, queue=record.queue,
@@ -174,7 +213,10 @@ def _judge(resolution: Resolution, record: NoticeRecord) -> Judgement:
     outcome because the SIU evaluation this transaction may owe has to use these
     and not a second reading of any of them."""
     view = merged_view(resolution.store, record.notice_id)
-    candidate = rules.build_candidate(view, _loss_date_of(view))
+    # The parse cannot fail here and there is no branch for it: every arrival in
+    # the sequence cleared a schema boundary that answers an unparseable loss
+    # date 400, so the merged view carries a date or states none (decision (e)).
+    candidate = rules.build_candidate(view, rules.parse_loss_date(view.loss_date).loss_date)
     carrier_rules = rules.resolve_rules(record.carrier_code, resolution.carrier_rules_source)
     jurisdiction = rules.resolve_jurisdiction(
         view.property_state, resolution.jurisdiction_reference
@@ -206,26 +248,3 @@ def notice_records(store: NoticeStore, notice_id: str) -> tuple[PayloadRecord, .
     return store.get_notice_payloads(notice_id)
 
 
-def _require_notice(store: NoticeStore, notice_id: str) -> NoticeRecord:
-    record = store.get_notice(notice_id)
-    if record is None:
-        raise NotImplementedError(
-            "a resolution naming a notice this deployment does not have has no "
-            "status code in PHASE2_DESIGN.md's closed table - routing an "
-            "unknown identifier belongs to the HTTP layer, which does not exist"
-        )
-    return record
-
-
-def _loss_date_of(view: NoticeFields) -> date | None:
-    """None where the merged view states no loss date, which is a blocker the
-    validation raises and not this endpoint's refusal (item 5h). Only a value
-    that is not a date at all is still undecided here."""
-    parsed = rules.parse_loss_date(view.loss_date)
-    if parsed.value == "UNPARSEABLE":
-        raise NotImplementedError(
-            "a resolution carrying a loss date that is not a date at all has no "
-            "decided outcome - intake answers it 400 at the schema boundary and "
-            "no decision extends that row to this endpoint"
-        )
-    return parsed.loss_date

@@ -19,6 +19,10 @@ replay reports the state the notice is in now. The reading itself is in
 support.py, because siu_separation.feature needs the same one and overrides
 conftest.py for the same reason.
 
+**The identifier a resolution names is separate from the notice the scenario
+created.** Item 5i's 404 row addresses one nobody has and then asserts that the
+real notice is untouched, so the two cannot be the same context key.
+
 **Which arrival a record came from is checked against what arrived**, not
 against the position the step just used to select the record. A step that read
 the origin off arrival_index would be asserting the index it indexed by. Each
@@ -54,6 +58,21 @@ _RECORD_SETS = {
 @when("the reviewer supplies no field values")
 def supply_nothing(context: dict[str, Any]) -> None:
     context["supplied"] = {}
+
+
+@when(parsers.re(r"^the reviewer's resolution names (?P<phrase>.*)$"))
+def name_the_notice(context: dict[str, Any], phrase: str) -> None:
+    """Which identifier the resolution is addressed to, kept apart from
+    context["notice_id"], which stays the notice the scenario actually created.
+    That separation is the point of the rule: the row that names an identifier
+    nobody has still asserts the real notice's state, trail and records, and a
+    step that rewrote notice_id would be asserting them about nothing."""
+    if phrase == "the notice that was created":
+        context["named_notice"] = context["notice_id"]
+    elif phrase == "an identifier nobody has":
+        context["named_notice"] = "no-such-notice"
+    else:
+        raise ValueError(f"unrecognized named notice: {phrase!r}")
 
 
 @given(parsers.re(r"^the notice's state is (?P<value>.*)$"))

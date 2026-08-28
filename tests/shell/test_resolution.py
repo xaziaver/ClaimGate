@@ -7,7 +7,8 @@ at all (docs/harness-findings.md, mutmut's source_paths), so what is here and in
 the acceptance suite is the whole of the protection for this module.
 
 What only these can assert: that a refusal's three writes commit or fail
-together, that the two refusals before the transaction write nothing at all,
+together, that a deployment fault rolls the reviewer's payload record back with
+everything else, that the refusals before the transaction write nothing at all,
 that a resolution never moves the pend instant, and that resolved_at is set by
 an application and by nothing else. That last one was checked against the
 acceptance suite before it was written here - stamping resolved_at on refusals
@@ -18,6 +19,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from claimgate.shell.faults import CARRIER_RULES_UNRESOLVABLE, JURISDICTION_MAP_UNUSABLE
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.resolution import resolve_notice
 from claimgate.shell.store import NoticeStore
@@ -148,32 +150,74 @@ def test_every_resolution_entry_records_its_reviewer_as_a_user_and_unverified(
     assert (entry.from_state, entry.to_state) == ("PENDED", "TRIAGED")
 
 
-def test_a_resolution_naming_a_notice_this_deployment_does_not_have_raises(
+def test_a_resolution_naming_a_notice_this_deployment_does_not_have_writes_nothing(
     store: NoticeStore
 ) -> None:
-    # No status code exists for it in PHASE2_DESIGN.md's closed table, so
-    # inventing one here would be defaulting a rule nobody approved.
-    with pytest.raises(NotImplementedError, match="unknown identifier"):
-        resolve_notice(
-            store,
-            "no-such-notice",
-            actor_id=DEFAULT_REVIEWER,
-            resolved_at=DEFAULT_RESOLVED_AT,
-            jurisdiction_reference=JURISDICTIONS,
-            carrier_rules_source={"AAAA": VALID_RULES},
-            supplied={},
-        )
+    # Decision (d), ratified 2026-08-25: 404, nothing persisted. The scenario
+    # asserts the answer; what only this can assert is that the store is
+    # untouched even of a payload record, since there is no notice to hang one
+    # on and the endpoint never got past the lookup.
+    response = resolve_notice(
+        store,
+        "no-such-notice",
+        actor_id=DEFAULT_REVIEWER,
+        resolved_at=DEFAULT_RESOLVED_AT,
+        jurisdiction_reference=JURISDICTIONS,
+        carrier_rules_source={"AAAA": VALID_RULES},
+        supplied={},
+    )
+
+    assert response.status == 404
+    assert response.state is None
+    assert store.list_payloads() == ()
 
 
-def test_a_resolution_carrying_a_loss_date_that_is_not_a_date_raises(
-    submit: Submitter, resolve: Resolver
+def test_a_resolution_carrying_a_loss_date_that_is_not_a_date_persists_nothing(
+    store: NoticeStore, submit: Submitter, resolve: Resolver
 ) -> None:
-    # Intake answers this 400 at the schema boundary; no decision extends that
-    # row to this endpoint, so it escalates rather than picking one.
+    # Decision (e): the same schema-invalid 400 intake gives the same input,
+    # checked beside the reviewer's identity and before the notice is read - so
+    # the merged view can never carry one and _judge needs no branch for it.
     notice_id = _pend(submit)
 
-    with pytest.raises(NotImplementedError, match="not a date at all"):
-        resolve(notice_id, supplied={"loss_date": "not-a-date"})
+    response = resolve(notice_id, supplied={"loss_date": "not-a-date"})
+
+    assert response.status == 400
+    assert response.state is None
+    assert len(store.get_notice_payloads(notice_id)) == 1
+    assert len(store.get_audit_trail(notice_id)) == 2
+    assert _stored(store, notice_id).state == "PENDED"
+
+
+@pytest.mark.parametrize(
+    ("fault", "expected_code"),
+    [
+        ({"carrier_rules_source": {}}, CARRIER_RULES_UNRESOLVABLE),
+        ({"jurisdiction_reference": {"FL": {}}}, JURISDICTION_MAP_UNUSABLE),
+        ({"jurisdiction_reference": {"FL": {"timezone": "Not/AZone"}}}, JURISDICTION_MAP_UNUSABLE),
+    ],
+)
+def test_a_deployment_fault_rolls_back_the_whole_attempt(
+    store: NoticeStore, submit: Submitter, resolve: Resolver,
+    fault: dict[str, object], expected_code: str,
+) -> None:
+    """Item 5i, ruling 1: 500 and nothing recorded. The rollback is the claim
+    that matters and it is not visible from the response - the reviewer's
+    payload record is appended before _judge resolves any configuration, so an
+    implementation that answered the fault outside the transaction would leave
+    that record behind and the next resolution would be judged over data no rule
+    ever ran on. Three faults, one answer: the third reaches resolve_today
+    rather than the selection and no scenario row can carry it."""
+    notice_id = _pend(submit)
+
+    response = resolve(notice_id, supplied=_CLEARS_THE_PEND, **fault)
+
+    assert response.status == 500
+    assert response.error == expected_code
+    assert response.state is None
+    assert len(store.get_notice_payloads(notice_id)) == 1
+    assert len(store.get_audit_trail(notice_id)) == 2
+    assert _stored(store, notice_id).state == "PENDED"
 
 
 def _pend(submit: Submitter) -> str:

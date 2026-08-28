@@ -144,9 +144,15 @@ class NoticeStore:
         )
 
     def refuse_payload(
-        self, carrier_code: str, raw_payload: Mapping[str, Any], received_at: datetime
+        self, carrier_code: str, raw_payload: Mapping[str, Any], received_at: datetime,
+        error_code: str | None = None,
     ) -> str:
-        return payloads.append(self._connection, carrier_code, raw_payload, received_at, None)
+        """The record a submission that created no notice still leaves behind.
+        error_code is set only where this deployment's own configuration was the
+        reason (item 5i); a refusal about what arrived leaves it null."""
+        return payloads.append(
+            self._connection, carrier_code, raw_payload, received_at, None, error_code
+        )
 
     def append_notice_payload(
         self, notice_id: str, carrier_code: str,

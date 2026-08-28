@@ -20,18 +20,20 @@ nothing here or downstream reads either key to choose behaviour. If the two ever
 stop matching structurally, one of them has become a branch wearing a lookup's
 name.
 
-Three states raise rather than invent a status code. A carrier the identity
-reference recognizes but whose rules entry cannot be resolved is item 5i's, and
-that raise is unchanged. The other two are item 5g's raise rebuilt rather than
-removed: the parameter that caused it is gone - no reporter supplies a timezone
-name any more - and what is left is this deployment's own map, whose entry can
-name no timezone at all or name one this system does not recognize. Both are
+**Three states raise a typed deployment fault** (item 5i, ratified 2026-08-28):
+a carrier the identity reference recognizes but whose rules entry cannot be
+resolved, and this deployment's own jurisdiction map holding an entry that names
+no timezone at all or names one this system does not recognize. All three are
 defects in our own configuration rather than in anything a reporter sent, so
-both are item 5i's class of problem rather than this item's ("A carrier this
-deployment administers but cannot configure is our defect, not the reporter's").
-Marking such a notice jurisdiction_unsupported would answer a misconfiguration
-by telling the reporter their state is not supported, which is false. No
-scenario reaches any of the three.
+none of them is a 4xx ("A carrier this deployment administers but cannot
+configure is our defect, not the reporter's"). Marking such a notice
+jurisdiction_unsupported would answer a misconfiguration by telling the reporter
+their state is not supported, which is false.
+
+The raise is here and the answer is not, because the answer differs by endpoint
+and the fault does not: intake receipts the submission anyway and a resolution
+attempt leaves no trace. faults.py carries the codes and the reasoning; the two
+endpoints catch and answer. Nothing here knows a status code.
 """
 
 from collections.abc import Mapping
@@ -48,6 +50,11 @@ from claimgate.domain.jurisdiction import (
 from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction
 from claimgate.domain.triage import triage_and_route
 from claimgate.domain.validation import validate
+from claimgate.shell.faults import (
+    CARRIER_RULES_UNRESOLVABLE,
+    JURISDICTION_MAP_UNUSABLE,
+    DeploymentFaultError,
+)
 from claimgate.shell.messages import Decision, NoticeFields
 
 LossDateParseValue = Literal["PARSED", "ABSENT", "UNPARSEABLE"]
@@ -100,13 +107,12 @@ def build_candidate(fields: NoticeFields, loss_date: date | None) -> Candidate:
 def resolve_rules(
     carrier_code: str, rules_source: Mapping[str, Mapping[str, Any]]
 ) -> CarrierRules:
+    """A carrier this deployment claims to administer whose rules will not load
+    is our defect, not the reporter's: the fault says which, and the endpoint
+    that catches it decides what is kept."""
     result = resolve_carrier_configuration(carrier_code, rules_source)
     if result.rules is None:
-        raise NotImplementedError(
-            "carrier is identity-recognized but its rules entry could not be "
-            "resolved - the status code for this is item 5i's to decide, not "
-            "built here"
-        )
+        raise DeploymentFaultError(CARRIER_RULES_UNRESOLVABLE)
     return result.rules
 
 
@@ -116,14 +122,10 @@ def resolve_jurisdiction(
     """The jurisdiction the insured property's state selects, or None where this
     deployment has no entry for it. None is not an error: the notice proceeds,
     carrying the marking below for a person. An entry that exists and names no
-    timezone is a different fact and escalates - see the module docstring."""
+    timezone is a different fact and faults - see the module docstring."""
     result = select_jurisdiction(property_state, jurisdiction_reference)
     if result.value == "MALFORMED":
-        raise NotImplementedError(
-            "this deployment's jurisdiction map holds an entry naming no "
-            "timezone - our own misconfiguration, whose status code is item "
-            "5i's class of question and is not decided"
-        )
+        raise DeploymentFaultError(JURISDICTION_MAP_UNUSABLE)
     return result.jurisdiction
 
 
@@ -138,11 +140,7 @@ def resolve_today(instant: datetime, jurisdiction: Jurisdiction | None) -> date 
         return None
     result = resolve_jurisdiction_date(instant, jurisdiction.timezone)
     if result.resolved_date is None:
-        raise NotImplementedError(
-            "this deployment's jurisdiction map holds a timezone this system "
-            "does not recognize - our own misconfiguration, whose status code "
-            "is item 5i's class of question and is not decided"
-        )
+        raise DeploymentFaultError(JURISDICTION_MAP_UNUSABLE)
     return result.resolved_date
 
 

@@ -38,18 +38,23 @@ def append(
     content: Mapping[str, Any],
     received_at: datetime,
     notice_id: str | None,
+    error_code: str | None = None,
 ) -> str:
     """One immutable record at the next free position in its notice's sequence,
     returning the hash that references it. A refused submission has no notice to
     link to and takes position 0 unlinked - SQLite treats NULLs as distinct, so
-    UNIQUE (notice_id, arrival_index) does not collide them."""
+    UNIQUE (notice_id, arrival_index) does not collide them.
+
+    error_code names the deployment fault a submission was answered with, where
+    there was one (item 5i); it is metadata about the answer and never joins
+    content, which stays the verbatim payload the reference is hashed from."""
     reference = payload_reference(content)
     connection.execute(
         "INSERT INTO payload_records"
-        " (reference, content, carrier_code, received_at, notice_id, arrival_index)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
+        " (reference, content, carrier_code, received_at, notice_id, arrival_index, error_code)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?)",
         (reference, serialize_payload(content), carrier_code, received_at.isoformat(),
-         notice_id, _next_arrival_index(connection, notice_id)),
+         notice_id, _next_arrival_index(connection, notice_id), error_code),
     )
     return reference
 

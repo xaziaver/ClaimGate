@@ -63,10 +63,15 @@ class SubmitNoticeResponse:
     # original notice's receipt timestamp, which has to be readable somewhere
     # to be reported at all (PHASE2_DESIGN.md's Idempotency section).
     received_at: datetime | None = None
-    # Carried on the refusals that keep what arrived - the schema-invalid 400
-    # and the mis-keyed 409 - so the reporter and the carrier can name the same
-    # communication. Never on the unknown-carrier 400, which persists nothing.
+    # Carried on the refusals that keep what arrived - the schema-invalid 400,
+    # the mis-keyed 409 and item 5i's 500 - so the reporter and the carrier can
+    # name the same communication. Never on the unknown-carrier 400, which
+    # persists nothing.
     reference: str | None = None
+    # Which deployment fault a 500 is answering (faults.py). One status carries
+    # both faults and the code is the only thing that tells them apart, so a
+    # caller reads it from the body rather than inferring it from the status.
+    error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -143,7 +148,9 @@ class ResolutionResponse:
     and lets the status distinguish cleared from still-blocked
     (PHASE2_DESIGN.md). The 409 carries the notice's current state, because
     state is read from the body and never inferred from status. The 400 carries
-    nothing: the notice is not read at all, so there is nothing to report."""
+    nothing: the notice is not read at all, so there is nothing to report, and
+    the 404 and the 500 carry nothing about the notice for the same reason -
+    one was never found and the other was never judged."""
 
     status: int
     notice_id: str | None = None
@@ -151,6 +158,10 @@ class ResolutionResponse:
     blockers: tuple[ValidationBlocker, ...] = ()
     severity: str | None = None
     queue: str | None = None
+    # Which deployment fault a 500 is answering (faults.py), on the same
+    # reasoning as the intake response's: one status for both faults, told
+    # apart by code and never by status.
+    error: str | None = None
 
 
 @dataclass(frozen=True)

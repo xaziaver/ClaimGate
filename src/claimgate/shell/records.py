@@ -112,6 +112,10 @@ class PayloadRecord:
     arrival_index: int
     # None for a refused submission - there is no notice to link it to.
     notice_id: str | None = None
+    # Which deployment fault this submission was answered with, where it was
+    # one (item 5i). None everywhere else, including the 400 and the 409, whose
+    # refusals are about what arrived rather than about this deployment.
+    error_code: str | None = None
 
 
 def serialize_payload(raw_payload: Mapping[str, Any]) -> str:
@@ -191,6 +195,7 @@ def payload_from_row(row: sqlite3.Row) -> PayloadRecord:
         received_at=datetime.fromisoformat(row["received_at"]),
         arrival_index=row["arrival_index"],
         notice_id=row["notice_id"],
+        error_code=row["error_code"],
     )
 
 
