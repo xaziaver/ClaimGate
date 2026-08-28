@@ -2923,14 +2923,69 @@ supplying-a-missing-field rule — over a different field, and it cannot be expr
 `validation.feature` at all, which has no notice, no state and no endpoint in its vocabulary. If it
 is wanted stated explicitly it belongs in `resolution.feature`, which item 5i already reopens.
 
-**Next queue item: 5i**, read from this file's order rather than from memory — the numbered list runs
-5g, 5h, 5i, 5j, and 5i is the first entry below 5h. It is *The status code for a carrier present in
-the identity reference whose rules entry resolves `CARRIER_NOT_CONFIGURED` or malformed has no row in
-`PHASE2_DESIGN.md`'s closed status-code table*, and resolving it means deciding **all four** status
-codes its entry now carries rather than the original three — the fourth is item 5g's rebuilt raise in
-`shell/rules.py`. Its reading table row, verbatim: `PHASE2_DESIGN.md` — the status-code table;
-`ASSUMPTIONS.md` — "A carrier this deployment administers but cannot configure is our defect, not the
-reporter's". Not started.
+**Item 5i is drafted and awaiting approval, 2026-08-28.** Branch
+`reopening/5i-deployment-fault-status-codes`, tip `079a346`, pushed and a superset of `origin/main`.
+Two commits: the spec drafts (`321b3a2`), then the `RECEIVED` removal (`079a346`). **The next action
+is the human's — `gauntlet spec approve` on three files. Nothing else moves until then.** No `src/`
+change, no implementation, nothing merged.
+
+Three specs are amended and drafted-not-locked. The acceptance gate will report all three as changed
+since approved: **that is the guaranteed red state the spec-lock-before-implementation rule produces,
+not a defect, and its remedy names a command that is the human's.** Do not retry it.
+
+| file | locked | drafted | lines | mutants |
+|---|---|---|---|---|
+| `features/resolution.feature` | `e3c3a952c1b1` | `8a185f7f2e61` | 727 | 97 → 133 |
+| `features/notice_intake.feature` | `dc714fa3bf6f` | `e0b6da7a6ba2` | 348 | 36 → 51 |
+| `features/idempotency.feature` | `c66ea76c75a4` | `a366d5b00a93` | 262 | 40 → 46 |
+
+Measured with `mutation.mutants()` against `gauntlet.lock.json` at `380eaba`. Project total 756 →
+813. **No approval is disturbed on any of the three** — all three files carry zero mutant approvals,
+so the whole item is approval-free; `carrier_configuration.feature`'s two were measured against the
+placement candidate that was not chosen and are untouched.
+
+**All six escalations are ruled — advisor-recommended, human-ratified, 2026-08-28, recorded in full
+with their grounds in `ASSUMPTIONS.md`, "Item 5i decisions".** In short: both deployment faults are
+`500`; the error-code enumeration `CARRIER_RULES_UNRESOLVABLE` / `JURISDICTION_MAP_UNUSABLE` is
+ratified and closed; the jurisdiction fault is not degraded to the `jurisdiction_unsupported`
+marking; the advisor's "in body and audit" instruction is corrected against the schema — the audit
+trail is notice-scoped and no notice exists, so the response body and the receipted payload record
+carry the code; the `RECEIVED` row is removed; and `RULESET_VERSION` does not bump, because the codes
+are shell vocabulary — **if implementation finds otherwise, stop and escalate.**
+
+**The `RECEIVED` row is removed, and the premise that asked for it is false.** Item 5e's decision 5
+deferred a `RECEIVED`-at-rest scenario to this item on the premise that this item makes the state
+reachable by a specified path. Measured from the code on 2026-08-28: `_first_submission` resolves the
+carrier's rules and the jurisdiction *before* `_create_notice` writes the receipt, so both faults are
+answered before any notice exists and neither leaves one behind. Item 5i confirms the state is
+unreachable rather than making it reachable. The `409` ruling itself stands and has no scenario
+anywhere; a durability or recovery item owns that state if it is ever specified. Decision 5 now
+carries a dated annotation saying so, and `resolution.feature`'s Rule 1 comment and header point 5
+are rewritten to the corrected premise rather than reverted, so the false claim does not survive in
+the file. **Do not re-add the row.**
+
+**Placement was decided on measured blast radius, not convenience**, and the measurement is kept here
+because it is recorded nowhere else. Both intake-path fault scenarios live in `notice_intake.feature`
+as one new rule with one scenario (+15 mutants). The alternatives measured: carrier fault in
+`notice_intake` plus the jurisdiction fault as a row in `jurisdiction_selection.feature`'s Rule 2
+(+10 and +4), and carrier fault in `carrier_configuration.feature` plus jurisdiction fault in
+`jurisdiction_selection.feature` (+10 and +4). Cost did not decide it — all three are within one
+mutant. Three other facts did: `notice_intake.feature` is the only file carrying the `intake creates
+the notice` / `a record of the submission is kept` vocabulary both scenarios need; its Rule 4 already
+names this case in the file as item 5i's; and one scenario keeps one equivalence argument under one
+approval reason, where a split would cost two reasons for one argument and leave neither file able to
+state the non-degradation contrast.
+
+**What remains before item 5i closes:** approval of the three specs, then implementation on the same
+branch — removing all four `NotImplementedError` raises (three in `shell/rules.py`, one in
+`shell/resolution.py`), building the two `500` answers and the error codes, and correcting three
+stale source messages recorded in `ASSUMPTIONS.md`'s item 5i entry: `_loss_date_of` and
+`_require_notice` both claim no decision covers what decisions (e) and (d) of 2026-08-25 decided, and
+`_conflict`'s docstring repeats the false `RECEIVED` premise. Spec lock and implementation stay
+separate commits, in that order.
+
+**Item 5i's numbered entry above still reads as not started and is not amended**; this status section
+is the authority, per the convention recorded under item 5g.
 
 **Item 5j is unblocked and is not next.** Its only sequencing precondition was item 5h's
 implementation, which is merged, and it is independent of 5i, so the order between the two is a free
