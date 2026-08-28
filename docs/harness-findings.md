@@ -1433,6 +1433,28 @@ a category. This item's shell-layer tests moved to a sibling `tests/shell/` dire
 was lost by moving them, and mutmut's internal `tests/unit/` selection stopped choking on an import
 it was never going to reach anyway.
 
+### The code-mutation killed count is inert for a shell-only item, and that is a useful signal rather than a gap
+
+A corollary of the scope above, worth stating separately because it looks like a
+missing result rather than a correct one. `source_paths = ["src/claimgate/domain/"]`
+means the mutation gate's `killed` figure counts mutants of the domain layer and
+nothing else. An item whose whole implementation is shell-side therefore finishes
+with the count exactly where it started, even though it added a module, two
+endpoint answers and a database column.
+
+Measured on item 5i, 2026-08-28: `422 killed` before the implementation commit and
+`422 killed` after it, score 100.0% both times, against a change of 493 added lines
+across sixteen files. The item's brief predicted the figure would rise; it did not,
+and the reason is the same one the item's own ruling 6 gives for not bumping
+`RULESET_VERSION` — the two new error codes are shell vocabulary and no rule under
+`domain/` computes either.
+
+**Read a flat count as evidence, not as a null result.** For an item ruled to be
+shell-only, a *risen* count is the finding: it would mean something landed in
+`domain/` that the ruling said would not. Predicting the direction before the run
+and comparing is what makes the number say anything at all; the count alone,
+unanchored, says nothing either way.
+
 ### A mutant killed by a step definition's own parse error is scored identically to one killed by an assertion
 
 The mutation gate's kill/survive verdict comes from the test run's exit status, not from which line
