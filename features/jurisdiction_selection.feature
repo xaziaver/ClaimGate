@@ -173,20 +173,44 @@ Feature: Jurisdiction selection
     # place that would block, and an unsupported jurisdiction must not block.
     # An absent blocker would then be the only trace, and an absent blocker is
     # exactly what "the loss date was checked and is not ahead of today" looks
-    # like. Both rows below report a loss date past the Background's arrival
-    # instant, so the two rows differ in nothing but where the property is.
+    # like. The first two rows report a loss date past the Background's arrival
+    # instant and differ in nothing but where the property is.
+    #
+    # DRAFTED FOR REVIEW, item 5j, 2026-08-28. Not ratified. The third row is
+    # the both-absent case - no loss date and no supported jurisdiction - and
+    # which reason it names is the whole of what it is for. NO_LOSS_DATE
+    # outranks NO_JURISDICTION_DATE (ASSUMPTIONS.md, "Item 5h, three
+    # decisions", decision 2, ratified 2026-08-27): the loss date is this
+    # determination's subject and today only the yardstick it is held against,
+    # so the missing subject is the more basic absence. Nothing states that
+    # ordering today. validation.feature's rows always have a today, so its
+    # absent-loss-date row cannot separate the two reasons, and that file says
+    # so and leaves the row to this one; a reordering of the two checks
+    # therefore fails no test, and mutation does not reorder statements. That
+    # is item 4k's shape, and closing it is why this row exists.
+    #
+    # The loss date moves out of the fixed Given and into a column so that the
+    # absence is a value the specification carries rather than a sentence about
+    # it. A fixed Given above an Examples table is never mutated, so stating
+    # the row's subject there would have left it asserted by nothing.
+    #
+    # Both of the row's other facts are stated rather than inferred: an absent
+    # loss date is a blocker in its own right, so the state and blocker columns
+    # move with the determination, and the second row remains what shows that
+    # an unsupported jurisdiction on its own does not block.
     Scenario Outline: A future-dated loss on a notice with no supported jurisdiction is recorded as not evaluated rather than as not future
       Given the insured property is in "<property_state>"
-      And the notice reports a loss date of "2026-09-01"
+      And the notice reports a loss date of "<loss_date>"
       When the notice is submitted for intake
       Then the notice's state is <state>
       And the notice's blockers are <blockers>
       And the future-dated-loss determination recorded for the notice is <determination>
 
       Examples:
-        | property_state | state   | blockers                      | determination                      |
-        | FL             | PENDED  | LOSS_DATE_IN_FUTURE:loss_date | TRUE                               |
-        | GA             | TRIAGED |                               | NOT_EVALUATED:NO_JURISDICTION_DATE |
+        | property_state | loss_date  | state   | blockers                         | determination                      |
+        | FL             | 2026-09-01 | PENDED  | LOSS_DATE_IN_FUTURE:loss_date    | TRUE                               |
+        | GA             | 2026-09-01 | TRIAGED |                                  | NOT_EVALUATED:NO_JURISDICTION_DATE |
+        | GA             | absent     | PENDED  | MISSING_REQUIRED_FIELD:loss_date | NOT_EVALUATED:NO_LOSS_DATE         |
 
     # The same gap reaching the SIU trail. Item 5f requires an evaluation on
     # every transition into TRIAGED, and an unsupported-jurisdiction notice
