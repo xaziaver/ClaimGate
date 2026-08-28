@@ -28,6 +28,17 @@ Two design statements become enforced facts rather than conventions:
   records - which have no notice and no sequence - are exempt from it, which is
   the intended reading.
 
+`payload_records.error_code` is item 5i (ASSUMPTIONS.md, "Item 5i decisions",
+ruling 4). A deployment fault is answered before any notice exists, and
+`audit_entries.notice_id` is `NOT NULL REFERENCES notices (notice_id)`, so no
+audit entry can carry the fault - the receipted payload record is the only thing
+left that outlives the request, and it names which fault it was. Nullable
+because every other record has no fault to name: it is null on the accepted
+path, on the schema-invalid 400 and on the mis-keyed 409 alike. It is metadata
+about how the submission was answered and sits beside `carrier_code` and
+`received_at`, never inside `content` - the verbatim payload and the hash over
+it stay exactly what arrived.
+
 `notices.jurisdiction_marking`, `notices.future_dated_loss` and
 `notices.future_dated_loss_reason` are item 5g. They sit on the notice row and
 not in a trail of their own because they are the notice's *current* answer,
@@ -119,6 +130,7 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
         received_at TEXT NOT NULL,
         notice_id TEXT REFERENCES notices (notice_id),
         arrival_index INTEGER NOT NULL,
+        error_code TEXT,
         UNIQUE (notice_id, arrival_index)
     ) STRICT
     """,

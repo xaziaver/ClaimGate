@@ -47,6 +47,10 @@ _SUPPLIED_FIELDS = {
     "notice type": "notice_type",
     "loss type": "loss_type",
     "property state": "property_state",
+    # A reviewer may correct the loss date like any other notice-content field
+    # (item 5e decision 1). It joined this map at item 5i, whose third row in
+    # resolution.feature Rule 2 supplies one that is not a date at all.
+    "loss date": "loss_date",
 }
 
 
@@ -207,8 +211,8 @@ def submit(context: dict[str, Any]) -> None:
         carrier_code=context["carrier_code"],
         submitted_at=context["submitted_at"],
         carrier_identity_reference=CARRIER_IDENTITY_REFERENCE,
-        jurisdiction_reference=JURISDICTION_REFERENCE,
-        carrier_rules_source=context["carrier_rules_source"],
+        jurisdiction_reference=jurisdiction_map(context),
+        carrier_rules_source=rules_source(context),
         fields=NoticeFields(**context["fields"]),
         idempotency_key=context["idempotency_key"],
     )
@@ -222,6 +226,66 @@ def submit(context: dict[str, Any]) -> None:
 @given("that submission is remembered as the original")
 def remember_the_original(context: dict[str, Any]) -> None:
     context["original"] = context["response"]
+
+
+_CARRIER_RULES_FAULT = "carrier rules"
+_JURISDICTION_MAP_FAULT = "jurisdiction map"
+
+
+# The three fault phrases are character-identical in notice_intake.feature,
+# resolution.feature and idempotency.feature, so each binds one definition here
+# (docs/harness-findings.md, "Two locked specs sharing a Background can only
+# share step definitions through conftest.py"). They record which fault is in
+# force rather than corrupting the configuration in place, because
+# idempotency.feature sets one and then clears it mid-scenario, and because
+# resolution.feature sets one only after intake has already run cleanly.
+@given("this deployment is configured correctly")
+@when("this deployment is configured correctly")
+def clear_deployment_fault(context: dict[str, Any]) -> None:
+    context.pop("deployment_fault", None)
+
+
+@given("the carrier's rules entry cannot be resolved")
+def set_carrier_rules_fault(context: dict[str, Any]) -> None:
+    context["deployment_fault"] = _CARRIER_RULES_FAULT
+
+
+@given("the jurisdiction map entry names no usable timezone")
+def set_jurisdiction_map_fault(context: dict[str, Any]) -> None:
+    context["deployment_fault"] = _JURISDICTION_MAP_FAULT
+
+
+def rules_source(context: dict[str, Any]) -> dict[str, Any]:
+    """The per-carrier rules this call is made with. Under the carrier fault the
+    administered carrier's own entry is left present but unresolvable - a
+    carrier this deployment claims to administer whose rules will not load,
+    which is the case notice_intake.feature's Rule 4 sets aside for Rule 5, and
+    a different fact from the carrier being absent from the identity
+    reference."""
+    source = context["carrier_rules_source"]
+    if context.get("deployment_fault") != _CARRIER_RULES_FAULT:
+        return dict(source)
+    carrier = context["carrier_code"]
+    return {**source, carrier: {**source[carrier], "window_days": "sixty"}}
+
+
+def jurisdiction_map(context: dict[str, Any]) -> dict[str, Any]:
+    """The jurisdiction map this call is made with. Under the jurisdiction fault
+    every entry exists and names no timezone, which is one of the two ways this
+    deployment's own map can be unusable; the other - an entry naming a timezone
+    this system cannot resolve - reaches the same code and is covered in
+    tests/shell/, since one scenario row can only carry one of them."""
+    if context.get("deployment_fault") != _JURISDICTION_MAP_FAULT:
+        return dict(JURISDICTION_REFERENCE)
+    return {code: {} for code in JURISDICTION_REFERENCE}
+
+
+# Stated in the same words by notice_intake.feature and resolution.feature: one
+# status carries both faults and the code is the only thing that tells them
+# apart, so both files assert it and neither can reword it.
+@then(parsers.re(r"^the response names the error (?P<code>.*)$"))
+def check_error_code(context: dict[str, Any], code: str) -> None:
+    assert context["response"].error == (None if code == "none" else code)
 
 
 @given(parsers.parse('the reviewer is identified as "{value}"'))
@@ -251,11 +315,11 @@ def submit_resolution(context: dict[str, Any], instant: str) -> None:
     context.setdefault("resolutions", []).append(supplied)
     context["response"] = resolve_notice(
         context["store"],
-        context["notice_id"],
+        context.get("named_notice", context["notice_id"]),
         actor_id=context["reviewer"],
         resolved_at=parse_instant(instant),
-        jurisdiction_reference=JURISDICTION_REFERENCE,
-        carrier_rules_source=context["carrier_rules_source"],
+        jurisdiction_reference=jurisdiction_map(context),
+        carrier_rules_source=rules_source(context),
         supplied=supplied,
     )
 

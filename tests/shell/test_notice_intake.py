@@ -1,10 +1,13 @@
 """Unit tests for claimgate.shell.notice_intake.
 
-Covers what the acceptance suite deliberately does not reach: the two
-scope-wall raises (items 5g, 5i), the shell's half of item 5h, the
-payload record no scenario can name, the columns item 5g writes - a spec names
-no table - and the one receipt clock, since no scenario asserts a literal
-timestamp, for the reason notice_intake.feature's own Rule 2 comment gives.
+Covers what the acceptance suite deliberately does not reach: the half of item
+5i's jurisdiction fault no scenario row can carry - one row states one fault,
+and an entry naming an unresolvable timezone is a different input from one
+naming none - the error code on the stored payload record, which is a column
+and so cannot be spec text, the shell's half of item 5h, the payload record no
+scenario can name, the columns item 5g writes, and the one receipt clock, since
+no scenario asserts a literal timestamp, for the reason notice_intake.feature's
+own Rule 2 comment gives.
 """
 
 from dataclasses import asdict, replace
@@ -14,8 +17,10 @@ import pytest
 from claimgate.domain import validation
 from claimgate.domain.jurisdiction import JURISDICTION_UNSUPPORTED
 from claimgate.domain.models import FutureDatedLossResult
+from claimgate.shell.faults import CARRIER_RULES_UNRESOLVABLE, JURISDICTION_MAP_UNUSABLE
 from claimgate.shell.messages import NoticeFields
 from claimgate.shell.notice_intake import get_notice
+from claimgate.shell.records import PayloadRecord
 from claimgate.shell.records import payload_reference
 from claimgate.shell.store import NoticeStore
 from tests.shell.support import (
@@ -53,8 +58,11 @@ def test_an_unparseable_loss_date_is_refused_with_the_payload_kept(
     assert response.status == 400
     assert response.notice_id is None
     assert response.reference is not None
-    assert len(store.list_payloads()) == 1
     assert store.count_notices() == 0
+    # No error code: this refusal is about what arrived, not about this
+    # deployment, and the column exists to tell those apart (item 5i).
+    assert _only_payload(store).error_code is None
+    assert response.error is None
 
 
 def test_a_schema_valid_notice_is_received_then_triaged(
@@ -147,22 +155,53 @@ def test_an_absent_loss_date_pends_the_notice_rather_than_refusing_it(
     ]
 
 
-def test_a_carrier_recognized_by_identity_but_unresolvable_rules_is_not_handled(
-    submit: Submitter,
+def test_a_carrier_recognized_by_identity_but_unresolvable_rules_is_receipted_as_our_defect(
+    store: NoticeStore, submit: Submitter
 ) -> None:
-    with pytest.raises(NotImplementedError):
-        submit(carrier_rules_source={})
+    # Item 5i, ruling 1. AAAA is in the identity reference, so this deployment
+    # claims to administer it and the 627.70131(1)(a) duty is real; what failed
+    # is our own configuration, and a 4xx would tell the reporter their notice
+    # was refused for it.
+    response = submit(carrier_rules_source={})
+
+    assert response.status == 500
+    assert response.error == CARRIER_RULES_UNRESOLVABLE
+    assert response.notice_id is None
+    assert store.count_notices() == 0
+    assert _only_payload(store).error_code == CARRIER_RULES_UNRESOLVABLE
 
 
-def test_a_jurisdiction_map_holding_an_unrecognized_timezone_is_not_handled(
-    submit: Submitter,
+def test_a_jurisdiction_map_holding_an_unrecognized_timezone_is_our_defect_too(
+    store: NoticeStore, submit: Submitter
 ) -> None:
-    # Item 5g's raise, rebuilt around the input that can still be wrong. No
-    # reporter supplies a timezone name any more, so what is left is this
-    # deployment's own map holding one this system cannot resolve - our defect,
-    # not the reporter's, and its status code is undecided (rules.py).
-    with pytest.raises(NotImplementedError):
-        submit(jurisdiction_reference={"FL": {"timezone": "Not/AZone"}})
+    # One of the two ways this deployment's own map is unusable, and the one no
+    # scenario reaches: an entry naming a timezone this system cannot resolve,
+    # caught in resolve_today rather than in the selection. Same code as the
+    # other half, because a caller's retry answer is the same for both.
+    response = submit(jurisdiction_reference={"FL": {"timezone": "Not/AZone"}})
+
+    assert response.status == 500
+    assert response.error == JURISDICTION_MAP_UNUSABLE
+    assert response.notice_id is None
+    assert store.count_notices() == 0
+    assert _only_payload(store).error_code == JURISDICTION_MAP_UNUSABLE
+
+
+def test_a_deployment_fault_remembers_no_key_so_an_identical_retry_creates_a_notice(
+    store: NoticeStore, submit: Submitter
+) -> None:
+    # The shell's half of features/idempotency.feature Rule 6's third row: the
+    # fault is answered above _create_notice, so remember_key never runs and the
+    # key names nothing. An implementation that remembered a key against the
+    # payload reference instead would replay this identical retry.
+    faulted = submit(carrier_rules_source={}, idempotency_key="K-600")
+    assert faulted.status == 500
+    assert store.find_key("AAAA", "K-600") is None
+
+    retried = submit(idempotency_key="K-600")
+
+    assert retried.status == 201
+    assert retried.notice_id is not None
 
 
 def test_a_property_state_with_no_entry_is_marked_and_never_blocked(
@@ -246,9 +285,21 @@ def test_a_bug_in_rule_evaluation_cannot_erase_the_receipt(
     assert remembered.notice_id == notice_id
 
 
-def test_a_jurisdiction_map_entry_naming_no_timezone_is_not_handled(submit: Submitter) -> None:
+def test_a_jurisdiction_map_entry_naming_no_timezone_is_answered_and_marks_nothing(
+    store: NoticeStore, submit: Submitter
+) -> None:
     # The other half of the same misconfiguration: an entry that exists and
-    # names nothing. It escalates rather than resolving to jurisdiction_
-    # unsupported, which would blame the reporter for our own map.
-    with pytest.raises(NotImplementedError):
-        submit(jurisdiction_reference={"FL": {}})
+    # names nothing. It is deliberately not degraded to jurisdiction_unsupported
+    # (item 5i, ruling 3), which would blame the reporter for our own map - and
+    # there is no notice to carry a marking anyway.
+    response = submit(jurisdiction_reference={"FL": {}})
+
+    assert response.status == 500
+    assert response.error == JURISDICTION_MAP_UNUSABLE
+    assert store.count_notices() == 0
+
+
+def _only_payload(store: NoticeStore) -> PayloadRecord:
+    payloads = store.list_payloads()
+    assert len(payloads) == 1
+    return payloads[0]

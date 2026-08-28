@@ -136,10 +136,11 @@ class JurisdictionSelectionResult:
     # UNSUPPORTED is the absence of an entry - not a refusal, since the notice
     # is still received and still triaged, and something about this
     # deployment's configuration rather than about the notice. MALFORMED is an
-    # entry that exists and cannot be read, which is our own defect and is
-    # escalated rather than marked (shell/rules.py); defaulting it to a
-    # timezone, or to UNSUPPORTED, would answer a misconfiguration by telling
-    # a reporter their state is not supported.
+    # entry that exists and cannot be read, which is our own defect: the shell
+    # answers it 500 with a deployment-fault code and marks nothing
+    # (shell/faults.py, item 5i). Defaulting it to a timezone, or to
+    # UNSUPPORTED, would answer a misconfiguration by telling a reporter their
+    # state is not supported.
     value: JurisdictionSelectionValue
     jurisdiction: Jurisdiction | None = None
 

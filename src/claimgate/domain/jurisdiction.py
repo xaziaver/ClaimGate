@@ -17,8 +17,8 @@ wearing a lookup's name.
 jurisdiction this deployment configured whose entry names no timezone is our own
 defect; resolving it to UNSUPPORTED would answer that misconfiguration by
 telling a reporter their state is not supported, which is false. The shell
-escalates it, exactly as it escalates a carrier whose rules entry cannot be
-resolved (QUEUE.md item 5i's class of question).
+answers it as a deployment fault, exactly as it answers a carrier whose rules
+entry cannot be resolved (item 5i, ratified 2026-08-28).
 
 **A property state with no entry is not a refusal.** There is no rejected,
 invalid or discarded state (CLAUDE.md), and the Fla. Stat. 627.70131(1)(a)
