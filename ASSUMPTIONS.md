@@ -1534,6 +1534,60 @@ or data. Nothing below was confirmed against a live book.
   code in the closed table, which decision (d) of the same date added. `_conflict`'s docstring
   carries the same false premise ruling 5 corrects.
 
+- **Item 5i implementation shapes — decided at the keyboard, 2026-08-28, none of them a rule.** The
+  six rulings above settled every behavioural question; these are the shapes the implementation had
+  to pick to realize them, recorded because each is a choice a later session would otherwise have to
+  re-derive from the diff, and two of them are visible on a surface.
+
+  1. **`payload_records.error_code`, a new nullable column, is how ruling 4's "the receipted payload
+     record carries the code" is realized.** The alternative readings were worse: the code cannot go
+     in `content`, which is the verbatim payload the reference is hashed from, and it cannot go on an
+     audit entry, which is the impossibility ruling 4 exists to correct. It sits beside
+     `carrier_code` and `received_at` as metadata about how the submission was answered, and is null
+     on the accepted path, on the schema-invalid 400 and on the mis-keyed 409 alike — those refusals
+     are about what arrived rather than about this deployment, and the column is what tells the two
+     kinds apart in the record. **Cost, stated rather than hidden:** there is no migration story
+     anywhere in phase 2, and `CREATE TABLE IF NOT EXISTS` does not add a column to a database that
+     already exists. This is the same cost item 5g's three `notices` columns carried and is
+     acceptable on the same grounds — no deployment has durable data yet — but it stops being
+     acceptable the moment one does.
+
+  2. **`error` is on both response surfaces and on both serialization allow-lists.** Not a free
+     choice: `serialization.py`'s allow-list test failed the moment the field existed and would not
+     pass until someone named it or deliberately kept it off, which is the mechanism working exactly
+     as `PHASE2_DESIGN.md`'s "SIU handling" point 2 intends. It is named because both specs assert
+     the caller reads the code from the body — one status carries both faults, so a client that
+     could not read the code would have no way to tell them apart at all.
+
+  3. **Which half of the jurisdiction fault each layer exercises.** The map can be unusable two ways
+     — an entry naming no timezone (`select_jurisdiction` returns `MALFORMED`) and one naming a
+     timezone this system cannot resolve (`resolve_jurisdiction_date` refuses) — and both resolve to
+     `JURISDICTION_MAP_UNUSABLE`, which is ruling 2 working as intended. One scenario row can carry
+     only one input, so the acceptance suite exercises the naming-no-timezone half on both paths and
+     `tests/shell/` covers the unresolvable-name half on both. Recorded because the spec phrase "the
+     jurisdiction map entry names no usable timezone" is deliberately true of both, so nothing in the
+     feature files says which one a row runs.
+
+  4. **The carrier fault is produced by leaving the entry present and malformed, not by removing
+     it.** Ruling 1 names both `CARRIER_NOT_CONFIGURED` and malformed as the fault, and
+     `resolve_rules` cannot tell them apart — it branches on `result.rules is None`. The acceptance
+     step corrupts one value in an entry that stays present, because that is the case the rule is
+     about: a carrier this deployment *claims to administer* whose rules will not load, which is
+     what separates this rule from the unknown-carrier 400 above it. `tests/shell/` uses the empty
+     source, so both inputs are exercised.
+
+  5. **`_loss_date_of` is gone rather than kept as a guard.** Decision (e) moved the unparseable
+     check to the schema boundary, and every arrival in a notice's sequence has cleared a boundary
+     that answers that input 400 — intake's for position 0, this endpoint's for every later one,
+     including a refused 422's record, which is kept precisely because it was readable. The merged
+     view therefore carries a date or states none, and `_judge` has no branch for a third case. A
+     guard there would be a branch no test could reach and no gate could score.
+
+  **Two modules are now exactly at the 250-line size ceiling** — `shell/notice_intake.py` and
+  `shell/resolution.py`, both at 250 of 250 after this item. Neither has room for another paragraph
+  of comment, let alone a function. The next item touching either one splits it first; the precedent
+  is `messages.py`, extracted at item 5d for this exact reason and saying so in its own docstring.
+
 - **Item 5f, SIU separation — six decisions, advisor-recommended, human-ratified, 2026-08-25.** All
   six were open in `PHASE2_DESIGN.md`'s "SIU handling"; none is a new indicator. New indicators are
   out of scope for 5f and recorded below as a candidate item.
