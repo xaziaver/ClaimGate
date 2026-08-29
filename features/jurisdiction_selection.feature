@@ -198,7 +198,7 @@ Feature: Jurisdiction selection
     # loss date is a blocker in its own right, so the state and blocker columns
     # move with the determination, and the second row remains what shows that
     # an unsupported jurisdiction on its own does not block.
-    Scenario Outline: A future-dated loss on a notice with no supported jurisdiction is recorded as not evaluated rather than as not future
+    Scenario Outline: What the future-dated-loss determination records when it evaluates, when the jurisdiction date is missing, and when the loss date is missing too
       Given the insured property is in "<property_state>"
       And the notice reports a loss date of "<loss_date>"
       When the notice is submitted for intake
