@@ -479,8 +479,8 @@
       "digest": "sha256:595006155edcabdbcca2f466361f79c0d33747708465422cb9a0841eb4317d73"
     },
     "spec:features/jurisdiction_selection.feature": {
-      "approved_at": "2026-08-27T12:15:45+00:00",
-      "digest": "sha256:d71c9be553ce8757fe8f323043af94cb9b5a8eeb97e1f5f9015e8c37bff419c1"
+      "approved_at": "2026-08-29T17:12:37+00:00",
+      "digest": "sha256:3201e3142700a37e57e334c0181f3c423da3b8062225bcfd1a1e8c3bf4daf952"
     },
     "spec:features/notice_intake.feature": {
       "approved_at": "2026-08-28T07:51:02+00:00",
