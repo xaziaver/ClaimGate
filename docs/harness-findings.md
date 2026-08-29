@@ -1322,6 +1322,44 @@ reason is not that the locator is useless — it resolves fine — but that the 
 exactly what *cannot* tell you which of these two things happened, and the digest is the
 field the verifier actually compares.
 
+### Adding an `Examples` row moves every locator in the scenario and re-aims the survivors' swaps
+
+The mirror of the entry above, and the two belong together because the directions are
+not symmetric. A locator is `scenario|kind|context`, and for an example mutant the
+context carries the mutated column's header plus **every value in that row**. Removing a
+row leaves the surviving rows' locators alone and moves their digests. **Adding one moves
+both** — every locator in the scenario is re-keyed, because each carries a row that now
+sits in a wider table or beside a new sibling, and the swap targets re-aim at the same
+time.
+
+Measured on item 5j's drafting, `features/jurisdiction_selection.feature` at `120ebd7` ->
+`4f554f4`: one row added to Rule 3's first scenario, with that scenario's loss date moved
+out of a fixed `Given` into a column. 48 mutants over 48 locators before, 55 over 55
+after — 8 lost, 15 gained, 40 kept, and the 8 lost and 15 gained are the whole of that
+one scenario, counted per scenario rather than inferred from the totals.
+
+**A raised count is not evidence that nothing moved underneath it.** The addition also
+re-aimed an existing mutant: row 2's determination swap went from
+`NOT_EVALUATED:NO_JURISDICTION_DATE->TRUE` to
+`NOT_EVALUATED:NO_JURISDICTION_DATE->NOT_EVALUATED:NO_LOSS_DATE`, because
+`_discriminating_alternatives` prefers the most-different row and the new row is now the
+most different. Both substitutions are killed here, so nothing was lost in fact. The
+hazard the measurement exposes is that a re-aim can equally land on a sibling that shares
+the row's outcome — turning a discriminating mutant inert — and the count reads +7 either
+way.
+
+It was free on this file only because it carries zero approvals, measured against
+`gauntlet.lock.json` rather than assumed. Where a file with approvals gains a row, every
+re-keyed locator is a `MISSING` stale approval and every re-aimed survivor a `MODIFIED`
+one: the report-versus-red pair the correction above describes, and here both halves fire
+at once rather than only the second.
+
+**Technique: when adding a row to a scenario that carries approvals, diff signatures
+against the locked ref, not counts.** A +7 is consistent with "seven added" and with
+"seven added and one silently re-aimed," and only the signature diff separates them. Same
+advice as the removal entry for the opposite reason — there the locator is what cannot
+tell you, here it is the count.
+
 ### Comment inertness is confirmed by locator identity, not count parity
 
 Item 4f's comment-only edit was scheduled on `d344ab3`'s count match — before and after, the same
