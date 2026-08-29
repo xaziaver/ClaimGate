@@ -3008,3 +3008,69 @@ of item 5i's stale-claim sweep, left deliberately because correcting it costs an
 is no open branch: item 5i's `reopening/5i-deployment-fault-status-codes` is merged and remains on
 `origin` at `b8b5268`, as does `reopening/5h-absent-loss-date` at `e521e58`; deleting either is
 optional and nothing depends on them.
+
+**Item 5j is drafted and open on `reopening/5j-both-absent-precedence`, tip `4ad23e8`, 2026-08-29.**
+This supersedes the paragraph above where it says there is no open branch. Three commits, spec only —
+nothing under `src/` or `tests/` is touched:
+
+- `4db7568` corrects the line-29 comment's claim that a carrier the identity reference recognizes
+  whose rules cannot be resolved is item 5i's undecided status code. It was decided and merged
+  2026-08-28 — `500` with `CARRIER_RULES_UNRESOLVABLE` — and the sentence's second half is kept
+  rather than dropped, restated as the scope choice it now is: the carrier's rules resolve above the
+  jurisdiction in `shell/notice_intake.py`, so a carrier whose rules will not load never reaches
+  selection and such a scenario would have no selection left to assert. Measured comment-inert — the
+  locator list is byte-identical to the locked file's.
+- `4f554f4` adds Rule 3's both-absent row: an unsupported property state with no loss date records
+  `NOT_EVALUATED:NO_LOSS_DATE`, closing the state item 4k's shape describes, where a reordering of
+  the two checks fails no test and mutation does not reorder statements. The loss date leaves its
+  fixed `Given` for an `Examples` column, because a fixed `Given` above an outline is never mutated
+  and the row's own subject stated there would have been protected by nothing.
+- `4ad23e8` retitles that outline. The old title described rows 1–2 and misdescribed the new row,
+  which reports no loss date at all. Done now because it is only free now: this file carries zero
+  mutant approvals and the spec re-approval is already owed, so the 15 locator moves cost nothing;
+  once approvals land on this scenario it is never free again.
+
+**The spec is drafted, not locked, and the next action is the human's `gauntlet spec approve`.**
+Export for review: `git show 4ad23e8:features/jurisdiction_selection.feature` — 357 lines, blob
+`301bbfe`, sha256 `3201e3142700`.
+
+**Two gate failures are expected on this branch and neither clears from the agent's side.** The
+acceptance gate is red at its approval stage, because the spec is modified since it was approved —
+guaranteed by the separate-commits rule, which puts spec lock and implementation in that order and so
+makes a red state between them the normal case rather than a defect. The test gate is red at
+**453/454**: `tests/acceptance/conftest.py`'s `set_loss_date` has no `absent` convention, so it
+assigns the literal string, the notice is refused at the schema boundary, and no notice exists for the
+row to read. Measured, and it is exactly the new row and exactly that cause — the other 453 pass, so
+the widened table and the moved `Given` broke nothing.
+
+**Measured blast radius**, `mutation.mutants()` over the file at each ref against `gauntlet.lock.json`:
+
+| | locked (`120ebd7`) | comment only | drafted (`4ad23e8`) |
+|---|---|---|---|
+| mutants | 48 | 48 | 55 |
+| unique locators | 48 | 48 | 55 |
+| boolean-class | 6 | 6 | 6 |
+| marker-class | 6 | 6 | 6 |
+| locators vs the lock | — | byte-identical | 8 lost, 15 gained, 40 kept |
+
+The 8 lost and 15 gained are the whole of that one scenario, measured rather than inferred from the
+totals. **No approval is disturbed, which is what made the shape choices above affordable:** this file
+carries **0 of the ledger's 75 mutant approvals**, measured against the lock. The retitle moved only
+the scenario half of its 15 locators — across `4f554f4..4ad23e8` the `kind|context` halves and all 55
+signatures are identical in order.
+
+**One survivor is predicted, simulated and not measured** — survivors cannot be measured until the
+spec is approved and the step exists. `property_state: GA->FL` on the new row, inert because with no
+loss date the determination is the same wherever the property is. Drafted approval reason, for the
+human at implementation: *with no loss date the determination does not depend on where the property
+is, which is the precedence this row exists to assert.* Three alternative shapes were measured and
+declined; the two that simulate zero survivors buy it either by restating Rule 2's subject inside
+Rule 3 or by putting the unsupported-jurisdiction half back into an unmutated fixed `Given`, and the
+third — spelling the new row's property state `absent` instead of `GA` — costs a second survivor,
+because Rule 2 makes those two the same marking deliberately.
+
+**What remains.** The human's spec approval; then implementation, which is the `absent` convention in
+`conftest.py`'s `set_loss_date`, the `domain/validation.py` comment at lines 127–130 updated to cite
+the row instead of calling itself the ordering's only protection, and this section's close-out. No
+`RULESET_VERSION` bump: no rule's behaviour changes, on item 5i's precedent. `domain/validation.py`
+sits at 203 of 250 lines, so neither 250/250 shell module is involved and no split is triggered.
