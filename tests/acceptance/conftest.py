@@ -180,7 +180,14 @@ def set_policy_number(context: dict[str, Any], value: str) -> None:
 @given(parsers.parse('the notice reports a loss date of "{value}"'))
 @when(parsers.parse('the notice reports a loss date of "{value}"'))
 def set_loss_date(context: dict[str, Any], value: str) -> None:
-    context["fields"]["loss_date"] = value
+    """"absent" is None here and deliberately not the empty string, which is the
+    one distinction this field's boundary exists to draw: None is read as ABSENT
+    and flows on as the domain blocker the notice pends on, while anything that
+    is not a date - the empty string included - is UNPARSEABLE, the schema
+    refusal that creates no notice at all (item 5h). The other absent
+    conventions in this file each pick whichever spelling their own field's
+    absent value is; a loss date's is not a date at all, so it is None."""
+    context["fields"]["loss_date"] = None if value == "absent" else value
 
 
 @given(parsers.parse('the notice reports a loss type of "{value}"'))
