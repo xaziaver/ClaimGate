@@ -124,10 +124,11 @@ def _determine_future_dated_loss(
     # determination's subject and today only the yardstick it is held against,
     # so the missing subject is the more basic absence. NO_LOSS_DATE outranks
     # NO_JURISDICTION_DATE, ratified 2026-08-27 (ASSUMPTIONS.md, "Item 5h,
-    # three decisions"). Do not reorder these checks. Until item 5j's row lands
-    # in jurisdiction_selection.feature this comment is the ordering's only
-    # protection - nothing asserts which reason the both-absent case names, so
-    # nothing fails on a reordering: item 4k's shape, and why 5j exists.
+    # three decisions"). Do not reorder these checks: jurisdiction_selection.feature's
+    # Rule 3 now asserts the ordering, with a row carrying neither a loss date nor a
+    # supported jurisdiction whose determination names this one, so a reordering fails
+    # that scenario rather than passing unnoticed. Item 5j closed the state where this
+    # comment was the ordering's only protection - item 4k's shape, and why 5j existed.
     if candidate.loss_date is None:
         return FutureDatedLossResult("NOT_EVALUATED", NO_LOSS_DATE)
     if now is None:
