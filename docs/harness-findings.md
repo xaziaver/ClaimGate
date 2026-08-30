@@ -844,6 +844,29 @@ spec; the four phase-1 features were added and approved together in one commit
 before the discipline existed, so 5a is the first spec in the project's history
 that no gate could see.
 
+### Approving the spec turns the Stop hook's check from instant to a full acceptance run
+
+A consequence of the short-circuit above, and worth knowing in advance because it changes
+what every turn costs for the rest of a reopening. While a spec is modified-since-approved,
+the acceptance gate fails at its approval stage and the Stop hook's check returns almost
+immediately. The moment the human approves the spec, the same hook starts paying the whole
+mutation stage — and if the only thing left red is an unreviewed survivor, it pays that cost
+to re-report a red that nothing the agent can run will clear.
+
+Measured from `.gauntlet/events.jsonl` over item 5j, same repository, consecutive runs:
+
+| acceptance gate state | duration | verdict |
+|---|---|---|
+| `1 unapproved or modified spec(s)` | 0.003s, 0.003s, 0.004s | fail at approval |
+| 11 specs, 1 surviving mutant, 75 reviewed-equivalent | 1512.704s | fail at mutation |
+| the Stop hook's own re-run of the same state | 1384.778s | fail, then `agent.escalated attempts=3` |
+
+So the expensive window is bounded and predictable: it opens at spec approval and closes at
+`gauntlet mutant approve`, and every turn taken inside it — including a turn that only writes
+a document — pays roughly twenty minutes at the current suite size. This is a description of
+when the wait occurs, not an argument for changing anything: the gate is doing exactly what
+it is configured to do, and the alternative shapes all involve weakening a threshold.
+
 ### An approved spec that no test module binds reports every mutant as surviving
 
 Approval clears the gate past the short-circuit above, but binding is still a
@@ -1108,6 +1131,30 @@ landed, not that it landed as its own block. Check something that would change i
 wrong: a line-count delta on the file, or the emptiness of a specific adjacent line. A list swallowing
 the paragraph after it is invisible in a diff and reads correctly in review, because the rendered
 prose still makes sense — only the structure is wrong.
+
+### A backgrounded `gauntlet check` reports "completed" when its launcher exits, not when the gate does
+
+Observed 2026-08-29. `nohup gauntlet check > log 2>&1 &` issued through the agent's Bash tool
+returns as soon as the *launcher* exits, and the harness reports the task completed with exit
+code 0. The gate is still running. The notification arrived **39 seconds into a run that took
+1512.7 seconds**, and the log file it was writing to was zero bytes at the moment the success
+was reported. An exit status from that shape says nothing about the gate — it is the status of
+the shell that spawned it.
+
+Reading the log instead of the status does not save you either: an empty log is
+indistinguishable from a gate that printed nothing, and the tail of a partial log looks like a
+run that stopped early.
+
+**Wait on the gate's own pid.** `while kill -0 <pid> 2>/dev/null; do sleep 20; done` in a
+background command notifies on the real completion. Two cautions found the same day: capture
+the pid from `ps`/`pgrep` *after* the process has actually exec'd, because the first match can
+be the shell wrapper that is about to disappear — a pid captured immediately was gone seconds
+later while the real gate ran under a different one — and never use `pgrep -af gauntlet`, which
+matches its own command string, the same trap the start-up check already warns about.
+
+This composes with the entry above: once the spec is approved, every such run is twenty minutes
+long, so mistaking the launcher's exit for the gate's is the difference between reporting a
+verdict and inventing one.
 
 ### A command whose output you don't read is a command whose failure you won't see
 
