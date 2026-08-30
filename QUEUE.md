@@ -3075,3 +3075,43 @@ because Rule 2 makes those two the same marking deliberately.
 the row instead of calling itself the ordering's only protection, and this section's close-out. No
 `RULESET_VERSION` bump: no rule's behaviour changes, on item 5i's precedent. `domain/validation.py`
 sits at 203 of 250 lines, so neither 250/250 shell module is involved and no split is triggered.
+
+**Item 5j is done and merged to `main`** (merge commit `806f403`, 2026-08-30). This supersedes both
+the "Item 5j is next" paragraph and the drafted-state paragraph above; where they disagree with this
+one, this one is current.
+
+**The refs, in the order the log carries them** — the sequence is the point, not decoration, because
+it is what makes lock-then-implement visible rather than merely asserted:
+
+| ref | what it is |
+|---|---|
+| `4ad23e8` | the spec as reviewed — 357 lines, blob `301bbfe`, sha256 `3201e3142700` |
+| `981f8d3` | the human's spec approval, `gauntlet.lock.json` alone |
+| `2d89ff8` | the implementation |
+| `fecde95` | the human's mutant approval, `gauntlet.lock.json` alone |
+| `806f403` | the merge, `--no-ff` |
+
+**One survivor was approved, and it is the rule showing through rather than a gap in it.**
+`property_state` `GA->FL` on the row carrying no loss date, recorded reason: *with no loss date the
+determination is the same wherever the property is, which is the precedence this row asserts.* The
+ledger goes from 75 to 76, and this file holds exactly one of the 76.
+
+**`gauntlet check` passes twice, both from a cold cache with `mutants/` cleared first, and both
+measured rather than reasoned from tree identity.** On the branch at `fecde95`: 454/454 tests,
+coverage 100% line and 100% branch, code mutation 100.0% at 422 killed, worst function 25/25,
+complexity 5/6, duplication 0, protect 3/3, acceptance 11 specs with **76 reviewed-equivalent** and
+no surviving mutants — acceptance 1220.9s, run 1237.1s. On `main` post-merge at `806f403`: the same
+figures, acceptance 1198.8s, run 1212.5s. The two documentation commits that follow the merge
+(`96b1595`, `2f906bf`) are documentation only and were not covered by that run, which is stated here
+rather than left to look like coverage they do not have.
+
+**This closes the queue. Item 5j was the last item, and every item in it is done.** A session
+arriving here with no memory of the work should conclude exactly this: phase 2 is complete, nothing
+is in flight, there is no open branch, and no gate is red or waiting on anyone. The reopening
+branches remain on `origin` — `reopening/5j-both-absent-precedence` at `fecde95` alongside 5h's and
+5i's — and deleting them is optional, as nothing depends on them.
+
+**Whatever comes next starts with a new queue entry, not with this section.** The numbered list above
+is a closed record of phase 2 and should be read as history; appending work to it, or reopening an
+item to carry something new, would make a finished record look open again. The per-item paragraphs
+say what each item decided and why — this one deliberately does not repeat them.
