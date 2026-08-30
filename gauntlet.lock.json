@@ -144,6 +144,12 @@
       "reason": "The schema boundary is checked before the deployment configuration is read: a first attempt whose loss date does not parse is 400 whether or not the carrier rules load, the key is remembered by neither failure, and both retries create the notice on retry.",
       "reviewer": "xaziaver"
     },
+    "mutant:features/jurisdiction_selection.feature#What the future-dated-loss determination records when it evaluates, when the jurisdiction date is missing, and when the loss date is missing too|example|property_state|GA|absent|PENDED|MISSING_REQUIRED_FIELD:loss_date|NOT_EVALUATED:NO_LOSS_DATE": {
+      "approved_at": "2026-08-30T13:50:32+00:00",
+      "digest": "sha256:c99ef50a71141297ec82144d1946576f77d3cb4ba166b2848e0825341f576d14",
+      "reason": "with no loss date the determination is the same wherever the property is, which is the precedence this row asserts",
+      "reviewer": "xaziaver"
+    },
     "mutant:features/resolution.feature#Whether a resolution is read at all depends on whether its body can be read|example|reviewer|adjuster-4471|not-a-date|400|PENDED|still holds only its two intake entries|are one, the submission it was created from": {
       "approved_at": "2026-08-28T10:16:04+00:00",
       "digest": "sha256:4e5ce8bc9f0880cb67b7595eea9872db8e441428fbfc454bde8919df28e60a4d",
