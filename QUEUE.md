@@ -557,8 +557,8 @@ Ordered by domain severity, not by effort. One line each on why that position.
     implying a resolution. **Resolving item 5i means deciding all four status codes, not the
     original three.**
 
-5j. **The reason-code precedence `NO_LOSS_DATE` > `NO_JURISDICTION_DATE` is ratified, will be
-    implemented by item 5h, and is asserted nowhere.** The both-absent case — no loss date and no
+5j. **The reason-code precedence `NO_LOSS_DATE` > `NO_JURISDICTION_DATE` is ratified, implemented
+    by item 5h, and is asserted nowhere.** *(Done — see below.)* The both-absent case — no loss date and no
     jurisdiction date — becomes reachable once item 5h makes the loss date optional, and
     `validation.feature` cannot express it: its scenarios always have a today, and the vocabulary
     for a notice with no jurisdiction lives in `jurisdiction_selection.feature`'s Rule 3, which
@@ -3002,7 +3002,8 @@ also now carries a rider added at this item's close: the reopening of
 `jurisdiction_selection.feature` must also correct that file's line-29 comment, which still calls
 the unresolvable-rules case item 5i's undecided status code. That comment is the one known survivor
 of item 5i's stale-claim sweep, left deliberately because correcting it costs an approval cycle that
-5j's reopening pays anyway. **Blast radius is unmeasured — measure at drafting.**
+5j's reopening pays anyway. **Blast radius was unmeasured at the time this was written; it was
+measured at drafting and the figures are in the close-out below.**
 
 **This session ended at the save point**, on `main` with a clean tree and nothing in flight. There
 is no open branch: item 5i's `reopening/5i-deployment-fault-status-codes` is merged and remains on

@@ -1079,11 +1079,16 @@ or data. Nothing below was confirmed against a live book.
   **The direction is low-stakes; the assertion is not.** In the both-absent case each absence is
   already independently visible on the record — the loss date as `MISSING_REQUIRED_FIELD:loss_date`
   among the blockers, the jurisdiction as the unsupported marking — so a reader loses nothing
-  whichever reason the determination names. What is at stake is that **until item 5j's row exists in
-  `jurisdiction_selection.feature`, this ordering is protected by a source comment and nothing
-  else**: no test fails on a reordering and mutation does not reorder statements. That is item 4k's
-  exact shape, and it is why this decision is ratified together with the creation of item 5j rather
+  whichever reason the determination names. What was at stake is that **until item 5j's row existed
+  in `jurisdiction_selection.feature`, this ordering was protected by a source comment and nothing
+  else**: no test failed on a reordering, and mutation does not reorder statements. That is item 4k's
+  exact shape, and it is why this decision was ratified together with the creation of item 5j rather
   than separately from it.
+
+  **Closed 2026-08-30, item 5j merged at `806f403`.** That row exists: `jurisdiction_selection.feature`'s
+  Rule 3 carries an unsupported property state with no loss date, asserting `NOT_EVALUATED:NO_LOSS_DATE`,
+  so a reordering of the two checks now fails that scenario instead of passing unnoticed. The source
+  comment in `_determine_future_dated_loss` cites the row rather than standing in for it.
 
   **(3) The SIU indicators gain no third `NOT_EVALUATED` reason for an absent loss date.** An
   indicator evaluation reached with no loss date raises — the `find_duplicates` shape from item 3,
