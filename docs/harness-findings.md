@@ -1532,6 +1532,24 @@ exist — including the one standing between a phase-2 agent and a placeholder
 value it must not invent. When an edit spans files, verify each file
 independently: occurrences per file, or numstat per path.
 
+### A session that pushes a branch records it in `QUEUE.md`'s status section before stopping
+
+Observed 2026-08-28: item 5j's drafting session pushed
+`reopening/5j-both-absent-precedence` at 09:14 and stopped without touching the
+status section, whose most recent paragraph — written truthfully by the prior
+session — said no open branch existed. The disagreement was found only by running
+`git branch -r` from outside; a memoryless session reading the documents alone
+would have concluded nothing was in flight.
+
+The status section is the memoryless-session contract, and a truthful-when-written
+paragraph that has silently become false is worse than a stale-marked one: nothing
+about it invites checking, so the next session inherits a confident wrong answer
+instead of a doubtful one. Scoping a session to "drafting only" does not exempt it.
+Documentation lands on `main`, so the paragraph could always have been written.
+
+The rule: a session that pushes a branch records it in `QUEUE.md`'s status section
+in the same work period, before stopping.
+
 ### A shipped script must resolve the project interpreter, not `python3`
 
 A skill script invoked bare `python3`. On a machine whose system Python is 3.10
