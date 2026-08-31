@@ -595,6 +595,23 @@ Ordered by domain severity, not by effort. One line each on why that position.
     whoever drafts the reopening, and the answer that keeps Rule 3's subject intact is probably
     still no. Do not let the correction quietly widen the rule.
 
+## Phase 3
+
+6. **Phase 3 opens with planning documents, not code.** This session's review found that no
+   document says what "done" means for ClaimGate as a product: `PHASE2_DESIGN.md` names "phase 3's
+   adapter boundary" in a dozen places and scopes it in none, and nothing lists what follows it.
+   The deliverables of this item, drafted with the advisor and human-ratified before any
+   implementation item is queued: (a) `ROADMAP.md` — the target state for a pilotable FNOL service,
+   which phase carries each missing piece, and what is out of scope permanently;
+   (b) `PHASE3_DESIGN.md` for the policy administration adapter. Known missing, as of phase 2
+   close, for the roadmap to place: no HTTP server binding (the shell's handlers return response
+   objects; no framework is in the dependencies — a decision, `PHASE2_DESIGN` "not a separate
+   server process"), no authentication (`PHASE2_DESIGN` states the audit endpoint returns PII to
+   anyone who can reach it), no policy admin adapter — so no coverage verification ("in force on
+   the loss date") and no claim numbers (`notice_id` is deliberately not one), no attachments, no
+   reporter channels, no CAT handling, no deployment story. Reading for this item:
+   `PHASE2_DESIGN.md` in full, `STATUTORY_REGISTER.md`, `README.md`'s design commitments.
+
 ## What to read
 
 `CLAUDE.md`, this file, and `docs/harness-findings.md` every session. The rest is
@@ -3115,3 +3132,12 @@ branches remain on `origin` — `reopening/5j-both-absent-precedence` at `fecde9
 is a closed record of phase 2 and should be read as history; appending work to it, or reopening an
 item to carry something new, would make a finished record look open again. The per-item paragraphs
 say what each item decided and why — this one deliberately does not repeat them.
+
+**Phase 3 planning is open as item 6 above, and it is the only thing open.** That item supersedes
+this section's closing claim that nothing is in flight — a claim true when written at phase 2's
+close, and now true only of code: no branch exists, no spec is drafted or awaiting approval, no
+gate is red or waiting on anyone, and no implementation item is queued. The next action belongs to
+the human and the advisor rather than to a coding agent: a planning session producing `ROADMAP.md`
+and `PHASE3_DESIGN.md`. A coding agent's next work arrives only after both are ratified. Until
+then there is nothing for one to implement, and an item queued ahead of those documents would be
+scoped against the boundary they exist to draw.
