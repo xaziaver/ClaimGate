@@ -586,6 +586,20 @@ rules follow, and neither is conditional on having witnessed a failure:
    failure. It is the only test that catches the numeric class, it costs one
    command, and it has now fired on two consecutive sessions.
 
+**Third strand shape, 2026-09-01.** `features/carrier_configuration.feature`,
+the policy-number-prefixes row of "A single value absent or malformed in a
+recognized carrier's entry refuses the load, naming it": `absent` replaced by an
+empty cell. No marker, not numeric — the sibling-swap branch of `mutate_value`,
+the last of that function's four branches. Measured against the installed engine
+rather than inferred: the branch fires 30 times in this scenario's 33 mutants,
+every one landing on the empty cell of the outline's all-blank final row, and
+this exact substitution — `absent` to an empty cell — is four of them, one per
+row whose value cell reads `absent`. The diagnosis rule that named two shapes was
+incomplete by construction: a strand has as many on-page shapes as the engine has
+substitution rules, and every rule added to the engine adds a shape. Restored
+from `.gauntlet/mutation-backup/`, digest confirmed. The rule in `CLAUDE.md` now
+says so.
+
 ### The acceptance gate's wall time is growing, not fixed at ~150s
 
 Across 162 acceptance-gate runs in the log, the maximum observed is 260.3s,

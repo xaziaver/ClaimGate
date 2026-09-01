@@ -172,9 +172,11 @@ Before any work, orient and verify. Report before acting.
    the status section names. If any file under `features/` is modified, a mutation
    run was likely killed mid-flight — this is routine, not exceptional: a
    stop-check runs the full gauntlet after every turn, and any human reply inside
-   its roughly fifteen-minute window kills it. The strand is either a string
-   literal with `_gauntlet` appended or a number incremented at its own precision;
-   a numeric strand carries no marker, so never test for `_gauntlet` alone.
+   its roughly fifteen-minute window kills it. The strand takes one of the engine's substitution
+   shapes — a value swapped for a sibling cell's value (including an empty one), a number
+   incremented at its own precision, a boolean flipped, or a string literal with `_gauntlet`
+   appended — and only the last carries a marker, so never identify a strand by its text; the
+   digest against `gauntlet.lock.json` is the only test.
    Confirm by comparing the file against its copy under
    `.gauntlet/mutation-backup/`, restore with `git checkout --`, confirm the
    sha256 against `gauntlet.lock.json`, and report it. Do not edit the file and do
