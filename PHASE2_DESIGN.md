@@ -2,7 +2,8 @@
 
 Decided in conversation before any phase-2 code existed. Written as decisions with reasons, not a
 task list — the reasons are what stop a future maintainer reversing them without understanding
-what they'd be giving up. Nothing in this file is built yet. Phase 1's domain core is: all four
+what they'd be giving up. Nothing in this file was built when it was written; as of 2026-08-30 everything it
+scheduled for phase 2 is built and merged (`QUEUE.md`, item 5j). Phase 1's domain core is: all four
 specifications under `features/` — validation, triage, SIU indicators, and duplicate detection — are
 hash-locked, implemented, and gated. Where a decision was never pinned down precisely enough to
 state with confidence, that's marked rather than guessed at.
@@ -18,6 +19,13 @@ rewritten, so a reader can see which decisions were re-examined and which were m
 **Defined now, not reachable until later phases:** `ROUTED`, `SUPERSEDED`, `WITHDRAWN`. Defining
 them now means the state enum doesn't need a breaking migration when later phases need them; they
 simply have no transitions into them yet.
+
+**Corrected 2026-09-01: "defined now" described intent, not the code.** At `3afdfb2` the `state`
+column in `shell/schema.py` is `TEXT NOT NULL` with no constraint, states are bare string
+literals in `shell/rules.py`, `store.py`, `notice_intake.py` and `resolution.py`, and none of
+`ROUTED`, `SUPERSEDED`, `WITHDRAWN` appears anywhere under `src/`. The consequence cuts both ways:
+adding the three needs no migration because nothing constrains the column — and nothing
+constrains the column. Declaring the state set as a constraint is phase 6's work (`ROADMAP.md`).
 
 **There is no rejected, invalid, or discarded state, and there will not be one.** A notice cannot
 be refused — notice given is notice received, and the Fla. Stat. 627.70131(1)(a) acknowledgment
@@ -425,7 +433,8 @@ timestamps, so:
 needs an alert on the oldest one outstanding. A pended notice carries a live 7-day acknowledgment
 clock and a running 60-day pay-or-deny clock — an unbounded pend queue is a statutory-time problem,
 not a backlog metric. Not built now; recorded so phase 5's operability work doesn't have to
-rediscover it.
+rediscover it. *(Renumbered: that work is phase 7 in `ROADMAP.md`, 2026-09-01; this sentence
+predates the numbering.)*
 
 ## SIU handling
 
