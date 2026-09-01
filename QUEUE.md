@@ -610,8 +610,9 @@ Ordered by domain severity, not by effort. One line each on why that position.
    anyone who can reach it), no policy admin adapter — so no coverage verification ("in force on
    the loss date") and no claim numbers (`notice_id` is deliberately not one), no attachments, no
    reporter channels, no CAT handling, no deployment story.
-   **Progress, 2026-09-01: (a) is drafted — `ROADMAP.md` on `main`, awaiting ratification; (b)
-   is not started and is blocked on that ratification by the roadmap's own status sentence.**
+   **Progress, 2026-09-01: (a) is ratified — `ROADMAP.md` at `42c6903`, ratification recorded in
+   the file; (b) `PHASE3_DESIGN.md` is next, drafted with the advisor and human-ratified before any
+   phase-3 implementation item is queued.**
    Reading for this item:
    `PHASE2_DESIGN.md` in full, `STATUTORY_REGISTER.md`, `README.md`'s design commitments.
 
@@ -3156,3 +3157,9 @@ against the code and is corrected there; and the policy administration adapter i
 "phase-2 adapter" reference in `ASSUMPTIONS.md` and in this file's closed entries is history and
 is annotated as such in `ASSUMPTIONS.md`. In code, nothing is in flight: no branch, no spec, no red
 gate. The next action is the human's ratification of `ROADMAP.md`.
+
+**2026-09-01, later: `ROADMAP.md` is ratified.** The human read the committed file at `42c6903`
+and ratified it; this commit records that in the roadmap, `README.md` and item 6. Item 6's
+remaining deliverable is `PHASE3_DESIGN.md`, which is the human's and the advisor's work, not a
+coding agent's — the next coding session arrives with that document ratified and a phase-3 queue
+item written against it. Nothing is in flight in code: no branch, no spec, no red gate.

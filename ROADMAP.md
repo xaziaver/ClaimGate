@@ -1,17 +1,17 @@
 # Roadmap
 
 What "done" means for ClaimGate as a product, which phase carries each missing piece, and what is
-out of scope permanently. Drafted 2026-09-01 with the advisor. **Status: drafted, awaiting human
-ratification.** Until a human-instructed commit removes that sentence, no implementation item may
-be queued against any phase below and `PHASE3_DESIGN.md` is not to be drafted — its scope is
-whatever this file assigns to phase 3, and drafting it first would scope the adapter against a
-boundary not yet drawn (`QUEUE.md`, item 6).
+out of scope permanently. Drafted 2026-09-01 with the advisor. **Status: ratified 2026-09-01 by the
+human, from the committed file at `42c6903` (186 lines, sha256 `296b3a8a6f8b`), not from a
+summary.** Implementation items may now be queued against phase 3 once `PHASE3_DESIGN.md` is
+ratified on the same terms; no item is queued against any later phase until that phase's own design
+document is (`QUEUE.md`, item 6).
 
-Provenance for every decision here: advisor-recommended, human-ratified on the date the status
-sentence is removed. The one fact this file rests on that could not come from reasoning: **there
-is no target deployment.** ClaimGate is built to fit any policy administration system; the human
-named Duck Creek as one example (2026-09-01). If a real target appears, re-read "Why phase 3 ships
-two implementations" first, because it is the section a target would change.
+Provenance for every decision here: advisor-recommended, human-ratified 2026-09-01. The one fact
+this file rests on that could not come from reasoning: **there is no target deployment.** ClaimGate
+is built to fit any policy administration system; the human named Duck Creek as one example
+(2026-09-01). If a real target appears, re-read "Why phase 3 ships two implementations" first,
+because it is the section a target would change.
 
 ## Target state: pilotable
 

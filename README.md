@@ -60,7 +60,7 @@ deliberately does not include — a server binding, authentication, a policy adm
 
 **Phase 3 is in planning.** [`ROADMAP.md`](ROADMAP.md) states what "done" means for the product,
 which phase carries each missing piece, and what is out of scope permanently; it is drafted and
-awaiting ratification. [`QUEUE.md`](QUEUE.md) carries the full record of every item with the
+ratified 2026-09-01. [`QUEUE.md`](QUEUE.md) carries the full record of every item with the
 reasoning behind it.
 
 ## Documents
