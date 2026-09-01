@@ -1,10 +1,10 @@
 # Phase 3 design decisions — the core-system ports
 
 Decided 2026-09-01 with the advisor, from reading the phase-2 shell as built rather than as
-described. **Status: drafted, awaiting human ratification.** Until a human-instructed commit
-removes that sentence, no phase-3 implementation item is queued. Scope is what `ROADMAP.md`
-assigns to phase 3 and nothing more: the read side. The write operation is named where the
-interface has to be designed with it in view, and is not built.
+described. **Status: ratified 2026-09-01 by the human, from the committed file at `ee8b4b3` (256
+lines, sha256 `5373264f02e7debe`).** Phase-3 implementation items are queued against this file.
+Scope is what `ROADMAP.md` assigns to phase 3 and nothing more: the read side. The write operation
+is named where the interface has to be designed with it in view, and is not built.
 
 Written as decisions with reasons and stated costs. Where a decision reverses closed phase-1 or
 phase-2 work it says so by item number, because the reversal is the point of recording it.

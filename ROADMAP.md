@@ -16,8 +16,8 @@ because it is the section a target would change.
 **Amended 2026-09-01, after ratification.** The existing-claims read was added to phase 3. The
 ratified text placed duplicate-detection wiring in no phase while phase 6 referred to confirming
 a duplicate candidate; the gap was found by reading the shell for `PHASE3_DESIGN.md`, not by any
-document. The human re-ratifies the amended paragraph from the committed file; the rest of the
-ratification stands.
+document. The human re-ratified the amended paragraph 2026-09-01 from the committed file at
+`f8eafbb` (200 lines, sha256 `43157421716a12cb`).
 
 ## Target state: pilotable
 
