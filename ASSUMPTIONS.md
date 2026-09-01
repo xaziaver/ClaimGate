@@ -886,6 +886,23 @@ or data. Nothing below was confirmed against a live book.
     identifiers through resolution; an out-of-force term is **not** a blocker — the notice is real
     and the question is coverage — and lands `TRIAGED` with the verification result as an attribute,
     on `jurisdiction_unsupported`'s precedent.
+- **Policy identification leaves the domain: `POLICY_NUMBER_MALFORMED` and
+  `recognized_policy_number_prefixes` are retired in phase 3 — advisor-recommended, ratified with
+  `PHASE3_DESIGN.md`.** Reverses items 4b and 4j. A wrong number beside a correct insured name and
+  risk address is a match once the policy port searches; today it pends the notice before any
+  search can run. The 2026-08-17 entry above already concluded the pattern belonged to the adapter
+  layer. Cost and measured floor are in `PHASE3_DESIGN.md`, "Identifiers".
+- **The continuous-coverage derivation is a domain rule, not port logic — advisor-recommended,
+  ratified with `PHASE3_DESIGN.md`.** Amends the 2026-08-14 entry under "Data we do not have at
+  intake", which has the adapter deriving the date: the semantics are unchanged in every clause —
+  on the risk, surviving rewrite and retroactive reinstatement, reset by a genuine lapse — and only
+  the location moves, so the lapse rule gets a specification and a mutation score. The port
+  supplies term history and nothing else.
+- **A port fault lands `TRIAGED` with verification `NOT_EVALUATED`; it does not pend —
+  advisor-recommended, ratified with `PHASE3_DESIGN.md`.** Item 4h's principle: a blocker is
+  something a reviewer can supply. Nobody can supply an outage, and pending a book on
+  infrastructure asks humans to clear a machine fault one notice at a time. Phase 6 owns the
+  system re-evaluation this creates a need for.
 
 ## Undocumented phase-1 thresholds
 
@@ -1187,7 +1204,7 @@ adapter" as "phase 3's".**
   keying on it would fire the indicator across a lawful book every twelve months — the same defect,
   in the same shape, `QUEUE.md` item 2 already removed from the late-reporting side.
 - **Decided 2026-08-14: how the adapter derives that date, and what "continuous coverage" means.**
-  Answers the mechanics the decision above left open, not a separate question. The adapter does not
+  Answers the mechanics the decision above left open, not a separate question. **Location amended 2026-09-01: the derivation described in this entry is a domain rule in phase 3; the port supplies the history (`PHASE3_DESIGN.md`). Semantics unchanged.** The adapter does not
   read a stored inception field. It resolves the party/risk identity from whatever the reporter
   supplies, pulls every associated policy term for that risk plus cancellations, non-renewals, and
   reinstatements, and derives the continuous-coverage start from that history. Administrative
