@@ -3264,3 +3264,10 @@ two new append-only attribute tables, per-carrier bindings, and a two-shape swap
 The human ratifies from the committed file; then phase-3 queue items are written in the order the
 design's last section gives. `ROADMAP.md`'s 2026-09-01 amendment also awaits the human's
 re-ratification of its one changed paragraph. Nothing in flight in code.
+
+**2026-09-01, closing the planning day: item 6 is complete.** `ROADMAP.md` (amended paragraph
+included) and `PHASE3_DESIGN.md` are both ratified from committed files at named refs, recorded in
+the files. Items 7a–7i are queued above; 7a is next and is implementation, so it opens in a fresh
+coding session with a spec draft for `features/coverage_verification.feature` reviewed by the human
+before anything is built. Nothing is in flight in code, and the full gate was green at `ee8b4b3`
+earlier today: 454 tests, mutation 100%, 11 specs, 76 reviewed-equivalent.
