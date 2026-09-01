@@ -609,7 +609,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
    server process"), no authentication (`PHASE2_DESIGN` states the audit endpoint returns PII to
    anyone who can reach it), no policy admin adapter — so no coverage verification ("in force on
    the loss date") and no claim numbers (`notice_id` is deliberately not one), no attachments, no
-   reporter channels, no CAT handling, no deployment story. Reading for this item:
+   reporter channels, no CAT handling, no deployment story.
+   **Progress, 2026-09-01: (a) is drafted — `ROADMAP.md` on `main`, awaiting ratification; (b)
+   is not started and is blocked on that ratification by the roadmap's own status sentence.**
+   Reading for this item:
    `PHASE2_DESIGN.md` in full, `STATUTORY_REGISTER.md`, `README.md`'s design commitments.
 
 ## What to read
@@ -639,6 +642,7 @@ later.
 | 5h | `ASSUMPTIONS.md` — "An absent loss date is a domain blocker, not a schema refusal"; `validation.feature`, `validation.py`, `models.py` |
 | 5i | `PHASE2_DESIGN.md` — the status-code table; `ASSUMPTIONS.md` — "A carrier this deployment administers but cannot configure is our defect, not the reporter's" |
 | 5j | `ASSUMPTIONS.md` — the item 5h three-decision entry dated 2026-08-27; `jurisdiction_selection.feature`'s Rule 3; item 4k's entry above |
+| 6 | `ROADMAP.md`; `PHASE2_DESIGN.md` in full; `STATUTORY_REGISTER.md`; `README.md` |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
 
@@ -3141,3 +3145,14 @@ the human and the advisor rather than to a coding agent: a planning session prod
 and `PHASE3_DESIGN.md`. A coding agent's next work arrives only after both are ratified. Until
 then there is nothing for one to implement, and an item queued ahead of those documents would be
 scoped against the boundary they exist to draw.
+
+**2026-09-01: item 6 is half delivered, and three documents were corrected.** `ROADMAP.md` is on
+`main`, status sentence "drafted, awaiting human ratification"; the human ratifies by instructing a
+commit that removes that sentence, and `PHASE3_DESIGN.md` is not started until then. Same session:
+`README.md`'s status section was a phase stale — it described phase 2 as unbuilt and quoted 67
+approvals and four specifications, both exact at `0114b45` on 2026-08-21, against 76 and 11 today;
+`PHASE2_DESIGN.md`'s claim that `ROUTED`/`SUPERSEDED`/`WITHDRAWN` were "defined now" was false
+against the code and is corrected there; and the policy administration adapter is phase 3, so every
+"phase-2 adapter" reference in `ASSUMPTIONS.md` and in this file's closed entries is history and
+is annotated as such in `ASSUMPTIONS.md`. In code, nothing is in flight: no branch, no spec, no red
+gate. The next action is the human's ratification of `ROADMAP.md`.
