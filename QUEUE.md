@@ -611,8 +611,8 @@ Ordered by domain severity, not by effort. One line each on why that position.
    the loss date") and no claim numbers (`notice_id` is deliberately not one), no attachments, no
    reporter channels, no CAT handling, no deployment story.
    **Progress, 2026-09-01: (a) is ratified — `ROADMAP.md` at `42c6903`, ratification recorded in
-   the file; (b) `PHASE3_DESIGN.md` is next, drafted with the advisor and human-ratified before any
-   phase-3 implementation item is queued.**
+   the file; (b) `PHASE3_DESIGN.md` is drafted on `main`, awaiting ratification; phase-3 items are
+   written against it once ratified.**
    Reading for this item:
    `PHASE2_DESIGN.md` in full, `STATUTORY_REGISTER.md`, `README.md`'s design commitments.
 
@@ -3170,3 +3170,12 @@ phase 3's, and the human re-ratifies that paragraph from the committed file. Fou
 the shell for `PHASE3_DESIGN.md`, which also established that rule evaluation runs outside every
 transaction on the intake path and inside the single transaction on the resolution path — the
 first structural decision `PHASE3_DESIGN.md` must make. Nothing in flight in code.
+
+**2026-09-01, evening: `PHASE3_DESIGN.md` is drafted and awaiting ratification.** Two ports
+(policy, claims), every answer three-valued with an as-of instant, calls between the two
+transactions on intake, the resolution path restructured to match, policy identification moved
+out of the domain (reversing 4b and 4j), the continuous-coverage derivation moved into it,
+two new append-only attribute tables, per-carrier bindings, and a two-shape swappability proof.
+The human ratifies from the committed file; then phase-3 queue items are written in the order the
+design's last section gives. `ROADMAP.md`'s 2026-09-01 amendment also awaits the human's
+re-ratification of its one changed paragraph. Nothing in flight in code.
