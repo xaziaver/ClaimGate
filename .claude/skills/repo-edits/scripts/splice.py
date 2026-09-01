@@ -31,7 +31,8 @@ def main() -> int:
 
     original = open(args.file, encoding="utf-8").read()
     content = open(args.content_file, encoding="utf-8").read()
-    if not content.endswith("\n"):
+    # Line-oriented modes want a trailing newline; --replace substitutes verbatim.
+    if not args.replace and not content.endswith("\n"):
         content += "\n"
 
     if args.append:

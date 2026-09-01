@@ -1550,6 +1550,18 @@ Documentation lands on `main`, so the paragraph could always have been written.
 The rule: a session that pushes a branch records it in `QUEUE.md`'s status section
 in the same work period, before stopping.
 
+### A splice that normalises trailing newlines is wrong for in-line replacement
+
+Observed 2026-09-01, on the README approval-count edit. `splice.py` appended a
+newline to any content file lacking one, in every mode, so a mid-sentence
+`--replace` came back `+1/−0` where a `1/1` was expected. The `wc -l` check on
+the content file passed, because the content was one line; only the numstat
+showed the break. Line-oriented modes want the newline; verbatim replacement
+must not touch the content at all, and the script now distinguishes them. The
+check that caught it is the one to keep: predict the numstat before the splice
+and compare after, since a one-line content file cannot reveal what the splice
+added to it.
+
 ### A shipped script must resolve the project interpreter, not `python3`
 
 A skill script invoked bare `python3`. On a machine whose system Python is 3.10
