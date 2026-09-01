@@ -35,7 +35,7 @@ isn't one.
   measures whether a test would fail if the code were wrong. Every domain change ships with a
   mutation score, and any mutant judged genuinely equivalent — one no assertion at that layer could
   ever catch — is recorded with a dated, reasoned approval in `gauntlet.lock.json`, not silently
-  ignored. There are 67 such approvals today, each carrying its own argument and its own revisit
+  ignored. As of 2026-09-01 there are 76 such approvals, each carrying its own argument and its own revisit
   trigger.
 - **Implementation is written by an AI coding agent.** Specifications, thresholds, business rules,
   and mutant approvals are human decisions the agent cannot make or override — the gate harness
@@ -44,23 +44,30 @@ isn't one.
 ## Status
 
 **Phase 1 — the pure domain core: validation, triage, SIU indicators, and duplicate detection — is
-complete and gated.** Four specifications under `features/`, all hash-locked; every gate green.
-
-A structured design review of that domain surfaced a series of defects and framing issues, all of
-which have now been corrected: SIU indicators became a parallel attribute rather than a queue
+complete and gated.** A structured design review of that domain surfaced defects and framing
+issues, all since corrected: SIU indicators became a parallel attribute rather than a queue
 override, both SIU thresholds and the duplicate-detection window lost their domain defaults, the
 reason-code vocabulary was reconciled across files, Section II required fields became carrier
 configuration covering liability as well as injury, and the recognized policy-number prefix set
-became configuration rather than a constant. [`QUEUE.md`](QUEUE.md) carries the full record with the
-reasoning behind each, and the remaining open items.
+became configuration rather than a constant.
 
-Phase 2 — the HTTP and persistence shell — is fully designed but not yet built. Every decision
-behind it, with its reasoning, is in [`PHASE2_DESIGN.md`](PHASE2_DESIGN.md).
+**Phase 2 — the HTTP and persistence shell — is complete and gated, merged 2026-08-30.** Notice
+intake, idempotency, pended-notice resolution, the append-only audit log, SIU separation, and
+jurisdiction selection are built against the decisions in [`PHASE2_DESIGN.md`](PHASE2_DESIGN.md).
+Eleven specifications under `features/`, all hash-locked; every gate green. What phase 2
+deliberately does not include — a server binding, authentication, a policy administration adapter
+— is stated there rather than discovered later.
+
+**Phase 3 is in planning.** [`ROADMAP.md`](ROADMAP.md) states what "done" means for the product,
+which phase carries each missing piece, and what is out of scope permanently; it is drafted and
+awaiting ratification. [`QUEUE.md`](QUEUE.md) carries the full record of every item with the
+reasoning behind it.
 
 ## Documents
 
 | File | What it's for |
 |---|---|
+| [`ROADMAP.md`](ROADMAP.md) | What "done" means for ClaimGate as a product, which phase carries each missing piece, and what is permanently out of scope — with the reasoning, and with its ratification status stated in the file. |
 | [`PHASE2_DESIGN.md`](PHASE2_DESIGN.md) | Every phase-2 design decision — record states, audit log, HTTP surface, idempotency, jurisdiction handling, SIU handling — written as decisions with reasons, not a task list. |
 | [`ASSUMPTIONS.md`](ASSUMPTIONS.md) | Every unverified assumption this design rests on, every undocumented phase-1 threshold, and every domain defect found but not yet fixed, each with what was assumed and what would correct it. |
 | [`STATUTORY_REGISTER.md`](STATUTORY_REGISTER.md) | Every regulatory value referenced by the design, with citation, verification date, and source — because Florida amends these statutes nearly every session. |
