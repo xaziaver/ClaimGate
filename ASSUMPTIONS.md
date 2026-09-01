@@ -843,6 +843,44 @@ or data. Nothing below was confirmed against a live book.
   established from the signatures, and the distinction is the difference between a correct loader
   and one that refuses a deployment for declining to set a threshold nobody has agreed a value for.
 
+- **Phase 3 designs the policy administration adapter against three named exemplar system shapes
+  and ships two conforming implementations — advisor-recommended, human-ratified, 2026-09-01.**
+  There is no target deployment; the human named Duck Creek as one example. An interface designed
+  against zero real systems comes out shaped like our own domain model, and one implementation
+  cannot show that has not happened. The third exemplar shape — a periodic flat-file extract with
+  no live query — is the one that stops the interface assuming a synchronous answer exists.
+  **Cost:** phase 3 roughly doubles, and the second implementation has no customer asking for it.
+  The full argument is `ROADMAP.md`, "Why phase 3 ships two implementations".
+
+- **Coverage verification at intake is clerical, and it is not coverage determination —
+  advisor-recommended, human-ratified as the recommendation to carry into `PHASE3_DESIGN.md`,
+  2026-09-01.** Verification asks whether a policy exists matching the identifiers given and
+  whether a term of it was in force at the loss date. Determination asks whether that policy covers
+  this loss — perils, exclusions, endorsements, limits, insurable interest — and is an adjuster and
+  coverage-counsel function, downstream, permanently (`ROADMAP.md`). Four consequences for the
+  adapter, each from claims-operations practice rather than statute, so no primary source of the
+  kind `STATUTORY_REGISTER.md` requires exists for them:
+  - *Coverage attaches to a term, not to a policy.* The loss date selects the term; the adapter
+    returns that term with its effective and expiration dates and its status at that date.
+    Residential terms conventionally incept and expire at 12:01 a.m. standard time at the described
+    property, and FNOL captures a loss date, not an instant, so a loss on a term boundary is
+    ambiguous at the granularity captured — a third value, not a negative, under the standing
+    not-evaluated rule.
+  - *The answer is not idempotent.* Policy administration systems process backdated transactions,
+    so "in force on 2026-06-01?" can answer differently on two different days. Every verification
+    result is stored with the adapter's as-of instant, the same discipline `RULESET_VERSION`
+    applies to domain decisions. A stored "in force" with no as-of stamp is indefensible in a
+    coverage dispute later.
+  - *Search, not fetch.* A large share of real notices arrive with no policy number or a wrong one
+    — contractors, public adjusters, mortgagees, agents from memory. Intake resolves by named
+    insured, risk address and loss date. `POLICY_NUMBER_PATTERN`'s role as a blocker is reopened in
+    phase 3 on this ground.
+  - *Recommended outcome split, for phase 3's design to ratify:* an unmatched policy is a blocker —
+    intake has nothing actionable — and the notice lands `PENDED` for a reviewer to correct
+    identifiers through resolution; an out-of-force term is **not** a blocker — the notice is real
+    and the question is coverage — and lands `TRIAGED` with the verification result as an attribute,
+    on `jurisdiction_unsupported`'s precedent.
+
 ## Undocumented phase-1 thresholds
 
 - **365 (`REPORTING_WINDOW_DAYS`).** Its only rationale was "carriers accept late FNOL" — a
@@ -1119,6 +1157,13 @@ or data. Nothing below was confirmed against a live book.
   at two.
 
 ## Data we do not have at intake
+
+**Annotation, 2026-09-01: every reference in this section and elsewhere in this file to "phase 2's
+adapter layer" or "the phase-2 adapter" predates phase 2's close on 2026-08-30. Phase 2 shipped no
+policy administration adapter; the adapter is phase 3 (`ROADMAP.md`, `PHASE2_DESIGN.md`). "Each of
+the three policy administration systems" refers to the estate this project stopped targeting on
+2026-08-17. The entries are left as written because they are dated history; read "phase 2's
+adapter" as "phase 3's".**
 
 - **`policy_inception_date` is available at FNOL via a lookup against the policy administration
   system — decided 2026-08-13, documentation-only session on `main` (`QUEUE.md`'s merged item 4c);
@@ -1687,6 +1732,13 @@ or data. Nothing below was confirmed against a live book.
   no literal: one evaluation's two events carry the same version as each other and as the audit
   entry that triaged the notice, and the late reporting event records the threshold the carrier
   configured.
+
+- **Retention is currently an unapproved default — opened 2026-09-01, decided in phase 5.** The
+  audit log and payload store are append-only with no deletion path anywhere. Keeping everything
+  forever is a retention behaviour, and `CLAUDE.md`'s first constraint names retention as one of the
+  four things never to default. Phase 5 decides it against a primary source for the Florida
+  claim-file retention duty; no period is recorded here because none has been verified, and
+  recording one from memory would be the exact failure the register exists to prevent.
 
 ## Synthetic data
 
