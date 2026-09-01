@@ -13,6 +13,12 @@ is built to fit any policy administration system; the human named Duck Creek as 
 (2026-09-01). If a real target appears, re-read "Why phase 3 ships two implementations" first,
 because it is the section a target would change.
 
+**Amended 2026-09-01, after ratification.** The existing-claims read was added to phase 3. The
+ratified text placed duplicate-detection wiring in no phase while phase 6 referred to confirming
+a duplicate candidate; the gap was found by reading the shell for `PHASE3_DESIGN.md`, not by any
+document. The human re-ratifies the amended paragraph from the committed file; the rest of the
+ratification stands.
+
 ## Target state: pilotable
 
 A claims manager at a Florida residential property carrier or MGA could put ClaimGate in front of
@@ -54,6 +60,14 @@ interface — is unproven today because no adapter exists. Phase 3 proves it.
 - **Term in force at the loss date**: the term, its effective and expiration dates, and its status
   at that date — active, cancelled effective a date, non-renewed, expired, reinstated — with the
   adapter's as-of instant recorded on the answer. Coverage attaches to a term, never to a policy.
+- **Existing claims on the policy**, so that duplicate detection runs. `duplicates.feature` is
+  locked, bound and fully killed, and its function's only callers in the repository are tests:
+  the acceptance test API and the unit tests. Nothing in the shell calls it, because the
+  existing-claims list has no source until an adapter exists (measured 2026-09-01 at `4a42d2f`).
+  This read comes from the claims side of the core system, not the policy side; whether phase 3's
+  interface is one adapter with a policy port and a claims port, or two adapters, is
+  `PHASE3_DESIGN.md`'s decision. A pilot shipping a gated duplicate rule that never runs is a
+  defect, which is why this is not deferred to phase 6.
 - **Continuous-coverage date**, with the semantics already decided (`ASSUMPTIONS.md`, "Data we do
   not have at intake", 2026-08-13 and 2026-08-14). The recent-inception indicator's `NOT_EVALUATED`
   becomes a real exception path rather than the steady state.

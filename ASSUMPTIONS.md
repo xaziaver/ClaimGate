@@ -76,6 +76,12 @@ or data. Nothing below was confirmed against a live book.
   shared administrator and cannot be inferred.
 - **Book scope.** The shipped configuration assumes Florida residential property only. A
   configuration choice, not a finding about any carrier.
+- **"Policy administration system" in this project's documents means the carrier's core system
+  including its claims side — noted 2026-09-01.** `PHASE2_DESIGN.md` has claim numbers minted by
+  "the policy administration system"; in practice policy and claims are separate modules with
+  separate interfaces (Duck Creek and Guidewire both ship them so), and a claims manager would not
+  use the term for the claims side. The wording is left as history; `PHASE3_DESIGN.md` uses
+  "policy port" and "claims port" or names two adapters, and says which.
   
 ## Carried requirements — decided, not yet built
 

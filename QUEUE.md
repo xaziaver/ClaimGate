@@ -3163,3 +3163,10 @@ and ratified it; this commit records that in the roadmap, `README.md` and item 6
 remaining deliverable is `PHASE3_DESIGN.md`, which is the human's and the advisor's work, not a
 coding agent's — the next coding session arrives with that document ratified and a phase-3 queue
 item written against it. Nothing is in flight in code: no branch, no spec, no red gate.
+
+**2026-09-01, later still: `ROADMAP.md` amended once after ratification.** Duplicate detection
+had no shell caller and the roadmap placed its wiring nowhere; the existing-claims read is now
+phase 3's, and the human re-ratifies that paragraph from the committed file. Found while reading
+the shell for `PHASE3_DESIGN.md`, which also established that rule evaluation runs outside every
+transaction on the intake path and inside the single transaction on the resolution path — the
+first structural decision `PHASE3_DESIGN.md` must make. Nothing in flight in code.
