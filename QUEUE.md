@@ -611,10 +611,93 @@ Ordered by domain severity, not by effort. One line each on why that position.
    the loss date") and no claim numbers (`notice_id` is deliberately not one), no attachments, no
    reporter channels, no CAT handling, no deployment story.
    **Progress, 2026-09-01: (a) is ratified — `ROADMAP.md` at `42c6903`, ratification recorded in
-   the file; (b) `PHASE3_DESIGN.md` is drafted on `main`, awaiting ratification; phase-3 items are
-   written against it once ratified.**
+   the file; (b) `PHASE3_DESIGN.md` is ratified. Item 6 is complete; the phase-3 items below are
+   written against it.**
    Reading for this item:
    `PHASE2_DESIGN.md` in full, `STATUTORY_REGISTER.md`, `README.md`'s design commitments.
+
+7a. **Term-in-force at the loss date (pure domain rule).** New spec
+    `features/coverage_verification.feature`, then the rule. Four values — `IN_FORCE`,
+    `NOT_IN_FORCE`, `BOUNDARY_DAY`, `NOT_EVALUATED` — per `PHASE3_DESIGN.md`, "Term in force at the
+    loss date", and a scenario on each side of every boundary: loss inside an active term; before
+    the first term; after the last; on a term's effective date and on its expiration date (both
+    `BOUNDARY_DAY`); cancellation effective before the loss date, and after it (pending cancellation
+    is `IN_FORCE`); loss on a cancellation effective date; retroactive reinstatement (`IN_FORCE`);
+    reinstatement leaving a lapse, with the loss inside the lapse; loss on a reinstatement effective
+    date. The result names the deciding term and its dates. Term history arrives as data; the rule
+    reads no configuration and no clock. `RULESET_VERSION` bumps at the wiring item, not here — the
+    rule has no caller until 7f.
+
+7b. **Continuous-coverage date derivation (pure domain rule).** New spec
+    `features/continuous_coverage.feature`, then the rule, under the 2026-08-14 semantics in
+    `ASSUMPTIONS.md` ("Data we do not have at intake") unchanged: continuous coverage on the risk;
+    back-to-back renewals continue it; an administrative rewrite continues it; a retroactive
+    reinstatement continues it; a genuine lapse resets it to the date coverage resumed. Scenarios on
+    both sides of each clause, including the single-term case and a history whose earliest terms
+    predate what the source system can supply (`NOT_EVALUATED`, reason). Gives
+    `Candidate.continuous_coverage_date` its first producer — at 7f, not here.
+
+7c. **Identifier sufficiency and the new notice fields (pure rule + surface fields).**
+    `insured_name`, `risk_address`, `risk_city`, `risk_postal_code` join `NoticeFields`;
+    `property_state` stays the address's only state component. Sufficiency rule per
+    `PHASE3_DESIGN.md`: searchable = policy number present, or insured name plus risk postal code;
+    otherwise blocker `POLICY_IDENTIFIERS_INSUFFICIENT`. Scenarios both sides of each arm, including
+    each field present alone. The new fields join the hashed field set: a byte-identical
+    resubmission of an old payload under a key remembered before this item answers `409` rather than
+    a `200` replay, bounded to the 24-hour key lifetime — item 5g's accepted consequence, accepted
+    again here and recorded in this entry when the item closes.
+
+7d. **Retire policy-number shape validation (reopens `validation.feature`).** Reverses items 4b and
+    4j, ratified in `PHASE3_DESIGN.md`, "Identifiers". Delete the prefix scenario; retire
+    `POLICY_NUMBER_MALFORMED` from the domain and `recognized_policy_number_prefixes` from the
+    required carrier configuration, the rules files, and `carrier_configuration.feature`'s
+    required-key rows. Before drafting: measure the full blast radius with the mutation engine
+    against the lock at the working ref — the 2026-09-01 floor is 3 approvals deleted with the
+    prefix scenario and 28 untouched, and the floor is what to check against, not the answer.
+    `POLICY_NOT_MATCHED`, `POLICY_AMBIGUOUS` and the search behaviour are 7f's, not this item's:
+    after 7d a policy number is accepted as given and nothing yet checks it against anything.
+
+7e. **Port protocols, bindings, and the live-query implementations (shell).** The policy port
+    (`search`, `term_history`) and claims port (`existing_claims`) protocols; three-valued results
+    with reason codes and `as_of`, never raising; the per-carrier bindings file with per-binding
+    timeout budgets and no defaults; unresolvable binding → deployment fault, new code, item 5i's
+    pattern; the live-query implementation of each port against an in-process fixture service,
+    timeout and unavailability paths included. Contract suite runs against the protocols so 7i can
+    reuse it. No acceptance spec: nothing user-visible changes until 7f — say so in the gate report
+    rather than manufacturing one. `register_claim` is named in the protocol documentation as phase
+    6's and is not defined.
+
+7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).** New spec
+    `features/policy_identification.feature`: the five-row outcome table in `PHASE3_DESIGN.md` —
+    matched proceeds; zero candidates pends `POLICY_NOT_MATCHED`; several pend `POLICY_AMBIGUOUS`;
+    port `NOT_EVALUATED` triages with the verification attribute carrying the reason; insufficient
+    identifiers pend from 7c's rule. Port calls sit between the two transactions, ordered search →
+    term history → existing claims → rules; the decision transaction writes decision, SIU events,
+    and the new `coverage_verifications` row together. Term-in-force and continuous-coverage results
+    become visible attributes on `GET /notices/{id}`; store the deciding term and the `as_of`, never
+    the full history. `RULESET_VERSION` bumps here. Scenarios describe outcomes and attributes; none
+    names a port, table, or column.
+
+7g. **Resolution path restructured (shell).** Evaluation moves outside the write transaction: read
+    the merged view, evaluate (ports included), write in a second transaction that re-checks
+    `PENDED` and answers `409` if the notice moved. `resolution.feature`'s surface is unchanged — a
+    re-run of its unmodified scenarios is the evidence; the race guard is unit-tested, and the unit
+    test is named in the gate report. Port re-evaluation on resolution uses the merged identifiers,
+    so correcting a policy number through resolution is what clears `POLICY_NOT_MATCHED`.
+
+7h. **Duplicate detection wired (shell).** `existing_claims` feeds `find_duplicates` with the
+    carrier's `window_days` on every transition into `TRIAGED`, both paths; results persist to
+    `duplicate_evaluations` and surface as their own response field, not in `reason_codes`
+    (2026-08-22). `duplicates.feature` is not edited. The first evidence the locked spec describes
+    the product rather than the test API: say what the surviving-mutant picture looked like before
+    and after in the gate report.
+
+7i. **Extract-shape implementations and the swappability proof.** The extract implementation of each
+    port — a generated file set with an `as_of` instant; a policy bound after the extract is
+    `NOT_FOUND` as of that instant — passing 7e's contract suite unchanged; the acceptance suite
+    green under live-query/live-query, extract/extract, and live-policy-beside-extract-claims
+    bindings, with no shell change between runs. Any difficulty writing either implementation is
+    reported as a finding, not smoothed over (`PHASE2_DESIGN.md`, "Swappability proofs").
 
 ## What to read
 
@@ -644,6 +727,8 @@ later.
 | 5i | `PHASE2_DESIGN.md` — the status-code table; `ASSUMPTIONS.md` — "A carrier this deployment administers but cannot configure is our defect, not the reporter's" |
 | 5j | `ASSUMPTIONS.md` — the item 5h three-decision entry dated 2026-08-27; `jurisdiction_selection.feature`'s Rule 3; item 4k's entry above |
 | 6 | `ROADMAP.md`; `PHASE2_DESIGN.md` in full; `STATUTORY_REGISTER.md`; `README.md` |
+| 7a–7d | `PHASE3_DESIGN.md`; the item's spec file; 7b also the 2026-08-14 entry in `ASSUMPTIONS.md`; 7d also the blast-radius technique in `docs/harness-findings.md` |
+| 7e–7i | `PHASE3_DESIGN.md` in full; `PHASE2_DESIGN.md` "The two-transaction shape" and "SIU handling"; 7f–7h also `shell/notice_intake.py` and `shell/resolution.py` as they stand at the item's start |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
 
