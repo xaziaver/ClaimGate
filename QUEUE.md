@@ -3271,3 +3271,23 @@ the files. Items 7a–7i are queued above; 7a is next and is implementation, so 
 coding session with a spec draft for `features/coverage_verification.feature` reviewed by the human
 before anything is built. Nothing is in flight in code, and the full gate was green at `ee8b4b3`
 earlier today: 454 tests, mutation 100%, 11 specs, 76 reviewed-equivalent.
+
+**2026-09-03: item 7a is open; the specification is proposed and awaits the human's approval.**
+Branch `phase3/7a-term-in-force` off `main` at `2b35dd7`, tip `dfb1284`, pushed. One commit:
+`features/coverage_verification.feature` exactly as the advisor supplied it — 142 lines, sha256
+`b9bcedcb3cfa…`, both confirmed from `git show dfb1284:features/coverage_verification.feature`, not
+from the working tree. Measured through the mutation engine at that ref: 78 mutants, 40 sibling swaps
+(every one an `Examples` cell in the four outlines) and 38 markers (every one a quoted literal in the
+six single-probe scenarios), matching the advisor's 78/40/38 exactly. The advisor's zero survivors is
+a simulation against a model of the rule, not a measurement — survivors cannot be measured until the
+spec is approved and step definitions exist. The spec is drafted, not locked: `gauntlet check` on the
+branch is expected to stop at the acceptance gate's approval stage until the human exports at
+`dfb1284` and approves — the human's command, never a session's — and that condition is the
+separate-commits rule working, not a defect to retry. Nothing else is built: no domain rule, no step
+definitions, no unit tests. After approval, implementation goes on the same branch, with two
+requirements the simulated marker kills depend on: step definitions parse every quoted date strictly
+(an unparseable date is a step error, never a skip or a default) and assert the determination and
+reason strings exactly. `RULESET_VERSION` does not bump at this item — the rule has no caller until
+7f. Measurement note: the project `.venv` does not import `gauntlet`, so `measure_mutants.py` ran
+with `GAUNTLET_SRC=~/Code/agent-gauntlet/src` (engine at `aa29c42`), the fallback the script itself
+documents.
