@@ -1797,3 +1797,25 @@ already sit.
 share a spelling, so a spelling shared across a restricted and an unrestricted
 enumeration is a design decision about that negative, not only about the two
 enumerations.** The pressure, when it lands, is on the negative to get looser.
+
+### The acceptance gate reports no per-spec kill count; `apply()` plus the step file gives one
+
+Observed 2026-09-03 on item 7a's first full run. The gate's printed line, the `actual` in
+`gauntlet check --json`, `gauntlet status`, and every `gate.finished` event carry only the summary
+— `12 spec(s), 76 reviewed-equivalent` — and diagnostics list survivors alone. A spec that killed
+everything leaves two traces and no count: its file in `.gauntlet/mutation-backup/` with the run's
+timestamp, which proves the gate mutated it, and a reviewed-equivalent figure unchanged from the
+previous run, which with zero diagnostics proves no survivor. For a kill list with locators, apply
+each mutant with `mutation.apply(text, mutant)`, write the result over the spec, run the spec's
+step file with pytest, and count a non-zero exit as a kill; restore the spec in a `finally` and
+verify its digest after. Report the result as a measurement outside the gate, not the gate's
+figure. 78 mutants took about a minute, against the gate's twenty-odd for all twelve specs.
+
+### A `key=` lambda on `max` over tuples breeds equivalent code mutants
+
+Observed 2026-09-03. `max(pairs, key=lambda pair: pair[0])` over `(date, term)` tuples survived two
+mutmut mutants — the `key=` argument dropped, and `key=None` — because tuples already compare on
+their first element and no test had a tie on it. Both were equivalent, and approving them would
+have carried that argument into the ledger. Restructure instead: take `max` over the plain key
+values and select the pair by equality. Nothing is left to drop, and the selection's `==` becomes
+a mutant that any test with two candidates kills.

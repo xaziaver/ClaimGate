@@ -3292,3 +3292,38 @@ reason strings exactly. `RULESET_VERSION` does not bump at this item — the rul
 7f. Measurement note: the project `.venv` does not import `gauntlet`, so `measure_mutants.py` ran
 with `GAUNTLET_SRC=~/Code/agent-gauntlet/src` (engine at `aa29c42`), the fallback the script itself
 documents.
+
+**2026-09-03, later: item 7a is implemented on `phase3/7a-term-in-force` and awaits the human's
+review before merge.** The human approved the spec at `25ac004` — lock entry at digest
+`b9bcedcb3cfa…`, the spec at `dfb1284` byte for byte. Implementation commit `689f285`:
+`src/claimgate/domain/coverage.py` (the rule and the data structures it reads),
+`tests/api/coverage.py` (the step-definition surface), the acceptance step file and
+`tests/unit/test_coverage.py`. No wiring, no shell change, no `RULESET_VERSION` bump — the rule has
+no caller until 7f. Full gate green at `689f285`: 546/546 tests, coverage 100/100, complexity 6,
+CRAP 6.0, code mutation 100%/538 killed, acceptance 12 specs and 76 reviewed-equivalent — the same
+76 as before this spec, so it added no survivor, and its file in `.gauntlet/mutation-backup/`
+carries the run's timestamp, so the gate did mutate it. Measured outside the gate by applying each
+mutant with the engine and running the step file: 78 mutants, 78 killed, 0 survivors, 69 unique
+locators (nine two-literal step lines share one, the known Gauntlet addressing defect; nothing to
+approve on them). The advisor's simulated zero held. **Judgments made in the implementation, for
+the human to confirm or reverse before merge — recorded here and deliberately not yet in
+`ASSUMPTIONS.md`:** (1) reinstatement is one transaction shape told apart by its date, which is how a
+policy administration system records it: a reinstatement dated on its cancellation rescinds it, a
+later one leaves a lapse, and the test API's "retroactively as of" refuses a date that is not the
+cancellation's rather than quietly recording a lapse. (2) A cancelled term's nominal expiration
+date, and the effective date of a term cancelled flat from inception, are not boundary days:
+nothing turns on the loss time on a date the term did not run to, the spec's own precedence for a
+rescinded date, applied one step further than the spec states. (3) A malformed history raises
+`ValueError` rather than resolving NOT_EVALUATED — expiration on or before effective, a status
+change dated outside its term, a reinstatement with no cancellation to reinstate (one dated before
+its cancellation included), a cancellation on a term already cancelled, two terms both covering
+the loss date — because the NOT_EVALUATED reasons are the source's, and a domain-originated code
+would be a new enumeration entry, which is the human's decision; whether 7f's adapter maps
+inconsistent source data to a port reason is open. (4) Input order of terms and of status changes
+is irrelevant, and the cited term is the term as supplied. (5) An obtained history with no terms
+is NOT_IN_FORCE citing nothing; a not-obtained history with no reason is an error. (6)
+NOT_IN_FORCE cites the latest standing cancellation on or before the loss date and its term — a
+cancelled, rewritten, and cancelled-again history cites the second term — and a tie between two
+terms cancelled the same date that both hold the loss date, an inconsistent history, cites the
+first stated. Next: the human reviews the gate table and the survivor list against the
+simulation, then merges; the branch is a superset of `main`.
