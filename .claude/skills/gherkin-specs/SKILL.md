@@ -21,8 +21,12 @@ business behaviour a claims manager would recognise, never implementation.
 
 ## Measure the blast radius before drafting
 
-    .venv/bin/python .claude/skills/gherkin-specs/scripts/measure_mutants.py \\
-        features/your_file.feature
+    GAUNTLET_SRC=~/Code/agent-gauntlet/src .venv/bin/python \
+        .claude/skills/gherkin-specs/scripts/measure_mutants.py features/your_file.feature
+
+The project `.venv` does not install `gauntlet` — it is not in
+`requirements-dev.txt` — so `GAUNTLET_SRC` points the script at the agent-gauntlet
+checkout's `src/`; without it the import fails and the script says so.
 
 Needs no approval and no gate run. Report counts **as measured**. Predicting a
 survivor count is a different act from measuring one; both are useful, and a
