@@ -3273,7 +3273,8 @@ before anything is built. Nothing is in flight in code, and the full gate was gr
 earlier today: 454 tests, mutation 100%, 11 specs, 76 reviewed-equivalent.
 
 **2026-09-03: item 7a is open; the specification is proposed and awaits the human's approval.**
-Branch `phase3/7a-term-in-force` off `main` at `2b35dd7`, tip `dfb1284`, pushed. One commit:
+Branch `phase3/7a-term-in-force` off `main` at `2b35dd7`, spec commit `dfb1284`, pushed;
+anything above it on the branch is a merge of `main` and nothing else. One commit of substance:
 `features/coverage_verification.feature` exactly as the advisor supplied it — 142 lines, sha256
 `b9bcedcb3cfa…`, both confirmed from `git show dfb1284:features/coverage_verification.feature`, not
 from the working tree. Measured through the mutation engine at that ref: 78 mutants, 40 sibling swaps
