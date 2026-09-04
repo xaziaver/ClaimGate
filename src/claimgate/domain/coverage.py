@@ -10,6 +10,7 @@ wires it, and until then from callers that build it themselves.
 
 from dataclasses import dataclass
 from datetime import date
+from itertools import combinations
 from typing import Final, Literal
 
 IN_FORCE: Final = "IN_FORCE"
@@ -68,6 +69,7 @@ def determine_term_in_force(history: TermHistory, loss_date: date) -> TermInForc
     if history.value == "NOT_OBTAINED":
         return _not_evaluated(history)
     coverages = [_coverage_of(term) for term in history.terms]
+    _require_disjoint(coverages)
     if any(coverage.position(loss_date) == "BOUNDARY" for coverage in coverages):
         return TermInForceDetermination(value=BOUNDARY_DAY)
     covering = _covering(coverages, loss_date)
@@ -76,11 +78,26 @@ def determine_term_in_force(history: TermHistory, loss_date: date) -> TermInForc
     return _not_in_force(coverages, loss_date)
 
 
+def _require_disjoint(coverages: list["_Coverage"]) -> None:
+    # Two terms of one policy in force on the same day is malformed source
+    # data, not a history to answer: neither term could be cited over the
+    # other. Periods that touch at a date - a seamless renewal, a rewrite
+    # effective on the cancellation date - are disjoint; only a day strictly
+    # inside both counts.
+    periods = [(period, coverage.term) for coverage in coverages for period in coverage.periods]
+    for ((start1, end1), term1), ((start2, end2), term2) in combinations(periods, 2):
+        if max(start1, start2) < min(end1, end2):
+            first, second = sorted((term1.effective, term2.effective))
+            raise ValueError(
+                f"term history is inconsistent: terms effective {first} and {second}"
+                " were both in force on the same day"
+            )
+
+
 def _covering(coverages: list["_Coverage"], loss_date: date) -> "_Coverage | None":
-    covering = [c for c in coverages if c.position(loss_date) == "COVERED"]
-    if len(covering) > 1:
-        raise ValueError(f"term history is inconsistent: {len(covering)} terms cover {loss_date}")
-    return covering[0] if covering else None
+    # At most one once _require_disjoint has held: two terms both strictly
+    # inside a period would be two periods sharing a day.
+    return next((c for c in coverages if c.position(loss_date) == "COVERED"), None)
 
 
 def _not_evaluated(history: TermHistory) -> TermInForceDetermination:
@@ -97,17 +114,22 @@ def _not_in_force(coverages: list["_Coverage"], loss_date: date) -> TermInForceD
     # The loss date is strictly inside no period of any term. If it falls
     # within a term's dates after a cancellation that stands, that cancellation
     # ended the coverage and is cited - the latest such one, whose lapse the
-    # date is in. Otherwise no term ran on that date and nothing is cited:
-    # before the first term, after the last, or in a gap between two.
+    # date is in. Otherwise no term ran on that date and nothing is cited.
     standing = _standing_cancellations(coverages, loss_date)
     if not standing:
         return TermInForceDetermination(value=NOT_IN_FORCE)
     latest = max(cancelled for cancelled, _ in standing)
-    # Two terms cancelled on the same date that both hold the loss date is an
-    # inconsistent history; the first stated is cited, and the value is the
-    # same either way.
-    term = next(term for cancelled, term in standing if cancelled == latest)
-    return TermInForceDetermination(value=NOT_IN_FORCE, term=term, cancellation_effective=latest)
+    terms = [term for cancelled, term in standing if cancelled == latest]
+    if len(terms) > 1:
+        # Two terms cancelled the same date both holding the loss date with no
+        # day in force shared - a rewrite voided on its own effective date.
+        # Malformed like an overlap: nothing picks one term over the other.
+        raise ValueError(
+            f"term history is inconsistent: {len(terms)} terms cancelled {latest} hold {loss_date}"
+        )
+    return TermInForceDetermination(
+        value=NOT_IN_FORCE, term=terms[0], cancellation_effective=latest
+    )
 
 
 def _standing_cancellations(

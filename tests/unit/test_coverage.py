@@ -242,7 +242,7 @@ def test_status_change_order_does_not_change_the_determination(loss_date: str) -
         ),
         (
             [term("2026-01-15", "2027-01-15"), term("2026-06-01", "2027-06-01")],
-            r"^term history is inconsistent: 2 terms cover 2026-09-01",
+            r"^term history is inconsistent: terms effective 2026-01-15 and 2026-06-01 were both",
         ),
     ],
 )
@@ -251,3 +251,39 @@ def test_malformed_history_is_an_error_not_a_determination(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         determine(terms, "2026-09-01")
+
+
+# The advisor's probe: two terms in force at once, both cancelled the same day.
+# Whichever is stated first, the history is malformed - two terms in force on
+# one day - and no loss date answers it, covered or lapsed.
+OVERLAPPING = [
+    term("2026-01-01", "2027-01-01", (CANCELLATION, "2026-06-01")),
+    term("2026-03-01", "2027-03-01", (CANCELLATION, "2026-06-01")),
+]
+# A rewrite voided on its own effective date: no day in force is shared, so the
+# overlap rule does not see it, and the two cancellations tie on the date.
+REWRITE_VOIDED = [
+    term("2026-01-01", "2027-01-01", (CANCELLATION, "2026-06-01")),
+    term("2026-06-01", "2027-06-01", (CANCELLATION, "2026-06-01")),
+]
+
+
+@pytest.mark.parametrize("loss_date", ["2026-04-01", "2026-08-01"])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_terms_in_force_on_the_same_day_are_an_error_in_either_order(
+    loss_date: str, reverse: bool
+) -> None:
+    terms = list(reversed(OVERLAPPING)) if reverse else OVERLAPPING
+    message = r"^term history is inconsistent: terms effective 2026-01-01 and 2026-03-01 were both"
+    with pytest.raises(ValueError, match=message):
+        determine(terms, loss_date)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_two_terms_cancelled_the_same_day_holding_the_loss_date_are_an_error(
+    reverse: bool,
+) -> None:
+    terms = list(reversed(REWRITE_VOIDED)) if reverse else REWRITE_VOIDED
+    message = r"^term history is inconsistent: 2 terms cancelled 2026-06-01 hold 2026-08-01"
+    with pytest.raises(ValueError, match=message):
+        determine(terms, "2026-08-01")
