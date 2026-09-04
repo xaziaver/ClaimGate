@@ -1224,6 +1224,45 @@ adapter" as "phase 3's".**
   **What remains unverified is only per-system mechanics** — which identifier resolves to the
   party/risk in each of the three policy administration systems. Needed before the phase-2 adapter is
   wired, not before the spec.
+- **Term-in-force judgments beyond the locked spec — agent-proposed, advisor-reviewed,
+  human-ratified 2026-09-04.** `features/coverage_verification.feature` (locked at `dfb1284`, item
+  7a) states the rule where `PHASE3_DESIGN.md` was precise enough to draft; the rule as built also
+  answers histories the spec does not state. Each answer below was proposed in the implementation,
+  re-driven independently by the advisor, and ratified from the committed code — none was
+  defaulted.
+  **Reinstatement is one transaction shape, told apart by its date.** A reinstatement dated on the
+  cancellation it follows is retroactive: it rescinds the cancellation and the lapse never existed.
+  One dated later leaves a lapse between the two. That is how a policy administration system
+  records the two kinds, and the port carries no flag. The test API's "reinstated retroactively as
+  of" refuses an as-of date that is not the cancellation's, rather than quietly recording a lapse
+  under a phrase that promised none.
+  **A boundary day is a date on which coverage changes within the day.** A term's effective and
+  expiration dates, and the effective date of a standing cancellation or reinstatement, are
+  boundary days: coverage incepts or ends at 12:01 a.m. on them and intake holds a date, not an
+  instant. A cancelled term's nominal expiration date and the effective date of a term cancelled
+  flat from inception are not — coverage changes on neither, because the term did not run to the
+  one and never ran on the other. This applies the spec's own precedence for a rescinded date,
+  that nothing turns on the loss time there, one step past what the spec states.
+  **A malformed history raises; reason codes stay port-owned.** The rule's `NOT_EVALUATED` reasons
+  are the policy source's, passed through, and a domain-originated code would be a new entry in a
+  closed enumeration. A history the rule cannot answer is therefore a `ValueError` on the caller: a
+  term expiring on or before it takes effect; a status change dated outside its term; a
+  reinstatement with no cancellation to reinstate, one dated before its cancellation included; a
+  cancellation on a term already cancelled; two terms in force on the same day — overlapping
+  coverage, added at ratification after the advisor showed that the implementation's first-stated
+  tie-break made a citation depend on input order; and that rule's residue, two terms cancelled the
+  same date both holding the loss date with no day in force shared, which only a rewrite voided on
+  its own effective date produces. Item 7e decides what the ports map to `SOURCE_MALFORMED` from
+  these.
+  **An obtained history with no terms is `NOT_IN_FORCE` citing nothing.** No term ran on the date,
+  which is what the value says. Whether an unbound submission is searchable at all is item 7e's
+  note to answer at the port, not this rule's.
+  **`NOT_IN_FORCE` cites the latest standing cancellation on or before the loss date, and its
+  term.** A cancelled, rewritten, and cancelled-again history cites the second term; a term
+  cancelled, reinstated with a lapse, and cancelled again cites the cancellation that opened the
+  lapse the date is in. Ties are unreachable by the malformed-overlap rule above, never broken by
+  input order. The order in which terms and status changes are supplied is otherwise irrelevant,
+  and the cited term is the term as supplied.
 - **Consequence, updated for the decision above:** the recent-policy-inception indicator's blocking
   gap was its missing input; that gap is resolved in principle now that the lookup's semantics are
   decided. Once the phase-2 adapter is built, `NOT_EVALUATED` becomes a genuine exception path for
