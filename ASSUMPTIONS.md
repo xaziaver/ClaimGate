@@ -1303,6 +1303,11 @@ adapter" as "phase 3's".**
   *Boundary rows.* A renewal effective one day after expiration is a lapse — terms end at 12:01 a.m.
   on the expiration date, and a payment grace period does not move the term's dates; a renewal
   issued late with its effective date backdated to the expiration is seamless and arrives as such.
+  **Addendum, three cases beyond the amended spec — advisor-recommended, human-ratified 2026-09-04,
+  coded with item 7b's implementation.** (a) A loss dated exactly on the horizon day and covered by
+  no supplied term is `HISTORY_MAY_PREDATE_SOURCE`: "on or before the horizon" is the conservative
+  side, matching the run-start test. (b) A loss on an expiration date with no renewal derives that
+  run's start. (c) A loss on the first day of a first term derives that day.
 - **Consequence, updated for the decision above:** the recent-policy-inception indicator's blocking
   gap was its missing input; that gap is resolved in principle now that the lookup's semantics are
   decided. Once the phase-2 adapter is built, `NOT_EVALUATED` becomes a genuine exception path for

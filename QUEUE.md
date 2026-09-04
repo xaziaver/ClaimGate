@@ -3421,3 +3421,46 @@ rule, no step definitions, no unit tests. `docs/session-prompts/ADVISOR.md` carr
 working-tree modification this session did not make; it was left untouched and is in no commit.
 Next: the human exports at `c5c9b1c` and approves — `gauntlet spec approve`, the human's command,
 never a session's — then implementation on the same branch.
+
+**2026-09-04, evening: item 7b is implemented on `phase3/7b-continuous-coverage` and awaits the
+human's review before merge.** The human approved the amended spec at `c5c9b1c` — lock entry at
+digest `dc00a588ea21…`, approval commit `c497312`, `gauntlet.lock.json` only. Implementation commit
+`c434fca`: `src/claimgate/domain/continuous_coverage.py` (the rule and its result type, a sibling of
+`coverage.py`, which stands at 249 of the size gate's 250 lines once the history gains its horizon
+and prior-carrier interval), `coverage.py` extended with those two optional fields and a public
+in-force-periods reader with the term-in-force rule unchanged, `tests/api/coverage.py`, a new step
+file, the five term-history Givens both locked specs state word for word moved to
+`tests/acceptance/conftest.py`, and unit tests in `tests/unit/test_continuous_coverage.py` plus
+additions to `test_coverage.py` holding a stated prior interval to never being in force. The three
+cases decided beyond the spec are coded and recorded as the dated addendum to the 2026-09-04
+continuous-coverage entry in `ASSUMPTIONS.md`. No wiring, no shell change, no `RULESET_VERSION` bump
+— no caller until 7f. Full gate cold at `c434fca`, `mutants/` cleared first: every gate green —
+657/657 tests, coverage 100/100, complexity 6, CRAP 6.0, duplication 0, code mutation 100% with 643
+killed (560 before this item; the rise is the new rule's own mutants), acceptance 13 specs and 76
+reviewed-equivalent in 1741s — the same 76 as before this spec, so it added no survivor. Measured
+outside the gate by applying each of the spec's 156 mutants with the engine and running the step
+file: 156 applied, 156 killed, 0 survivors, 110 unique locators, the spec restored to its locked
+digest — the advisor's simulated zero held. **Judgments made in the implementation beyond the locked
+spec and the three ratified cases, for the human to confirm or reverse before merge — recorded here
+and deliberately not yet in `ASSUMPTIONS.md`:** (1) the result is `DERIVED` with the date or
+`NOT_EVALUATED` with a reason, nothing else recorded. (2) "Reaches" is measured against the day the
+run began: the first own term's effective date, except for a run opened by a lapsed reinstatement,
+where it is the reinstatement date. (3) A prior interval beginning after the run did cannot move the
+date later; the derived date is the earlier of the two starts. (4) A prior interval extends
+whichever run holds the loss date, a later run across a gap in own terms included when the interval
+ends on or after that run began — the prior carrier covered the gap; one ending inside an earlier
+run does not reach. (5) A prior interval is malformed only when it ends strictly before it takes
+effect, the instruction's "before"; a zero-day interval is accepted and changes nothing, one step
+short of the term rule's "on or before". (6) A loss dated inside the prior interval and before any
+own term is `NO_COVERAGE_ON_LOSS_DATE`: the interval extends a run, it is not one. (7) A malformed
+prior interval raises for any loss date on an obtained history, as malformed terms do; on a
+not-obtained history it is ignored and the source's reason is the answer, and a not-obtained history
+with no reason is an error. (8) An obtained history with no terms holds no date:
+`NO_COVERAGE_ON_LOSS_DATE`, or `HISTORY_MAY_PREDATE_SOURCE` when the loss is on or before a stated
+horizon. (9) A stated prior interval may reach back before the horizon once the own run's start
+passes the horizon test — a data point the source states, not a term that might be missing. (10) A
+loss covered by a supplied term from before the horizon takes the run-start test,
+`HISTORY_MAY_PREDATE_SOURCE`, not the uncovered one. (11) Input order of terms and of status changes
+is irrelevant. `docs/session-prompts/ADVISOR.md` still carries the human's uncommitted working-tree
+modification, untouched and in no commit. Next: the human reviews the gate table, the kill figure
+and the judgments, then merges; the branch is a superset of `main`.
