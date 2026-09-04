@@ -19,11 +19,13 @@ from claimgate.domain.coverage import (
     NOT_IN_FORCE,
     REINSTATEMENT,
     PolicyTerm,
+    PriorCoverage,
     StatusChangeKind,
     TermHistory,
     TermInForceDetermination,
     TermStatusChange,
     determine_term_in_force,
+    in_force_periods,
 )
 
 
@@ -287,3 +289,70 @@ def test_two_terms_cancelled_the_same_day_holding_the_loss_date_are_an_error(
     message = r"^term history is inconsistent: 2 terms cancelled 2026-06-01 hold 2026-08-01"
     with pytest.raises(ValueError, match=message):
         determine(terms, "2026-08-01")
+
+
+# Item 7b: the history carries what the continuous-coverage rule reads - the
+# source's horizon and any prior-carrier coverage - and this rule reads terms
+# only. Prior-carrier days are never in force with this carrier, so a stated
+# prior interval decides nothing here: not IN_FORCE, not a boundary, and never
+# an overlap with the own term it meets.
+PRIOR_CARRIER = PriorCoverage(effective=date(2017, 5, 20), ending=date(2023, 2, 10))
+TAKEOUT = term("2023-02-01", "2024-02-01")
+
+
+@pytest.mark.parametrize(
+    ("loss_date", "expected"),
+    [
+        ("2020-06-01", NOT_IN_FORCE),
+        ("2023-01-31", NOT_IN_FORCE),
+        ("2023-02-01", BOUNDARY_DAY),
+        ("2023-02-05", IN_FORCE),
+        ("2023-02-10", IN_FORCE),
+        ("2023-02-11", IN_FORCE),
+    ],
+)
+def test_prior_carrier_coverage_and_the_horizon_never_decide_the_determination(
+    loss_date: str, expected: str
+) -> None:
+    history = TermHistory(
+        value="OBTAINED",
+        terms=(TAKEOUT,),
+        history_from=date(2020, 1, 1),
+        prior_coverage=PRIOR_CARRIER,
+    )
+    bare = TermHistory(value="OBTAINED", terms=(TAKEOUT,))
+
+    determination = determine_term_in_force(history, date.fromisoformat(loss_date))
+
+    assert determination.value == expected
+    assert determination == determine_term_in_force(bare, date.fromisoformat(loss_date))
+    assert determination.term == (TAKEOUT if expected == IN_FORCE else None)
+
+
+@pytest.mark.parametrize(
+    ("terms", "expected"),
+    [
+        ([SINGLE], [("2026-01-15", "2027-01-15")]),
+        ([CANCELLED], [("2026-01-15", "2026-06-10")]),
+        ([REINSTATED_WITH_LAPSE], [("2026-01-15", "2026-06-10"), ("2026-07-20", "2027-01-15")]),
+        ([REINSTATED_RETROACTIVELY], [("2026-01-15", "2027-01-15")]),
+        ([CANCELLED_FLAT], []),
+        (REWRITE, [("2026-01-01", "2026-05-15"), ("2026-05-15", "2027-05-15")]),
+        (list(reversed(REWRITE)), [("2026-01-01", "2026-05-15"), ("2026-05-15", "2027-05-15")]),
+        (list(reversed(GAP)), [("2025-01-15", "2026-01-15"), ("2026-03-01", "2027-03-01")]),
+        ([], []),
+    ],
+)
+def test_in_force_periods_are_the_days_each_term_ran_earliest_first(
+    terms: list[PolicyTerm], expected: list[tuple[str, str]]
+) -> None:
+    history = TermHistory(value="OBTAINED", terms=tuple(terms))
+
+    periods = in_force_periods(history)
+
+    assert periods == [(date.fromisoformat(a), date.fromisoformat(b)) for a, b in expected]
+
+
+def test_in_force_periods_refuse_a_malformed_history_like_the_determination() -> None:
+    with pytest.raises(ValueError, match=r"^term history is inconsistent"):
+        in_force_periods(TermHistory(value="OBTAINED", terms=tuple(OVERLAPPING)))

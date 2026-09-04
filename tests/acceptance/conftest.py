@@ -30,7 +30,14 @@ from typing import Any
 import pytest
 from pytest_bdd import given, parsers, then, when
 
-from tests.acceptance.support import parse_compact_blockers, parse_instant
+from tests.acceptance.support import parse_compact_blockers, parse_instant, policy_terms
+from tests.api.coverage import (
+    cancelled,
+    policy_term,
+    reinstated,
+    reinstated_retroactively,
+    unobtained_term_history,
+)
 from tests.api.notice_intake import (
     CARRIER_IDENTITY_REFERENCE,
     IN_MEMORY_DATABASE,
@@ -362,3 +369,41 @@ def check_state(context: dict[str, Any], value: str) -> None:
 def check_blockers(context: dict[str, Any], value: str) -> None:
     actual = [(b.code, b.field) for b in context["response"].blockers]
     assert actual == parse_compact_blockers(value)
+
+
+# The term-history steps features/coverage_verification.feature (item 7a) and
+# features/continuous_coverage.feature (item 7b) state in the same words: one
+# history, read by two rules, each keeping its own When and Then in its own
+# module. "the term" in the three status steps is the term most recently
+# stated. Every quoted date goes through date.fromisoformat and nothing else -
+# the acceptance engine's marker mutation appends "_gauntlet" to a literal, and
+# a step that tolerated one, by defaulting or parsing leniently, would let that
+# mutant survive.
+@given(parsers.parse('a policy term effective "{effective}" and expiring "{expiration}"'))
+def add_policy_term(context: dict[str, Any], effective: str, expiration: str) -> None:
+    policy_terms(context).append(
+        policy_term(date.fromisoformat(effective), date.fromisoformat(expiration))
+    )
+
+
+@given(parsers.parse('the term was cancelled effective "{effective}"'))
+def cancel_term(context: dict[str, Any], effective: str) -> None:
+    terms = policy_terms(context)
+    terms[-1] = cancelled(terms[-1], date.fromisoformat(effective))
+
+
+@given(parsers.parse('the term was reinstated effective "{effective}"'))
+def reinstate_term(context: dict[str, Any], effective: str) -> None:
+    terms = policy_terms(context)
+    terms[-1] = reinstated(terms[-1], date.fromisoformat(effective))
+
+
+@given(parsers.parse('the term was reinstated retroactively as of "{as_of}"'))
+def reinstate_term_retroactively(context: dict[str, Any], as_of: str) -> None:
+    terms = policy_terms(context)
+    terms[-1] = reinstated_retroactively(terms[-1], date.fromisoformat(as_of))
+
+
+@given(parsers.parse('the policy\'s term history could not be obtained, with reason "{reason}"'))
+def set_history_unobtained(context: dict[str, Any], reason: str) -> None:
+    context["term_history"] = unobtained_term_history(reason)
