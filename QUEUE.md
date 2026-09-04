@@ -3354,3 +3354,33 @@ it change no file under `src/`, `tests/`, or `features/`. Item 7b is next — th
 date derivation, a pure domain rule under the 2026-08-14 semantics unchanged — and opens in a fresh
 session with `features/continuous_coverage.feature` drafted for the human's review before anything
 is built. Nothing is in flight in code: no branch, no spec, no red gate.
+
+**2026-09-04, later: item 7b is open; the specification is proposed and awaits the human's approval.**
+Branch `phase3/7b-continuous-coverage` off `main` at `de2262f`, spec commit `d5c33ea`, pushed;
+anything above it on the branch is a merge of `main` and nothing else. One commit of substance:
+`features/continuous_coverage.feature` exactly as the advisor supplied it — 88 lines, sha256
+`8a5e71454c47…`, both confirmed from `git show d5c33ea:features/continuous_coverage.feature`, not
+from the working tree. Measured through the mutation engine at that ref (agent-gauntlet `9afd421`;
+its acceptance module is unchanged since the `aa29c42` 7a measured with): 48 mutants — 4 sibling
+swaps, all in the one outline's two `Examples` rows, and 44 markers, every quoted literal in the
+eight plain scenarios — over 33 unique locators, because fifteen step lines carry two literals each
+(the known Gauntlet addressing defect; nothing is approvable on a marker). Matches the advisor's
+48/44/4 exactly. The advisor's zero survivors on the 4 swaps is a simulation against the ratified
+rule, re-derived here with the same result, and not a measurement; the 44 markers die at step
+resolution conditionally on the two requirements 7a's step definitions already meet — strict date
+parsing and exact-string assertions. `gauntlet check` at `d5c33ea`: every gate green (552/552 tests,
+coverage 100/100, code mutation 100% from a warm cache on a commit that adds no code) and acceptance
+stopped at the approval stage in 0.004s — `1 unapproved or modified spec(s)`, remedy naming
+`gauntlet lock`, the known-wrong command; the human's is `gauntlet spec approve`. That red is the
+separate-commits rule working, not a defect to retry. Nothing else is built: no domain rule, no step
+definitions, no unit tests, no `RULESET_VERSION` bump (no caller until 7f). Three design points for
+the implementation session, flagged and deliberately not resolved: (1) the "source supplies history
+from" Given implies the term-history input gains a supplied-from date; (2) `HISTORY_MAY_PREDATE_SOURCE`
+is a domain-owned reason in a closed enumeration this feature owns, which the spec's other reason,
+`SOURCE_UNAVAILABLE`, passes through from the port's enumeration — distinct from 7a's ratified judgment
+that inconsistent-source reasons are the port's, because a truncation boundary is well-formed data the
+source states truthfully, not a contradiction within the history; (3) a supplied term effective before
+the supplied-from date is neither Rule 3 scenario's case, and whether that is malformed (`ValueError`,
+7a's judgment 3) or NOT_EVALUATED with a reason is the human's to decide before it is coded. Next: the
+human exports at `d5c33ea` and approves — the human's command, never a session's — then
+implementation on the same branch.
