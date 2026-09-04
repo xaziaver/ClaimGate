@@ -472,6 +472,10 @@
       "approved_at": "2026-08-23T12:48:07+00:00",
       "digest": "sha256:99c29e034fd0d43c1164a2bd72642f0fbd396c36d44dc1f0726bc2fda65e2394"
     },
+    "spec:features/coverage_verification.feature": {
+      "approved_at": "2026-09-03T17:52:14+00:00",
+      "digest": "sha256:b9bcedcb3cfa8f3f2b814aad20fb63a93b4415e498f8742684c988ffab4a8b44"
+    },
     "spec:features/duplicates.feature": {
       "approved_at": "2026-08-17T13:09:14+00:00",
       "digest": "sha256:29adb2bebdd52819d37979feff2755d3b0ad5d6441d4cc1166ae66e0e690d434"
