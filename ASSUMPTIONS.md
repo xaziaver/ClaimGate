@@ -1204,7 +1204,7 @@ adapter" as "phase 3's".**
   keying on it would fire the indicator across a lawful book every twelve months — the same defect,
   in the same shape, `QUEUE.md` item 2 already removed from the late-reporting side.
 - **Decided 2026-08-14: how the adapter derives that date, and what "continuous coverage" means.**
-  Answers the mechanics the decision above left open, not a separate question. **Location amended 2026-09-01: the derivation described in this entry is a domain rule in phase 3; the port supplies the history (`PHASE3_DESIGN.md`). Semantics unchanged.** The adapter does not
+  Answers the mechanics the decision above left open, not a separate question. **Location amended 2026-09-01: the derivation described in this entry is a domain rule in phase 3; the port supplies the history (`PHASE3_DESIGN.md`). Semantics unchanged.** **Stated as of the loss date 2026-09-04 (item 7b, advisor-recommended, human-ratified): the date is the start of the unbroken run of coverage in force on the loss date; a lapse and reinstatement recorded after the loss cannot move it.** The adapter does not
   read a stored inception field. It resolves the party/risk identity from whatever the reporter
   supplies, pulls every associated policy term for that risk plus cancellations, non-renewals, and
   reinstatements, and derives the continuous-coverage start from that history. Administrative
@@ -1263,6 +1263,46 @@ adapter" as "phase 3's".**
   lapse the date is in. Ties are unreachable by the malformed-overlap rule above, never broken by
   input order. The order in which terms and status changes are supplied is otherwise irrelevant,
   and the cited term is the term as supplied.
+- **Continuous-coverage derivation: decisions taken before the spec was locked —
+  advisor-recommended, human-ratified 2026-09-04.** `features/continuous_coverage.feature` (item 7b)
+  was amended after review of its first draft found four gaps. (1) *As of the loss date.* The
+  derivation takes the loss date, like the term-in-force rule, and reads the unbroken run of
+  coverage in force on that day. A late-reported loss on a policy that lapsed and was reinstated
+  afterwards must not derive the reinstatement date: that fires the recent-inception indicator
+  falsely into the restricted-read table. A loss date no supplied run covers is `NOT_EVALUATED` with
+  reason `NO_COVERAGE_ON_LOSS_DATE` — the term-in-force rule already answers that notice, and the
+  indicator is moot. A boundary day belongs to the run it bounds: a loss on a cancellation date
+  derives that run's start; on the day coverage resumed after a lapse, that day. (2) *Takeout and
+  assumption business.* The 2026-08-14 entry's "prior carrier's continuous-coverage date as a data
+  point, not a reset" had no input in the first draft, so every depopulation policy would have
+  derived the assumption date. The history now carries an optional prior-coverage interval
+  (effective, ending) the source states; if it reaches the first own term of the run — ending on, or
+  after, that term's effective date — the derived date is the prior interval's effective date; a gap
+  of even one day leaves the own term's date. The term-in-force rule reads `terms` only and ignores
+  this interval: prior-carrier days are never in force with this carrier. Whether a given policy
+  administration system carries a prior-coverage *inception* date rather than only a prior carrier
+  and expiration is carrier-estate-dependent; a port that lacks it supplies nothing, and the rule
+  concludes from own terms. (3) *The source's history horizon.* "Supplies history from" a date means
+  every term in force on or after that date is supplied and terms that ended before it may be
+  missing — the shape a legacy conversion produces, where the term in force migrates with its true
+  effective date. A supplied term effective before the horizon is therefore well-formed, not
+  malformed (resolving the agent's third design point of 2026-09-04). The test is on the derived
+  date: conclusive iff the run's start is strictly after the horizon; on or before it is
+  `NOT_EVALUATED` with reason `HISTORY_MAY_PREDATE_SOURCE`. A loss dated before the horizon and
+  covered by no supplied term is `HISTORY_MAY_PREDATE_SOURCE`, not `NO_COVERAGE_ON_LOSS_DATE`; a gap
+  after the horizon is one the source can see. The horizon test is applied to the own-term run
+  before any prior-coverage extension: a run whose own start is on or before the horizon is
+  `NOT_EVALUATED` even when a prior interval is stated. An absent horizon means the source asserts a
+  complete history — a silent failure mode if a port forgets it, so item 7e's contract suite asserts
+  every port implementation states one; that obligation is recorded in `QUEUE.md`'s 7e entry. (4)
+  *Reason ownership.* `HISTORY_MAY_PREDATE_SOURCE` and `NO_COVERAGE_ON_LOSS_DATE` are domain-owned,
+  in a closed enumeration this feature owns; `SOURCE_UNAVAILABLE` and any other not-obtained reason
+  pass through from the port as in 7a. This does not contradict 7a's judgment that
+  inconsistent-source reasons are the port's: a truncation boundary and an uncovered loss date are
+  well-formed data the source states truthfully, not contradictions within the history. (5)
+  *Boundary rows.* A renewal effective one day after expiration is a lapse — terms end at 12:01 a.m.
+  on the expiration date, and a payment grace period does not move the term's dates; a renewal
+  issued late with its effective date backdated to the expiration is seamless and arrives as such.
 - **Consequence, updated for the decision above:** the recent-policy-inception indicator's blocking
   gap was its missing input; that gap is resolved in principle now that the lookup's semantics are
   decided. Once the phase-2 adapter is built, `NOT_EVALUATED` becomes a genuine exception path for

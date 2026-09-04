@@ -656,6 +656,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     both sides of each clause, including the single-term case and a history whose earliest terms
     predate what the source system can supply (`NOT_EVALUATED`, reason). Gives
     `Candidate.continuous_coverage_date` its first producer — at 7f, not here.
+    Amended 2026-09-04 before approval: the derivation is as of the loss date, the history carries
+    an optional prior-carrier coverage interval and an optional history horizon, and the two
+    domain-owned reasons are `HISTORY_MAY_PREDATE_SOURCE` and `NO_COVERAGE_ON_LOSS_DATE` — the dated
+    2026-09-04 continuous-coverage entry in `ASSUMPTIONS.md`.
 
 7c. **Identifier sufficiency and the new notice fields (pure rule + surface fields).**
     `insured_name`, `risk_address`, `risk_city`, `risk_postal_code` join `NoticeFields`;
@@ -683,9 +687,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
     timeout budgets and no defaults; unresolvable binding → deployment fault, new code, item 5i's
     pattern; the live-query implementation of each port against an in-process fixture service,
     timeout and unavailability paths included. Contract suite runs against the protocols so 7i can
-    reuse it. No acceptance spec: nothing user-visible changes until 7f — say so in the gate report
-    rather than manufacturing one. `register_claim` is named in the protocol documentation as phase
-    6's and is not defined.
+    reuse it. The contract suite also asserts that every `term_history` answer states its history
+    horizon; an absent horizon means complete, so a port that omits it makes every derivation
+    conclusive silently (`ASSUMPTIONS.md`, continuous-coverage decisions, 2026-09-04). No acceptance
+    spec: nothing user-visible changes until 7f — say so in the gate report rather than
+    manufacturing one. `register_claim` is named in the protocol documentation as phase 6's and is
+    not defined.
 
 7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).** New spec
     `features/policy_identification.feature`: the five-row outcome table in `PHASE3_DESIGN.md` —
@@ -3384,3 +3391,33 @@ the supplied-from date is neither Rule 3 scenario's case, and whether that is ma
 7a's judgment 3) or NOT_EVALUATED with a reason is the human's to decide before it is coded. Next: the
 human exports at `d5c33ea` and approves — the human's command, never a session's — then
 implementation on the same branch.
+
+**2026-09-04, later still: item 7b's spec is amended at `c5c9b1c`; `d5c33ea` is superseded and must
+not be approved.** The human reviewed `d5c33ea` with the advisor and found four gaps: the derivation
+took no loss date, so a lapse and reinstatement recorded after a late-reported loss would have
+derived the reinstatement date; there was no prior-carrier input, so every depopulation policy would
+have derived its assumption date; the lapse clause was exercised at one gap width and one gap per
+history; and the history horizon was undefined, so a supplied term effective before it had no
+answer. The four decisions that close them are the dated 2026-09-04 continuous-coverage entry under
+"Data we do not have at intake" in `ASSUMPTIONS.md`, and the 2026-08-14 entry there now carries the
+as-of-the-loss-date sentence. The previous paragraph's three design points are resolved in that
+entry: the supplied-from date is the history horizon, its absence meaning a complete history (item
+7e's contract suite asserts every port states one — recorded in 7e's entry above);
+`HISTORY_MAY_PREDATE_SOURCE` and the new `NO_COVERAGE_ON_LOSS_DATE` are domain-owned in a closed
+enumeration this feature owns, port reasons passing through as in 7a; and a term effective before
+the horizon is well-formed, with the test on the derived date rather than on the earliest supplied
+term. Spec commit `c5c9b1c`, one file, pushed; anything above it on the branch is a merge of `main`
+and nothing else. `features/continuous_coverage.feature` exactly as supplied — 213 lines, sha256
+`dc00a588ea21…`, both confirmed from `git show c5c9b1c:features/continuous_coverage.feature`, not
+from the working tree. Measured through the mutation engine at that ref (agent-gauntlet `9afd421`):
+156 mutants, 146 markers, 10 sibling swaps (6 in the Rule 1 outline, 4 in the takeout outline), 110
+unique locators — the advisor's floor exactly, 46 step lines carrying two literals each. Each of the
+10 swaps re-derived against the rule as the spec states it: 0 survivors, a simulation like the
+advisor's, not a measurement. `gauntlet check` at `c5c9b1c`: every gate green (552/552 tests,
+coverage 100/100, code mutation 100% warm on a commit adding no code) and acceptance red at the
+approval stage in 0.004s on the one unapproved spec, remedy naming `gauntlet lock`, the known-wrong
+command — the separate-commits rule working, not a defect to retry. Nothing else is built: no domain
+rule, no step definitions, no unit tests. `docs/session-prompts/ADVISOR.md` carried an uncommitted
+working-tree modification this session did not make; it was left untouched and is in no commit.
+Next: the human exports at `c5c9b1c` and approves — `gauntlet spec approve`, the human's command,
+never a session's — then implementation on the same branch.
