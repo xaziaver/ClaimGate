@@ -616,7 +616,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
    Reading for this item:
    `PHASE2_DESIGN.md` in full, `STATUTORY_REGISTER.md`, `README.md`'s design commitments.
 
-7a. **Term-in-force at the loss date (pure domain rule).** New spec
+7a. **Term-in-force at the loss date (pure domain rule).** *(Done — see below.)* New spec
     `features/coverage_verification.feature`, then the rule. Four values — `IN_FORCE`,
     `NOT_IN_FORCE`, `BOUNDARY_DAY`, `NOT_EVALUATED` — per `PHASE3_DESIGN.md`, "Term in force at the
     loss date", and a scenario on each side of every boundary: loss inside an active term; before
@@ -627,6 +627,26 @@ Ordered by domain severity, not by effort. One line each on why that position.
     date. The result names the deciding term and its dates. Term history arrives as data; the rule
     reads no configuration and no clock. `RULESET_VERSION` bumps at the wiring item, not here — the
     rule has no caller until 7f.
+
+    **Closed 2026-09-04, merged to `main` at `f1429e6`.** Spec proposed at `dfb1284` — 78
+    mutants, 40 sibling swaps, 38 markers, advisor-simulated zero survivors — approved by the human
+    at `25ac004`, implemented at `689f285`, one judgment corrected at `89360c2`. The rule made six
+    judgments beyond the locked spec: the single-transaction reinstatement shape told apart by
+    date; flat cancellations and a cancelled term's nominal expiration not boundary days; a
+    malformed history raising, with reason codes port-owned; an empty obtained history
+    `NOT_IN_FORCE` citing nothing; input order irrelevant; `NOT_IN_FORCE` citing the latest
+    standing cancellation. They are the dated 2026-09-04 entry under "Data we do not have at
+    intake" in `ASSUMPTIONS.md`. The advisor re-drove the rule independently, 23/23. Measured out
+    of band by applying every mutant with the engine and running the step file: 78/78/0 against
+    the simulated zero, 69 unique locators. The one judgment corrected before merge: the
+    first-stated tie-break between two terms cancelled the same date made the citation depend on
+    input order — the advisor's probe, terms 2026-01-01 to 2027-01-01 and 2026-03-01 to
+    2027-03-01 both cancelled 2026-06-01, cited a different term in each order. Two terms in force
+    on the same day is now a malformed history that raises in either order, and the tie's residue
+    raises too. Final gate at `89360c2`, run cold with `mutants/` cleared first — the warm run had
+    reported three false survivors on the new code, the direction `docs/harness-findings.md`
+    records: 552/552 tests, coverage 100/100, complexity 6, CRAP 6.0, code mutation 100%/560
+    killed, acceptance 12 specs, 76 reviewed-equivalent.
 
 7b. **Continuous-coverage date derivation (pure domain rule).** New spec
     `features/continuous_coverage.feature`, then the rule, under the 2026-08-14 semantics in
@@ -3327,3 +3347,10 @@ cancelled, rewritten, and cancelled-again history cites the second term — and 
 terms cancelled the same date that both hold the loss date, an inconsistent history, cites the
 first stated. Next: the human reviews the gate table and the survivor list against the
 simulation, then merges; the branch is a superset of `main`.
+
+**2026-09-04: item 7a is closed, merged to `main` at `f1429e6`.** The full gate was green cold
+at `89360c2`, the last code commit before the merge; the merge and the two document commits after
+it change no file under `src/`, `tests/`, or `features/`. Item 7b is next — the continuous-coverage
+date derivation, a pure domain rule under the 2026-08-14 semantics unchanged — and opens in a fresh
+session with `features/continuous_coverage.feature` drafted for the human's review before anything
+is built. Nothing is in flight in code: no branch, no spec, no red gate.
