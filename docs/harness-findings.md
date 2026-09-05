@@ -246,6 +246,11 @@ rendered outline substitutions bind, because a sibling cell value is
 well-formed. **Prefer a multi-row outline. A plain scenario's quoted literal
 is a vacuous kill; only its numeric literals are real tests.**
 
+**Observed 2026-09-05 at item 7c:** `parsers.parse` cannot bind an empty quoted
+value — a field needs at least one character — so a spec that states `""` as a
+value forces `parsers.re` steps, which is also the binding whose fullmatch kills
+the markers.
+
 A ragged `Examples` row, one whose cell count differs from the header's,
 parses with no error and no diagnostic and silently yields fewer mutants than
 its siblings. Verified 2026-08-22 by construction: a three-row two-column table
