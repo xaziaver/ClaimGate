@@ -7,14 +7,15 @@ Feature: Carrier configuration loading
   and a carrier this deployment has no usable rules for is refused before
   that ever happens
 
-  # The six values loaded here are every caller-supplied value phase 1 moved
-  # out of the domain with no default. Names verified 2026-08-22: validate,
+  # The five values loaded here are every caller-supplied value phase 1 moved
+  # out of the domain with no default and phase 3 has kept (item 7d retired
+  # recognized_policy_number_prefixes with the prefix check, 2026-09-05).
+  # Names verified 2026-08-22: validate,
   # compute_siu_indicators, and find_duplicates are current as of that date;
   # the argument here is about the values these signatures locate, not the
   # signatures themselves, and survives their renaming. They hold,
-  # respectively: claimant_name_required, claimant_contact_required, and
-  # recognized_policy_number_prefixes (items 4g, 4j);
-  # late_reporting_threshold_days and recent_inception_threshold_days (item
+  # respectively: claimant_name_required and claimant_contact_required
+  # (item 4g); late_reporting_threshold_days and recent_inception_threshold_days (item
   # 2); and window_days (item 3). Nothing below calls any of those three
   # functions - this is the layer that resolves what they will be called
   # with, and the shell cannot call any of them until it does (QUEUE.md item
@@ -60,25 +61,24 @@ Feature: Carrier configuration loading
   # vocabulary: a non-boolean where claimant_name_required or
   # claimant_contact_required needs a boolean, a non-integer or negative
   # number where late_reporting_threshold_days, recent_inception_threshold_days,
-  # or window_days needs a day count, an empty collection where
-  # recognized_policy_number_prefixes needs at least one recognized prefix.
+  # or window_days needs a day count.
   # Zero is neither non-integer nor negative, and is proven a valid day
   # count rather than a malformed one in the rule below. ASSUMPTIONS.md, "A
   # configuration value that is present but malformed is refused at load,
   # alongside an absent one" and "A day count of zero is a valid
-  # configuration, not a malformed one." Two of the six - both SIU
+  # configuration, not a malformed one." Two of the five - both SIU
   # thresholds - accept a genuinely absent state and are proven so in the
   # rule below; a malformed value in either of those two is refused exactly
   # like the other four's absence, because "absent" and "wrong shape" are
   # different questions even for a value allowed to be absent.
 
   Background:
-    Given the carrier rules source recognizes "AAAA", with a complete and valid entry for every one of the six values
+    Given the carrier rules source recognizes "AAAA", with a complete and valid entry for every one of the five values
 
   Rule: A recognized carrier's rules resolve to every value the domain will receive
 
     # Asserted per value, not as a single loaded/refused result. An
-    # accept-or-refuse assertion alone would leave every one of these six
+    # accept-or-refuse assertion alone would leave every one of these five
     # values free to swap for another valid one of the same shape and the
     # load would still succeed - the same inert-value-column failure item
     # 4g's first draft hit (docs/harness-findings.md, "Mutation cannot see a
@@ -102,14 +102,12 @@ Feature: Carrier configuration loading
     Scenario: A recognized carrier's rules resolve to every value the domain will receive
       Given the carrier "AAAA" requires the claimant name
       And "AAAA" does not require the claimant contact
-      And "AAAA" recognizes the policy-number prefixes "HO;DP"
       And "AAAA" configures a late reporting threshold of 45 days
       And "AAAA" configures a recent policy inception threshold of 30 days
       And "AAAA" configures a duplicate match window of 60 days
       When the carrier configuration for "AAAA" is loaded
       Then the claimant name is received as "required"
       And the claimant contact is received as "not required"
-      And the recognized policy-number prefixes are received as "HO;DP"
       And the late reporting threshold is received as 45 days
       And the recent policy inception threshold is received as 30 days
       And the duplicate match window is received as 60 days
@@ -117,7 +115,7 @@ Feature: Carrier configuration loading
   Rule: Either SIU threshold may be genuinely unconfigured without refusing the load
 
     # late_reporting_threshold_days and recent_inception_threshold_days are
-    # the only two of the six values typed to accept an absent state -
+    # the only two of the five values typed to accept an absent state -
     # compute_siu_indicators's signature on main takes int | None for both,
     # while validate's Collection[str] and two bools and find_duplicates's
     # plain int have no such affordance. ASSUMPTIONS.md says so explicitly:
@@ -134,7 +132,6 @@ Feature: Carrier configuration loading
     Scenario: A recognized carrier's rules load with neither SIU threshold configured
       Given the carrier "AAAA" requires the claimant name
       And "AAAA" does not require the claimant contact
-      And "AAAA" recognizes the policy-number prefixes "HO;DP"
       And "AAAA" has no late reporting threshold configured
       And "AAAA" has no recent policy inception threshold configured
       And "AAAA" configures a duplicate match window of 60 days
@@ -147,7 +144,7 @@ Feature: Carrier configuration loading
     # This is the loading-boundary rejection ASSUMPTIONS.md names as an
     # unwatched gap ("A carrier configuration crosses into the domain
     # already resolved") landing where that entry says it has to: at the
-    # lookup itself, before any of the six values are read. The blank first
+    # lookup itself, before any of the five values are read. The blank first
     # row keeps this table mixed rather than uniformly refused, giving the
     # engine a row with a different outcome to swap against - the same
     # technique validation.feature's outlines use (docs/harness-findings.md,
@@ -220,7 +217,7 @@ Feature: Carrier configuration loading
     # malformed row each but no missing row, unlike the other four fields.
     #
     # The baseline values fixed in the Given lines below (name, contact,
-    # prefixes, window) are not columns and so are not mutation targets here
+    # window) are not columns and so are not mutation targets here
     # - deliberate, not the item 4g failure mode: their own correctness is
     # already proven independently by the first rule's plain scenario. What
     # each row tests is carried entirely by its own <field> and <value>
@@ -232,7 +229,6 @@ Feature: Carrier configuration loading
     Scenario Outline: A single value absent or malformed in a recognized carrier's entry refuses the load, naming it
       Given "AAAA" requires the claimant name
       And "AAAA" does not require the claimant contact
-      And "AAAA" recognizes the policy-number prefixes "HO;DP"
       And "AAAA" configures a duplicate match window of 60 days
       And "AAAA" configures the <field> as <value>
       When the carrier configuration for "AAAA" is loaded
@@ -244,8 +240,6 @@ Feature: Carrier configuration loading
         | claimant name                       | neither yes nor no          | MALFORMED_REQUIRED_CONFIGURATION:claimant name                    |
         | claimant contact                    | absent                      | MISSING_REQUIRED_CONFIGURATION:claimant contact                   |
         | claimant contact                    | neither yes nor no          | MALFORMED_REQUIRED_CONFIGURATION:claimant contact                 |
-        | recognized policy-number prefixes   | absent                      | MISSING_REQUIRED_CONFIGURATION:recognized policy-number prefixes  |
-        | recognized policy-number prefixes   | an empty set                | MALFORMED_REQUIRED_CONFIGURATION:recognized policy-number prefixes|
         | late reporting threshold            | a negative number of days   | MALFORMED_REQUIRED_CONFIGURATION:late reporting threshold         |
         | recent policy inception threshold   | a negative number of days   | MALFORMED_REQUIRED_CONFIGURATION:recent policy inception threshold|
         | duplicate match window              | absent                      | MISSING_REQUIRED_CONFIGURATION:duplicate match window             |
@@ -276,7 +270,7 @@ Feature: Carrier configuration loading
     # ASSUMPTIONS.md, "A missing configuration value and a malformed one are
     # different reason codes." As a dated consistency check rather than the
     # reason for the rule: validate()'s own sort key agrees with this one on
-    # today's six values (verified 2026-08-22), though it sorts on the
+    # today's five values (verified 2026-08-22 for six; 2026-09-05 for five), though it sorts on the
     # model's snake_case field name, a different string that need not always
     # agree with the rendered one.
     #
@@ -290,10 +284,10 @@ Feature: Carrier configuration loading
     # mutation cannot.
     Scenario: Several missing and malformed values in the same entry are all named in one refusal, in canonical order
       Given "AAAA"'s configuration is missing the claimant contact
-      And "AAAA" recognizes no policy-number prefixes
+      And "AAAA" configures the late reporting threshold as a negative number of days
       And "AAAA" configures the duplicate match window as a negative number of days
       When the carrier configuration for "AAAA" is loaded
-      Then every rejected value is named in the refusal as "MALFORMED_REQUIRED_CONFIGURATION:duplicate match window;MALFORMED_REQUIRED_CONFIGURATION:recognized policy-number prefixes;MISSING_REQUIRED_CONFIGURATION:claimant contact"
+      Then every rejected value is named in the refusal as "MALFORMED_REQUIRED_CONFIGURATION:duplicate match window;MALFORMED_REQUIRED_CONFIGURATION:late reporting threshold;MISSING_REQUIRED_CONFIGURATION:claimant contact"
 
     # Isolates alphabetical-within-a-code from the rule above: both values
     # here are the same code, so this row cannot pass by malformed-before-
