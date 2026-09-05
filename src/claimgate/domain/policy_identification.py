@@ -74,7 +74,7 @@ def evaluate_identifier_sufficiency(
     postal = _present(risk_postal_code)
     arms = _satisfied_arms(number, name, postal)
     if not arms:
-        return IdentifierSufficiency("INSUFFICIENT", blocker=_blocker(number, name, postal))
+        return IdentifierSufficiency("INSUFFICIENT", blocker=_blocker(name, postal))
     if INSURED_NAME_AND_POSTAL_CODE not in arms:
         name, postal = None, None
     return IdentifierSufficiency(
@@ -91,9 +91,13 @@ def _satisfied_arms(number: str | None, name: str | None, postal: str | None) ->
     return tuple(arms)
 
 
-def _blocker(number: str | None, name: str | None, postal: str | None) -> IdentificationBlocker:
-    named = (("policy_number", number), ("insured_name", name), ("risk_postal_code", postal))
-    absent = tuple(field for field, value in named if value is None)
+def _blocker(name: str | None, postal: str | None) -> IdentificationBlocker:
+    """Reached only with no policy number - a present one is an arm by itself -
+    so the number is absent by construction and only the pair is asked. Passing
+    it in anyway bred an equivalent code mutant (docs/harness-findings.md, the
+    `key=` lambda entry: restructure, do not approve)."""
+    named = (("insured_name", name), ("risk_postal_code", postal))
+    absent = ("policy_number", *(field for field, value in named if value is None))
     return IdentificationBlocker(POLICY_IDENTIFIERS_INSUFFICIENT, absent)
 
 
