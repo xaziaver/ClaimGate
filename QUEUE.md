@@ -671,6 +671,9 @@ Ordered by domain severity, not by effort. One line each on why that position.
     resubmission of an old payload under a key remembered before this item answers `409` rather than
     a `200` replay, bounded to the 24-hour key lifetime — item 5g's accepted consequence, accepted
     again here and recorded in this entry when the item closes.
+    Does not touch `validation.feature` or `notice_intake.feature`: `policy_number` stays a required
+    field until 7g, so the insured-name arm is built and specified here but unreachable at intake
+    until then (`PHASE3_DESIGN.md` annotation, 2026-09-05).
 
 7d. **Retire policy-number shape validation (reopens `validation.feature`).** Reverses items 4b and
     4j, ratified in `PHASE3_DESIGN.md`, "Identifiers". Delete the prefix scenario; retire
@@ -681,6 +684,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     prefix scenario and 28 untouched, and the floor is what to check against, not the answer.
     `POLICY_NOT_MATCHED`, `POLICY_AMBIGUOUS` and the search behaviour are 7f's, not this item's:
     after 7d a policy number is accepted as given and nothing yet checks it against anything.
+    Two things for the blast-radius measurement, found 2026-09-05: every combination scenario in
+    `validation.feature`'s interplay rule uses `POLICY_NUMBER_MALFORMED` as an ingredient and the
+    rule's comments enumerate a five-code closed set, so the radius is scenario text, not only the 3
+    approvals; and `policy_number`'s required-ness is not this item's — it is 7g's.
 
 7e. **Port protocols, bindings, and the live-query implementations (shell).** The policy port
     (`search`, `term_history`) and claims port (`existing_claims`) protocols; three-valued results
@@ -712,6 +719,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     re-run of its unmodified scenarios is the evidence; the race guard is unit-tested, and the unit
     test is named in the gate report. Port re-evaluation on resolution uses the merged identifiers,
     so correcting a policy number through resolution is what clears `POLICY_NOT_MATCHED`.
+    Also retires `policy_number` as a required field in the same commit that wires
+    `POLICY_IDENTIFIERS_INSUFFICIENT`: the two absent/whitespace policy-number scenarios in
+    `validation.feature` and the absent-policy-number row in `notice_intake.feature` change to the
+    identification blocker, measured against the lock at the working ref before drafting.
 
 7h. **Duplicate detection wired (shell).** `existing_claims` feeds `find_duplicates` with the
     carrier's `window_days` on every transition into `TRIAGED`, both paths; results persist to
@@ -3486,3 +3497,43 @@ backup, digest confirmed against the lock — the routine case `CLAUDE.md`'s sta
 `docs/session-prompts/ADVISOR.md`'s uncommitted working-tree change remains the human's, untouched
 and in no commit. Item 7c is next — identifier sufficiency and the new notice fields — with its
 reading-table row unchanged. Nothing is in flight in code: no work open on any branch, no red gate.
+
+**2026-09-05: item 7c opened on `phase3/7c-identifier-sufficiency`; spec drafted, not locked.** Spec
+commit `d06e236` adds `features/policy_identification.feature`, 102 lines, sha256
+`a504421e2c3ef5ed98074fe9e1a87d6e075b1ee1bbeec06eea6942d1f969782a` from `git show
+d06e236:features/policy_identification.feature`; the branch tip is the merge of `main`'s document
+commits, which change no file under `features/`, `src/`, or `tests/`. Enumerated independently
+through the engine at agent-gauntlet `9afd421` against the advisor's floor, matching it exactly: 54
+mutants, 42 quoted-literal markers across the eight plain scenarios, 12 example mutants all in the
+insufficient-case outline — 7 empty-cell markers, 2 sibling swaps to the empty cell (`Marisol
+Quintero` and `34287-2210`), 3 blocker-column swaps — and 51 unique locators, because a locator is
+scenario, kind and step text, and the three steps carrying both a name and a postal code hold two
+literals each. Simulation against the rule as the spec states it, not a measurement: all 12
+example mutants die — a marker in an identifier cell makes that identifier present, which either
+makes the row searchable or changes which fields the blocker names; each swap to empty makes a
+third field absent, so the blocker names three; each blocker swap asserts the wrong field list. The
+42 literal markers land outside the quotes and die at step resolution only if every step pattern
+is anchored end-to-end: pytest-bdd 8.1.0's `parsers.re` uses `fullmatch`, observed by calling
+`is_matching` on a marked step text, so validation-style `"(?P<value>.*)"` patterns reject the
+marker without a `$`; a step bound any other way lets its markers through as survivors. Gate on the
+branch at `d06e236`: ten gates green — 656/656 tests, coverage 100/100, complexity 6, CRAP 6.0,
+duplication 0, code mutation 100% with 643 killed — and acceptance red at the approval stage on the
+one unapproved spec, the separate-commits rule working; its remedy names `gauntlet lock`, which is
+the human's and does not approve. Design gap, found by reading the design against source:
+`policy_number` is a required field in `validation.py`, held by two locked `validation.feature`
+scenarios and a `notice_intake.feature` row, so the insured-name arm is unreachable at intake until
+the requirement is retired at 7g; recorded in `PHASE3_DESIGN.md`'s 2026-09-05 annotation, the 7c,
+7d and 7g entries above, and `ASSUMPTIONS.md`'s carried-requirements entry of the same date, which
+also carries the six pre-lock decisions. `docs/harness-findings.md` gains the five-digit postal
+code entry: the numeric branch pre-empts the sibling swap, so the outline carries a nine-digit
+code. One thing reads wrong and is left for the human: item 7f's entry above says "New spec
+`features/policy_identification.feature`" for the five-row outcome table, and that file now exists
+as 7c's; 7f either reopens it or its outcome table lives elsewhere, and the entry should say which.
+Session start found `features/validation.feature` carrying a `_gauntlet` marker from a killed
+stop-check; restored from the mutation backup, digest confirmed against the lock.
+`docs/session-prompts/ADVISOR.md`'s uncommitted change remains the human's, untouched and in no
+commit. Next action is the human's: export at `d06e236` (`git show
+d06e236:features/policy_identification.feature > ~/claimgate-review/d06e236--1 && wc -l`, 102
+lines, prefix `a504421e2c3ef5ed`), review, and `gauntlet spec approve`. After approval, in the
+implementation session: step definitions, the four `NoticeFields` surface fields, the domain rule,
+unit tests, and the idempotency hashed-field consequence the 7c entry records — none begun.

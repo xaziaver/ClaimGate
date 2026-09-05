@@ -174,7 +174,10 @@ else. This gives `Candidate.continuous_coverage_date` its first producer.
 `risk_city`, `risk_postal_code` — with `property_state` serving as the address's state component;
 there is no second state field. **Sufficiency rule**, a pure domain rule: the notice can be
 searched if it carries a policy number, or an insured name together with a risk postal code.
-Otherwise `POLICY_IDENTIFIERS_INSUFFICIENT`.
+Otherwise `POLICY_IDENTIFIERS_INSUFFICIENT`. **Annotation 2026-09-05: this design omitted that
+`policy_number` is a required field in `validation.py`, asserted by two locked `validation.feature`
+scenarios and a `notice_intake.feature` row, so the second arm is unreachable at intake until that
+requirement is retired. Retired at item 7g, with the wiring, not at 7c or 7d — see `QUEUE.md`.**
 
 **`POLICY_NUMBER_MALFORMED` and `recognized_policy_number_prefixes` are retired.** This reverses
 items 4b and 4j. A malformed or wrong number is one weak identifier among several: a contractor's

@@ -992,6 +992,19 @@ reads it parses its expected token case-insensitively.** With a case-insensitive
 an actual `TRUE` and the mutant becomes a real test of the value; the fix converts kills to kills, so
 it moves no locator and no ledger entry.
 
+### A five-digit postal code in an Examples cell takes the numeric branch ahead of the sibling swap
+
+Measured 2026-09-05 against the engine at agent-gauntlet `9afd421`, by calling `mutate_value` and
+`mutation.mutants()` over two copies of item 7c's insufficient-case outline that differ in one cell.
+`34287` parses as an integer, so `mutate_value` returns `34288` before `_swap` is reached and the
+empty sibling cell that would have removed the postal code is never consulted — the same
+preemptive-return shape as the two entries above. A postal code is present either way and the row's
+blocker is unchanged, so the mutant is an equivalent survivor costing an approval that says only
+that. `34287-2210` is not a number, takes the swap, and becomes the empty cell: a real kill, because
+the blocker then names three absent fields instead of two. `features/policy_identification.feature`'s
+insufficient-case outline carries the nine-digit form for that reason; it is a harness accommodation,
+not a domain statement, and `ASSUMPTIONS.md`'s 2026-09-05 identifier-sufficiency entry says so.
+
 ### The boundary gate is narrower than its name
 
 It walks only the steps directory and flags absolute imports whose top-level root
