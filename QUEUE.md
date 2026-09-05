@@ -3616,3 +3616,39 @@ commit. Item 7d is next — retiring policy-number shape validation, reopening `
 opening in a fresh session with its blast radius measured against the lock at the working ref before
 any drafting, including the interplay-rule scenario text and the five-code comment enumeration the
 7d entry now names. Nothing is in flight in code: no work open on any branch, no red gate.
+
+**2026-09-05: item 7d opened; spec drafted on `phase3/7d-retire-policy-number-shape`, not locked,
+and the pre-approval suite check failed.** Branch created at `e29410e`. The blast-radius record
+landed on `main` at `9c6611e` (the `PHASE3_DESIGN.md` annotation, this entry's 7d note,
+`ASSUMPTIONS.md`'s six ratified decisions); the five specs at `6ebea22`, one commit, spec only,
+pushed. Digests from `git show 6ebea22:<path>`: `validation.feature` `7d9e727a6bcd2f1c` (441
+lines), `carrier_configuration.feature` `49f1f2f04b781739` (303), `notice_intake.feature`
+`062d4ee4afed6689` (351), `idempotency.feature` `31d5e828914cd162` (260), `resolution.feature`
+`d134439ad7b483cc` (727) — each matching the edit script's printed line exactly. Enumerated through
+the engine against the lock at `e29410e` and `6ebea22`: validation 192→165 mutants, locators equal
+to mutants at both refs, 3 approvals MISSING and all three on the prefix outline, 28 untouched, 0
+MODIFIED; carrier_configuration 84→73 (75→66 locators, the known collisions), both approvals
+untouched; resolution 133→133, idempotency 46→46, notice_intake 51→51, every approval untouched;
+0 MODIFIED anywhere; five spec approvals MODIFIED. One figure reads wrong and was left as it is:
+the annotation on `main` says "37 untouched", but 37 is the five files' mutant-approval total before
+the deletion — measured after it, 34 are untouched and the 3 deleted make 37. The suite check the
+plan required before the gate did not pass: 113 of 116 scenarios across the five modules fail
+against the current code, in three shapes, none of them a spec asserting the wrong behaviour —
+`validation`'s run fixture reads the context key the removed Background step set (`KeyError`),
+`carrier_configuration`'s steps bind the old "six values" text and have no definition for the
+negative-threshold step (`StepDefinitionNotFoundError`), and `notice_intake`, `idempotency` and
+`resolution` receive 500 because the carrier-rules loader still requires
+`recognized_policy_number_prefixes` and the Background no longer supplies it. The premise that the
+five files would pass before the implementation commit does not hold: the step glue and the loader,
+not the specs, require the retired configuration, and changing them before the lock would invert
+the spec-then-implementation order. `gauntlet check` was not run — the instruction was to stop on a
+failing suite — so its outcome is predicted, not measured: the tests gate red on these 113, the
+acceptance gate red on five MODIFIED spec approvals and three MISSING mutant approvals, short-
+circuiting before mutation. Session start restored `features/validation.feature` from a stop-check
+strand (a sibling-cell swap at line 364), digest confirmed against the lock;
+`docs/session-prompts/ADVISOR.md`'s uncommitted change remains the human's, untouched and in no
+commit. Next is the human's: decide whether the step-glue dependency changes the plan; if not,
+export the five files at `6ebea22`, run `gauntlet spec approve` on each and `gauntlet mutant prune
+features/validation.feature`, and the implementation commit — step glue, the domain retirement, the
+carrier rules files, `RULESET_VERSION` — follows the lock on the branch. The branch is a superset
+of `main`.
