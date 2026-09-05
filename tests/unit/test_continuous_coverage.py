@@ -222,9 +222,6 @@ def test_derivation_against_the_history_horizon(
         # A prior interval beginning after the run did cannot move the date later.
         (prior("2023-06-01", "2023-08-01"), TAKEOUT, "2024-07-09", since("2023-02-01")),
         (prior("2023-02-01", "2023-08-01"), TAKEOUT, "2024-07-09", since("2023-02-01")),
-        # A zero-day prior interval is well-formed and changes nothing.
-        (prior("2023-02-01", "2023-02-01"), TAKEOUT, "2024-07-09", since("2023-02-01")),
-        (prior("2023-01-31", "2023-01-31"), TAKEOUT, "2024-07-09", since("2023-02-01")),
         # The prior interval extends a run; it is not one. A loss inside it and
         # before any own term has no run of this carrier's coverage.
         (
@@ -291,15 +288,21 @@ def test_term_order_does_not_change_the_derivation(loss_date: str) -> None:
     [
         (
             prior("2023-02-01", "2023-01-31"),
-            r"^prior coverage effective 2023-02-01 ends 2023-01-31, before it takes effect",
+            r"^prior coverage effective 2023-02-01 ends 2023-01-31, on or before it takes effect",
         ),
         (
             prior("2023-02-01", "2020-01-01"),
-            r"^prior coverage effective 2023-02-01 ends 2020-01-01, before it takes effect",
+            r"^prior coverage effective 2023-02-01 ends 2020-01-01, on or before it takes effect",
+        ),
+        # A zero-day interval covers nothing: malformed, as a zero-day term is
+        # (human-ratified 2026-09-05, reversing the first cut's acceptance).
+        (
+            prior("2023-02-01", "2023-02-01"),
+            r"^prior coverage effective 2023-02-01 ends 2023-02-01, on or before it takes effect",
         ),
     ],
 )
-def test_a_prior_interval_ending_before_it_is_effective_is_an_error(
+def test_a_prior_interval_ending_on_or_before_it_is_effective_is_an_error(
     prior_coverage: PriorCoverage, message: str
 ) -> None:
     # Whatever the loss date: malformed input is refused before it is read.

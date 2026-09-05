@@ -103,11 +103,14 @@ def _reaching_back(history: TermHistory, run_start: date) -> date:
 
 
 def _require_prior_coverage_well_formed(history: TermHistory) -> None:
+    # On or before, the term rule's own convention (ASSUMPTIONS.md, the
+    # 2026-09-05 continuous-coverage judgments, 5): a zero-day interval covers
+    # nothing and is malformed, not a data point.
     prior = history.prior_coverage
-    if prior is not None and prior.ending < prior.effective:
+    if prior is not None and prior.ending <= prior.effective:
         raise ValueError(
             f"prior coverage effective {prior.effective} ends {prior.ending},"
-            " before it takes effect"
+            " on or before it takes effect"
         )
 
 
