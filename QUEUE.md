@@ -648,14 +648,15 @@ Ordered by domain severity, not by effort. One line each on why that position.
     records: 552/552 tests, coverage 100/100, complexity 6, CRAP 6.0, code mutation 100%/560
     killed, acceptance 12 specs, 76 reviewed-equivalent.
 
-7b. **Continuous-coverage date derivation (pure domain rule).** New spec
-    `features/continuous_coverage.feature`, then the rule, under the 2026-08-14 semantics in
-    `ASSUMPTIONS.md` ("Data we do not have at intake") unchanged: continuous coverage on the risk;
-    back-to-back renewals continue it; an administrative rewrite continues it; a retroactive
-    reinstatement continues it; a genuine lapse resets it to the date coverage resumed. Scenarios on
-    both sides of each clause, including the single-term case and a history whose earliest terms
-    predate what the source system can supply (`NOT_EVALUATED`, reason). Gives
-    `Candidate.continuous_coverage_date` its first producer — at 7f, not here.
+7b. **Continuous-coverage date derivation (pure domain rule).** *(Closed at merge `a56bd18`,
+    2026-09-05 — see below: spec `c5c9b1c`, approval `c497312`, implementation `c434fca`, judgment 5
+    reversed at `e2a7cc5`.)* New spec `features/continuous_coverage.feature`, then the rule, under
+    the 2026-08-14 semantics in `ASSUMPTIONS.md` ("Data we do not have at intake") unchanged:
+    continuous coverage on the risk; back-to-back renewals continue it; an administrative rewrite
+    continues it; a retroactive reinstatement continues it; a genuine lapse resets it to the date
+    coverage resumed. Scenarios on both sides of each clause, including the single-term case and a
+    history whose earliest terms predate what the source system can supply (`NOT_EVALUATED`,
+    reason). Gives `Candidate.continuous_coverage_date` its first producer — at 7f, not here.
     Amended 2026-09-04 before approval: the derivation is as of the loss date, the history carries
     an optional prior-carrier coverage interval and an optional history horizon, and the two
     domain-owned reasons are `HISTORY_MAY_PREDATE_SOURCE` and `NO_COVERAGE_ON_LOSS_DATE` — the dated
@@ -3464,3 +3465,24 @@ loss covered by a supplied term from before the horizon takes the run-start test
 is irrelevant. `docs/session-prompts/ADVISOR.md` still carries the human's uncommitted working-tree
 modification, untouched and in no commit. Next: the human reviews the gate table, the kill figure
 and the judgments, then merges; the branch is a superset of `main`.
+
+**2026-09-05: item 7b is closed, merged to `main` at `a56bd18`.** The human ratified judgments 1–4
+and 6–11 as reported in the paragraph above and reversed 5: a prior-carrier interval ending on the
+day it takes effect is malformed, matching the term rule's on-or-before convention, where the first
+cut had accepted it on a literal reading of the instruction's "before". Reversed at `e2a7cc5` on the
+branch — the comparison, the error text, and the unit test that held a zero-day interval as accepted
+now holds it as raising; no other test asserted the old behaviour. The eleven judgments are recorded
+in `ASSUMPTIONS.md` under "Data we do not have at intake", dated 2026-09-05; the 2026-09-04
+paragraph above stays as the record of when they were reported. Full gate green cold at `e2a7cc5`,
+`mutants/` and `.mutmut-cache` cleared first: every gate green — 656/656 tests, coverage 100/100,
+complexity 6, CRAP 6.0, duplication 0, code mutation 100% with 643 killed, acceptance 13 specs and
+76 reviewed-equivalent in 1705s, the same 76 as before. The out-of-band kill figure was not re-run:
+neither the spec nor the step file changed after it was measured at 156 applied, 156 killed. Refs:
+spec `c5c9b1c`, approval `c497312`, implementation `c434fca`, judgment 5 `e2a7cc5`, merge `a56bd18`;
+the merge and the document commits around it change no file under `src/`, `tests/`, or `features/`.
+Session start found `features/validation.feature` carrying a `_gauntlet` marker from a stop-check
+killed inside the acceptance gate after the previous session's last turn; restored from the mutation
+backup, digest confirmed against the lock — the routine case `CLAUDE.md`'s start-up names.
+`docs/session-prompts/ADVISOR.md`'s uncommitted working-tree change remains the human's, untouched
+and in no commit. Item 7c is next — identifier sufficiency and the new notice fields — with its
+reading-table row unchanged. Nothing is in flight in code: no work open on any branch, no red gate.
