@@ -20,8 +20,8 @@ from claimgate.domain.models import FutureDatedLossResult
 from claimgate.shell.faults import CARRIER_RULES_UNRESOLVABLE, JURISDICTION_MAP_UNUSABLE
 from claimgate.shell.messages import NoticeFields
 from claimgate.shell.notice_intake import get_notice
-from claimgate.shell.records import PayloadRecord
-from claimgate.shell.records import payload_reference
+from claimgate.shell.records import PayloadRecord, payload_reference
+from claimgate.shell.resolution import merged_view
 from claimgate.shell.store import NoticeStore
 from tests.shell.support import (
     DEFAULT_FIELDS,
@@ -303,3 +303,45 @@ def _only_payload(store: NoticeStore) -> PayloadRecord:
     payloads = store.list_payloads()
     assert len(payloads) == 1
     return payloads[0]
+
+
+# Item 7c's four fields: the identifiers the policy search will take once item
+# 7g wires it. Notice content, like property_state, and read by no rule yet.
+_INSURED_AND_RISK = {
+    "insured_name": "Marisol Quintero",
+    "risk_address": "18 Palmetto Way",
+    "risk_city": "North Port",
+    "risk_postal_code": "34287",
+}
+
+
+def test_the_insured_and_risk_fields_are_notice_content_persisted_with_the_payload(
+    store: NoticeStore, submit: Submitter
+) -> None:
+    fields = replace(DEFAULT_FIELDS, **_INSURED_AND_RISK)
+
+    response = submit(fields=fields)
+
+    assert response.status == 201
+    assert response.notice_id is not None
+    content = store.get_notice_payloads(response.notice_id)[0].content
+    assert {name: content[name] for name in _INSURED_AND_RISK} == _INSURED_AND_RISK
+    assert merged_view(store, response.notice_id) == fields
+
+
+def test_a_payload_stored_before_the_insured_and_risk_fields_existed_still_reads(
+    store: NoticeStore,
+) -> None:
+    # A row written before this item carries none of the four keys. It parses
+    # the way any optional string does - absent is None - so nothing stored
+    # earlier becomes unreadable.
+    before = {k: v for k, v in asdict(DEFAULT_FIELDS).items() if k not in _INSURED_AND_RISK}
+    with store.submission():
+        store.receive_notice("notice-before-7c", "AAAA", before, DEFAULT_SUBMITTED_AT)
+
+    view = merged_view(store, "notice-before-7c")
+
+    assert view == DEFAULT_FIELDS
+    assert (view.insured_name, view.risk_address, view.risk_city, view.risk_postal_code) == (
+        None, None, None, None,
+    )

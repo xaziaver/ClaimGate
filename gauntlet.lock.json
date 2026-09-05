@@ -500,6 +500,10 @@
       "approved_at": "2026-08-28T07:51:02+00:00",
       "digest": "sha256:5eca27f7aa6aef4028609982aceabac02895065ea164bd3a8df98d0006ea4952"
     },
+    "spec:features/policy_identification.feature": {
+      "approved_at": "2026-09-05T12:53:25+00:00",
+      "digest": "sha256:a504421e2c3ef5ed98074fe9e1a87d6e075b1ee1bbeec06eea6942d1f969782a"
+    },
     "spec:features/resolution.feature": {
       "approved_at": "2026-08-28T07:50:52+00:00",
       "digest": "sha256:bd8b4fd8324a74d9c30e5c017f893f23371c3e75490050d6c6cc6db45e1fbd58"

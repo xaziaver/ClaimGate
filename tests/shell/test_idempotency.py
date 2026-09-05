@@ -7,15 +7,21 @@ at all: the constraint refusing a concurrent identical submission.
 
 import sqlite3
 from collections.abc import Callable
+from dataclasses import asdict
 from datetime import timedelta
 
 import pytest
 
 from claimgate.shell.idempotency import KEY_LIFETIME
 from claimgate.shell.messages import NoticeFields
-from claimgate.shell.records import NoticeRecord
+from claimgate.shell.records import NoticeRecord, payload_reference
 from claimgate.shell.store import IdempotencyKeyAlreadyRememberedError, NoticeStore
-from tests.shell.support import DEFAULT_SUBMITTED_AT, RuleEvaluationBugError, Submitter
+from tests.shell.support import (
+    DEFAULT_FIELDS,
+    DEFAULT_SUBMITTED_AT,
+    RuleEvaluationBugError,
+    Submitter,
+)
 
 _MALFORMED = NoticeFields(
     policy_number="HO-1234567", loss_date="not-a-date", loss_type="wind_hail", notice_type="INITIAL"
@@ -190,3 +196,28 @@ def test_a_notice_stranded_at_received_replays_as_received(
     assert replay.received_at == DEFAULT_SUBMITTED_AT
     assert replay.notice_id == store.list_payloads()[0].notice_id
     assert store.count_notices() == 1
+
+
+def test_a_payload_remembered_before_the_insured_and_risk_fields_existed_conflicts_on_resubmission(
+    store: NoticeStore, submit: Submitter
+) -> None:
+    # Item 5g's accepted consequence, accepted again at item 7c (QUEUE.md): the
+    # four fields join the hashed set, so a byte-identical resubmission of a
+    # payload stored without them now carries them as None, hashes differently,
+    # and is a 409 rather than a 200 replay - bounded to the key lifetime.
+    added = ("insured_name", "risk_address", "risk_city", "risk_postal_code")
+    before = {k: v for k, v in asdict(DEFAULT_FIELDS).items() if k not in added}
+    with store.submission():
+        store.receive_notice("notice-before-7c", "AAAA", before, DEFAULT_SUBMITTED_AT)
+        store.remember_key("AAAA", "K-7C", "notice-before-7c", replacing_expired=False)
+
+    resubmitted = submit(
+        fields=DEFAULT_FIELDS,
+        idempotency_key="K-7C",
+        submitted_at=DEFAULT_SUBMITTED_AT + timedelta(minutes=1),
+    )
+
+    assert resubmitted.status == 409
+    assert resubmitted.notice_id is None
+    assert store.get_notice_payload_reference("notice-before-7c") == payload_reference(before)
+    assert payload_reference(asdict(DEFAULT_FIELDS)) != payload_reference(before)
