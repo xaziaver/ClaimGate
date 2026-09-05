@@ -3537,3 +3537,48 @@ d06e236:features/policy_identification.feature > ~/claimgate-review/d06e236--1 &
 lines, prefix `a504421e2c3ef5ed`), review, and `gauntlet spec approve`. After approval, in the
 implementation session: step definitions, the four `NoticeFields` surface fields, the domain rule,
 unit tests, and the idempotency hashed-field consequence the 7c entry records — none begun.
+
+**2026-09-05, later: item 7c is implemented on `phase3/7c-identifier-sufficiency`, green, not
+merged.** The human approved the spec at `6fe269c` (lock entry digest `a504421e2c3e…`, the spec at
+`d06e236` hashing to it, the commit touching `gauntlet.lock.json` only). Item 7f's entry above now
+reads "Reopens 7c's spec" (`3dc7fd7` on `main`, decided with the advisor 2026-09-05: one feature for
+one question, measured against the lock at 7f's working ref before drafting). Implementation, three
+commits: `60ef615` the rule in `domain/policy_identification.py` with its unit tests, the test API
+and the step file binding the spec; `e75f5dd` the four optional fields on the notice surface with
+the shell tests; `652c2f1` a restructure of the blocker helper after the first cold gate reported
+one surviving code mutant — the policy number passed into the insufficient branch swapped for
+`None`, provably equivalent because that branch is reached only with no number — removed rather
+than approved, the `key=`-lambda technique in `docs/harness-findings.md`. Cold gate at `652c2f1`,
+`mutants/` and `.mutmut-cache` cleared first: every gate green — 691/691 tests (35 new: 11
+scenarios, 21 unit, 3 shell), coverage 100/100, complexity 6, CRAP 6.0, duplication 0, code
+mutation 100% with 708 killed, acceptance 14 specs and 76 reviewed-equivalent in 1995s, the same 76
+as before. Out of band at `652c2f1`, every mutant of the spec applied and the step file run: 54
+applied, 54 killed, 0 survivors, 51 locators, 42 literal and 12 example kills, the spec's digest
+restored and confirmed — matching the simulation exactly. Every step pattern is `parsers.re` with a
+`.*` capture: a `parsers.parse` field needs at least one character, so it cannot read the spec's
+`""`, and pytest-bdd fullmatches, so the 42 markers die at resolution; `docs/harness-findings.md`
+records the fullmatch (2026-08-23) but not the one-character floor. `RULESET_VERSION` is unchanged:
+the rule has no caller until 7g, so no decision changes. Judgments the implementation made beyond
+the locked spec, for the human to confirm or reverse, here and not yet in `ASSUMPTIONS.md`: (1)
+`None` is absence exactly as `""` and whitespace are — the shell's optional fields arrive as `None`,
+the spec states only the other two. (2) An insured name or a postal code beside a policy number
+without its partner is not carried to the search — the search identifiers hold `None` for the pair
+— as instructed; the spec asserts the absence only where nothing was given. (3) The blocker is one
+code and an ordered tuple of absent fields, not one blocker per field and not a string; the
+`CODE:field;field` spelling is the step's rendering of the spec's text and is not the
+`CODE:field;CODE:field` list three other specs spell with the same characters, so how it
+serializes onto a notice's blockers is 7g's open decision. (4) The rule takes the three
+identifiers as arguments, not a `Candidate`; `Candidate` and the candidate builder are unchanged,
+so the four fields reach no rule through the domain's existing path, and 7g passes them from the
+merged view. (5) The rule has no not-evaluated value: an absent identifier is the fact the rule is
+about, not a missing input, so a result is `SEARCHABLE` or `INSUFFICIENT` and nothing else. (6)
+`risk_address` and `risk_city` are notice content read by no rule — the design's arm is the name
+with the postal code — and, like every field, can be supplied at resolution because a resolution's
+keys are the surface's field names. (7) The 409 proof stages the pre-7c notice through the store's
+own receive-and-remember calls with the old payload shape, because the intake path can no longer
+produce that shape; the hashed-field consequence is thereby accepted again, as the 7c entry says,
+and the entry itself is amended when the item closes. Session start restored nothing:
+`features/validation.feature` showed the live gate's in-place mutation once, mid-run, and was clean
+after. `docs/session-prompts/ADVISOR.md`'s uncommitted change remains the human's, untouched and in
+no commit. Next: the human confirms or reverses the seven judgments, then merges; the branch is a
+superset of `main`.
