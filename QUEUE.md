@@ -694,6 +694,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
     `validation.feature`'s interplay rule uses `POLICY_NUMBER_MALFORMED` as an ingredient and the
     rule's comments enumerate a five-code closed set, so the radius is scenario text, not only the 3
     approvals; and `policy_number`'s required-ness is not this item's — it is 7g's.
+    Measured 2026-09-05 at `e29410e`: five specs reopen, not two — see the `PHASE3_DESIGN.md`
+    annotation of that date. `resolution.feature`'s partial-clearance row moves from
+    `HO-12`/`POLICY_NUMBER_MALFORMED` to `absent`/`MISSING_REQUIRED_FIELD:policy_number`, because
+    with no shape check every policy number in that column is equivalent and two of its kills would
+    have become survivors; 7g retargets the row's code. `RULESET_VERSION` bumps: this changes live
+    decisions.
 
 7e. **Port protocols, bindings, and the live-query implementations (shell).** The policy port
     (`search`, `term_history`) and claims port (`existing_claims`) protocols; three-valued results

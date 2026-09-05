@@ -189,6 +189,11 @@ carried out. **Cost:** a `validation.feature` reopening. Measured floor at `4a42
 scenario carries 3 of the file's 31 approvals and is deleted with them; the other 28 sit on rows
 whose subject does not change and are re-measured against the lock at the item, not assumed.
 `carrier_configuration.feature` loses a required key, and the carrier rules files lose it too.
+**Annotation 2026-09-05: the reopening is five specs, not two. The prefix configuration was also a
+Background step in `notice_intake.feature`, `idempotency.feature` and `resolution.feature`, and
+`resolution.feature`'s partial-clearance row depended on `POLICY_NUMBER_MALFORMED`; a rule
+retirement changes what a column elsewhere can discriminate. Measured against the lock at
+`e29410e`: 3 approvals deleted, 37 untouched, 5 file approvals to re-issue.**
 
 ## Duplicate detection gets its caller
 

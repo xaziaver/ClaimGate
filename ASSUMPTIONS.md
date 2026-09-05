@@ -932,6 +932,18 @@ or data. Nothing below was confirmed against a live book.
   pre-7c notice through the store's own receive-and-remember calls with the old payload shape,
   because the intake path can no longer produce that shape; the hashed-field consequence is thereby
   accepted again, as the 7c entry says.
+- **Item 7d decisions, taken before the specs were re-locked — advisor-recommended, human-ratified
+  2026-09-05.** (1) The prefix check, the two-letters-hyphen-seven-digits shape check,
+  `POLICY_NUMBER_MALFORMED` and `recognized_policy_number_prefixes` are retired together; nothing
+  checks a policy number's shape anywhere, and the open `POLICY_NUMBER_PATTERN` decision closes with
+  them. (2) `policy_number` stays a required field until 7g; `validation.feature`'s two presence
+  scenarios stay under a renamed rule that says so. (3) The interplay rule is rewritten around the
+  four remaining codes and exercises three at once; an absent policy number could compose a fourth
+  until 7g, deliberately unexercised so 7g does not reopen the rule. (4)
+  `carrier_configuration.feature`'s multi-refusal scenario uses a negative late-reporting threshold
+  as its malformed ingredient in place of the empty prefix set. (5) `resolution.feature`'s
+  partial-clearance row uses `absent` — the reviewer says nothing about the number — so the column
+  still discriminates. (6) `RULESET_VERSION` bumps.
 - **The continuous-coverage derivation is a domain rule, not port logic — advisor-recommended,
   ratified with `PHASE3_DESIGN.md`.** Amends the 2026-08-14 entry under "Data we do not have at
   intake", which has the adapter deriving the date: the semantics are unchanged in every clause —
