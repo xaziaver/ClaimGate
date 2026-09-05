@@ -910,6 +910,28 @@ or data. Nothing below was confirmed against a live book.
   nine-digit postal code because a five-digit one takes the mutation engine's numeric branch and
   produces an equivalent survivor; that is a harness accommodation, not a domain statement, and
   `docs/harness-findings.md` carries it.
+- **Identifier-sufficiency judgments beyond the locked spec — agent-proposed, advisor-reviewed,
+  human-ratified 2026-09-05.** Made implementing item 7c at `60ef615`, `e75f5dd` and `652c2f1`, and
+  reported in `QUEUE.md`'s status section of the same date, which stays as the record of when. (1)
+  `None` is absence exactly as `""` and whitespace are — the shell's optional fields arrive as
+  `None`, and the spec states only the other two. (2) An insured name or a risk postal code beside a
+  policy number without its partner is not carried to the search — the search identifiers hold
+  `None` for the pair; the spec asserts the absence only where nothing was given. (3) The blocker is
+  one code and an ordered tuple of absent fields, not one blocker per field and not a string; the
+  `CODE:field;field` spelling is the step's rendering of the spec's text and is not the
+  `CODE:field;CODE:field` list three other specs spell with the same characters, so how it
+  serializes onto a notice's blockers is item 7g's decision. (4) The rule takes the three
+  identifiers as arguments, not a `Candidate`; `Candidate` and the candidate builder are unchanged,
+  so the four fields reach no rule through the domain's existing path, and 7g passes them from the
+  merged view. (5) The rule has no not-evaluated value: an absent identifier is the fact the rule is
+  about, not a missing input, so a result is `SEARCHABLE` or `INSUFFICIENT` and nothing else — a
+  rule whose subject is absence has no outage to report; a `NOT_EVALUATED` value here would be a
+  guess dressed as a result. (6) `risk_address` and `risk_city` are notice content read by no rule —
+  the design's arm is the name with the postal code — and, like every field, can be supplied at
+  resolution because a resolution's keys are the surface's field names. (7) The 409 proof stages the
+  pre-7c notice through the store's own receive-and-remember calls with the old payload shape,
+  because the intake path can no longer produce that shape; the hashed-field consequence is thereby
+  accepted again, as the 7c entry says.
 - **The continuous-coverage derivation is a domain rule, not port logic — advisor-recommended,
   ratified with `PHASE3_DESIGN.md`.** Amends the 2026-08-14 entry under "Data we do not have at
   intake", which has the adapter deriving the date: the semantics are unchanged in every clause —

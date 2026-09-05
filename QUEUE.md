@@ -723,6 +723,9 @@ Ordered by domain severity, not by effort. One line each on why that position.
     `POLICY_IDENTIFIERS_INSUFFICIENT`: the two absent/whitespace policy-number scenarios in
     `validation.feature` and the absent-policy-number row in `notice_intake.feature` change to the
     identification blocker, measured against the lock at the working ref before drafting.
+    Also decides how a blocker carrying several absent fields serializes onto a notice —
+    `POLICY_IDENTIFIERS_INSUFFICIENT` is one code with an ordered field tuple, a shape no existing
+    serializer or `reason_codes` convention has (7c judgment 3, `ASSUMPTIONS.md` 2026-09-05).
 
 7h. **Duplicate detection wired (shell).** `existing_claims` feeds `find_duplicates` with the
     carrier's `window_days` on every transition into `TRIAGED`, both paths; results persist to
