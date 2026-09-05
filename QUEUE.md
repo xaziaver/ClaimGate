@@ -702,7 +702,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
     manufacturing one. `register_claim` is named in the protocol documentation as phase 6's and is
     not defined.
 
-7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).** New spec
+7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).** Reopens 7c's spec
     `features/policy_identification.feature`: the five-row outcome table in `PHASE3_DESIGN.md` —
     matched proceeds; zero candidates pends `POLICY_NOT_MATCHED`; several pend `POLICY_AMBIGUOUS`;
     port `NOT_EVALUATED` triages with the verification attribute carrying the reason; insufficient
