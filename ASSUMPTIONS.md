@@ -1308,6 +1308,37 @@ adapter" as "phase 3's".**
   no supplied term is `HISTORY_MAY_PREDATE_SOURCE`: "on or before the horizon" is the conservative
   side, matching the run-start test. (b) A loss on an expiration date with no renewal derives that
   run's start. (c) A loss on the first day of a first term derives that day.
+- **Continuous-coverage judgments beyond the locked spec — agent-proposed, advisor-reviewed,
+  human-ratified 2026-09-05.** `features/continuous_coverage.feature` (locked at `c5c9b1c`, item 7b)
+  states the rule; the rule as built (`c434fca`, judgment 5 reversed at `e2a7cc5`) also answers
+  histories the spec does not state. Each answer below was proposed in the implementation, reported
+  in `QUEUE.md`'s status section on 2026-09-04, and ratified from the committed code; one was
+  reversed. (1) The result is `DERIVED` with the date or `NOT_EVALUATED` with a reason, nothing else
+  recorded. (2) "Reaches" is measured against the day the run began: the first own term's effective
+  date, except for a run opened by a lapsed reinstatement, where it is the reinstatement date. (3) A
+  prior interval beginning after the run did cannot move the date later; the derived date is the
+  earlier of the two starts. (4) A prior interval extends whichever run holds the loss date, a later
+  run across a gap in own terms included when the interval ends on or after that run began — the
+  prior carrier covered the gap; one ending inside an earlier run does not reach. A prior carrier
+  still on risk across a gap in this carrier's own terms is dual coverage and rare; this is the
+  consistent reading, not an expected shape. (5) A prior interval is malformed when it ends on or
+  before it takes effect, matching the term rule's convention; the agent's first cut accepted a
+  zero-day interval on a literal reading of the instruction's "before", reported it, and was
+  reversed. (6) A loss dated inside the prior interval and before any own term is
+  `NO_COVERAGE_ON_LOSS_DATE`: the interval extends a run, it is not one. (7) A malformed prior
+  interval raises for any loss date on an obtained history, as malformed terms do; on a not-obtained
+  history it is ignored and the source's reason is the answer, and a not-obtained history with no
+  reason is an error. (8) An obtained history with no terms holds no date:
+  `NO_COVERAGE_ON_LOSS_DATE`, or `HISTORY_MAY_PREDATE_SOURCE` when the loss is on or before a stated
+  horizon. (9) A stated prior interval may reach back before the horizon once the own run's start
+  passes the horizon test — a data point the source states, not a term that might be missing. (10) A
+  loss covered by a supplied term from before the horizon takes the run-start test,
+  `HISTORY_MAY_PREDATE_SOURCE`, not the uncovered one. (11) Input order of terms and of status
+  changes is irrelevant. Noted 2026-09-05: The advisor's pre-lock simulation model tested the
+  uncovered-loss horizon case with strictly-before where the ratified rule is on-or-before; no
+  scenario exercised the difference, so the simulation matched the gate regardless. A simulation
+  checks only what the spec exercises; judgment 8's second clause is where the code holds the
+  ratified reading.
 - **Consequence, updated for the decision above:** the recent-policy-inception indicator's blocking
   gap was its missing input; that gap is resolved in principle now that the lookup's semantics are
   decided. Once the phase-2 adapter is built, `NOT_EVALUATED` becomes a genuine exception path for
