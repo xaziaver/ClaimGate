@@ -892,6 +892,24 @@ or data. Nothing below was confirmed against a live book.
   risk address is a match once the policy port searches; today it pends the notice before any
   search can run. The 2026-08-17 entry above already concluded the pattern belonged to the adapter
   layer. Cost and measured floor are in `PHASE3_DESIGN.md`, "Identifiers".
+- **Identifier sufficiency: decisions taken before the spec was locked — advisor-recommended,
+  human-ratified 2026-09-05.** `features/policy_identification.feature` (item 7c) states the rule
+  from `PHASE3_DESIGN.md`, "Identifiers". (1) Whitespace is absence and identifiers are carried
+  trimmed, matching `validation.py`'s convention for every field it checks; nothing is reshaped, so
+  a nine-digit postal code or a policy number of unfamiliar shape is carried as given — the search
+  answers whether it finds anything. (2) The blocker names every absent identifier field
+  (`POLICY_IDENTIFIERS_INSUFFICIENT:policy_number;insured_name;risk_postal_code` when nothing is
+  present), because the reviewer resolving the pend needs to know what to ask for; naming only the
+  cheapest completion would hide that a name alone is also a route. (3) A searchable result reports
+  every satisfied arm, because the search takes whatever identifiers the notice carries; the arm
+  list is not a preference order. (4) The rule is not wired and does not bump `RULESET_VERSION`: no
+  decision changes until 7g. (5) `policy_number` remains a required field until 7g, recorded in
+  `PHASE3_DESIGN.md`'s 2026-09-05 annotation — the second arm is unreachable at intake until then,
+  and the alternative of retiring the requirement at 7d would leave a `main` where a notice with no
+  identifiers reaches `TRIAGED`. (6) The specification's insufficient-case outline carries a
+  nine-digit postal code because a five-digit one takes the mutation engine's numeric branch and
+  produces an equivalent survivor; that is a harness accommodation, not a domain statement, and
+  `docs/harness-findings.md` carries it.
 - **The continuous-coverage derivation is a domain rule, not port logic — advisor-recommended,
   ratified with `PHASE3_DESIGN.md`.** Amends the 2026-08-14 entry under "Data we do not have at
   intake", which has the adapter deriving the date: the semantics are unchanged in every clause —

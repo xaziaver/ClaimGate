@@ -671,6 +671,9 @@ Ordered by domain severity, not by effort. One line each on why that position.
     resubmission of an old payload under a key remembered before this item answers `409` rather than
     a `200` replay, bounded to the 24-hour key lifetime — item 5g's accepted consequence, accepted
     again here and recorded in this entry when the item closes.
+    Does not touch `validation.feature` or `notice_intake.feature`: `policy_number` stays a required
+    field until 7g, so the insured-name arm is built and specified here but unreachable at intake
+    until then (`PHASE3_DESIGN.md` annotation, 2026-09-05).
 
 7d. **Retire policy-number shape validation (reopens `validation.feature`).** Reverses items 4b and
     4j, ratified in `PHASE3_DESIGN.md`, "Identifiers". Delete the prefix scenario; retire
@@ -681,6 +684,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     prefix scenario and 28 untouched, and the floor is what to check against, not the answer.
     `POLICY_NOT_MATCHED`, `POLICY_AMBIGUOUS` and the search behaviour are 7f's, not this item's:
     after 7d a policy number is accepted as given and nothing yet checks it against anything.
+    Two things for the blast-radius measurement, found 2026-09-05: every combination scenario in
+    `validation.feature`'s interplay rule uses `POLICY_NUMBER_MALFORMED` as an ingredient and the
+    rule's comments enumerate a five-code closed set, so the radius is scenario text, not only the 3
+    approvals; and `policy_number`'s required-ness is not this item's — it is 7g's.
 
 7e. **Port protocols, bindings, and the live-query implementations (shell).** The policy port
     (`search`, `term_history`) and claims port (`existing_claims`) protocols; three-valued results
@@ -712,6 +719,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     re-run of its unmodified scenarios is the evidence; the race guard is unit-tested, and the unit
     test is named in the gate report. Port re-evaluation on resolution uses the merged identifiers,
     so correcting a policy number through resolution is what clears `POLICY_NOT_MATCHED`.
+    Also retires `policy_number` as a required field in the same commit that wires
+    `POLICY_IDENTIFIERS_INSUFFICIENT`: the two absent/whitespace policy-number scenarios in
+    `validation.feature` and the absent-policy-number row in `notice_intake.feature` change to the
+    identification blocker, measured against the lock at the working ref before drafting.
 
 7h. **Duplicate detection wired (shell).** `existing_claims` feeds `find_duplicates` with the
     carrier's `window_days` on every transition into `TRIAGED`, both paths; results persist to
