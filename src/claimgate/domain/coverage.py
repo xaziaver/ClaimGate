@@ -43,6 +43,14 @@ class PolicyTerm:
 
 
 @dataclass(frozen=True)
+class PriorCoverage:
+    # Coverage on the risk by a prior carrier, as the source records it: a data
+    # point for the continuous-coverage rule (item 7b), never a term in force here.
+    effective: date
+    ending: date
+
+
+@dataclass(frozen=True)
 class TermHistory:
     # The policy source's answer, in the shape every port answer takes
     # (PHASE3_DESIGN.md): reason is set only when the history was not obtained,
@@ -50,6 +58,11 @@ class TermHistory:
     value: Literal["OBTAINED", "NOT_OBTAINED"]
     terms: tuple[PolicyTerm, ...] = ()
     reason: str | None = None
+    # Item 7b, read by the continuous-coverage rule only. history_from is the
+    # source's horizon - every term in force on or after it is supplied, earlier
+    # ones may be missing; None asserts a complete history.
+    history_from: date | None = None
+    prior_coverage: PriorCoverage | None = None
 
 
 @dataclass(frozen=True)
@@ -68,14 +81,26 @@ class TermInForceDetermination:
 def determine_term_in_force(history: TermHistory, loss_date: date) -> TermInForceDetermination:
     if history.value == "NOT_OBTAINED":
         return _not_evaluated(history)
-    coverages = [_coverage_of(term) for term in history.terms]
-    _require_disjoint(coverages)
+    coverages = _coverages(history)
     if any(coverage.position(loss_date) == "BOUNDARY" for coverage in coverages):
         return TermInForceDetermination(value=BOUNDARY_DAY)
     covering = _covering(coverages, loss_date)
     if covering is not None:
         return TermInForceDetermination(value=IN_FORCE, term=covering.term)
     return _not_in_force(coverages, loss_date)
+
+
+def in_force_periods(history: TermHistory) -> list[tuple[date, date]]:
+    """Every period a term was actually in force, earliest first, for the
+    continuous-coverage rule. Terms only, never prior-carrier coverage; a
+    malformed history raises exactly as determine_term_in_force does."""
+    return sorted(period for coverage in _coverages(history) for period in coverage.periods)
+
+
+def _coverages(history: TermHistory) -> list["_Coverage"]:
+    coverages = [_coverage_of(term) for term in history.terms]
+    _require_disjoint(coverages)
+    return coverages
 
 
 def _require_disjoint(coverages: list["_Coverage"]) -> None:

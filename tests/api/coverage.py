@@ -3,10 +3,15 @@
 from dataclasses import replace
 from datetime import date
 
+from claimgate.domain.continuous_coverage import ContinuousCoverageDerivation
+from claimgate.domain.continuous_coverage import (
+    derive_continuous_coverage as _derive_continuous_coverage,
+)
 from claimgate.domain.coverage import (
     CANCELLATION,
     REINSTATEMENT,
     PolicyTerm,
+    PriorCoverage,
     StatusChangeKind,
     TermHistory,
     TermInForceDetermination,
@@ -45,8 +50,22 @@ def _with_change(term: PolicyTerm, kind: StatusChangeKind, effective: date) -> P
     return replace(term, status_changes=(*term.status_changes, change))
 
 
-def term_history(terms: list[PolicyTerm]) -> TermHistory:
-    return TermHistory(value="OBTAINED", terms=tuple(terms))
+def prior_coverage(effective: date, ending: date) -> PriorCoverage:
+    """Coverage on the risk by a prior carrier, as the source records it."""
+    return PriorCoverage(effective=effective, ending=ending)
+
+
+def term_history(
+    terms: list[PolicyTerm],
+    *,
+    history_from: date | None = None,
+    prior: PriorCoverage | None = None,
+) -> TermHistory:
+    """An obtained history. history_from is the source's horizon; None asserts
+    a complete history. Both are read by the continuous-coverage rule only."""
+    return TermHistory(
+        value="OBTAINED", terms=tuple(terms), history_from=history_from, prior_coverage=prior
+    )
 
 
 def unobtained_term_history(reason: str) -> TermHistory:
@@ -55,3 +74,9 @@ def unobtained_term_history(reason: str) -> TermHistory:
 
 def determine_term_in_force(history: TermHistory, loss_date: date) -> TermInForceDetermination:
     return _determine_term_in_force(history, loss_date)
+
+
+def derive_continuous_coverage(
+    history: TermHistory, loss_date: date
+) -> ContinuousCoverageDerivation:
+    return _derive_continuous_coverage(history, loss_date)

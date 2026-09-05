@@ -11,6 +11,7 @@ finds them - and only what they share comes here.
 from datetime import datetime
 from typing import Any
 
+from tests.api.coverage import PolicyTerm
 from tests.api.resolution import notice_record
 from tests.api.siu import (
     LATE_REPORTING_INDICATOR,
@@ -97,3 +98,11 @@ def recorded_indicator_event(context: dict[str, Any], indicator: str) -> Any:
     ]
     assert len(matching) == 1
     return matching[0]
+
+
+def policy_terms(context: dict[str, Any]) -> list[PolicyTerm]:
+    """The policy terms a scenario has stated so far, in order: written by the
+    term-history steps in conftest.py, read by the two coverage rules' When
+    steps, each in its own module."""
+    terms: list[PolicyTerm] = context.setdefault("terms", [])
+    return terms
