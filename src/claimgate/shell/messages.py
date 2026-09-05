@@ -39,7 +39,16 @@ class NoticeFields:
     200 replay - bounded to the 24-hour key lifetime, recorded in QUEUE.md, and
     accepted. `jurisdiction_timezone` left the surface in the same change: two
     sources for one fact need a precedence rule nobody has ratified
-    (ASSUMPTIONS.md, 2026-08-26)."""
+    (ASSUMPTIONS.md, 2026-08-26).
+
+    `insured_name` and the structured risk address - `risk_address`,
+    `risk_city`, `risk_postal_code`, with `property_state` staying the
+    address's only state component - are item 7c's, the identifiers the policy
+    search will take once item 7g wires it (PHASE3_DESIGN.md, "Identifiers").
+    They join the hashed field set on the same terms as `property_state`, with
+    the same accepted consequence, and the domain reads none of them until 7g:
+    the sufficiency rule exists (domain/policy_identification.py) and has no
+    caller."""
 
     policy_number: str = ""
     loss_date: str | None = None
@@ -49,6 +58,10 @@ class NoticeFields:
     claimant_name: str | None = None
     claimant_contact: str | None = None
     incident_description: str | None = None
+    insured_name: str | None = None
+    risk_address: str | None = None
+    risk_city: str | None = None
+    risk_postal_code: str | None = None
 
 
 @dataclass(frozen=True)
