@@ -662,7 +662,9 @@ Ordered by domain severity, not by effort. One line each on why that position.
     domain-owned reasons are `HISTORY_MAY_PREDATE_SOURCE` and `NO_COVERAGE_ON_LOSS_DATE` — the dated
     2026-09-04 continuous-coverage entry in `ASSUMPTIONS.md`.
 
-7c. **Identifier sufficiency and the new notice fields (pure rule + surface fields).**
+7c. **Identifier sufficiency and the new notice fields (pure rule + surface fields).** *(Closed at
+    merge `c3ecc4e`, 2026-09-05 — see below: spec `d06e236`, approval `6fe269c`, implementation
+    `60ef615` / `e75f5dd` / `652c2f1`.)*
     `insured_name`, `risk_address`, `risk_city`, `risk_postal_code` join `NoticeFields`;
     `property_state` stays the address's only state component. Sufficiency rule per
     `PHASE3_DESIGN.md`: searchable = policy number present, or insured name plus risk postal code;
@@ -674,6 +676,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     Does not touch `validation.feature` or `notice_intake.feature`: `policy_number` stays a required
     field until 7g, so the insured-name arm is built and specified here but unreachable at intake
     until then (`PHASE3_DESIGN.md` annotation, 2026-09-05).
+    Recorded at close, as this entry said to: a byte-identical resubmission of a pre-7c payload under
+    a key remembered before this item answers `409` rather than a `200` replay, bounded to the
+    24-hour key lifetime — proven at `e75f5dd`, accepted again (`ASSUMPTIONS.md` 2026-09-05,
+    judgment 7).
 
 7d. **Retire policy-number shape validation (reopens `validation.feature`).** Reverses items 4b and
     4j, ratified in `PHASE3_DESIGN.md`, "Identifiers". Delete the prefix scenario; retire
@@ -3585,3 +3591,22 @@ and the entry itself is amended when the item closes. Session start restored not
 after. `docs/session-prompts/ADVISOR.md`'s uncommitted change remains the human's, untouched and in
 no commit. Next: the human confirms or reverses the seven judgments, then merges; the branch is a
 superset of `main`.
+
+**2026-09-05: item 7c is closed, merged to `main` at `c3ecc4e`.** The human ratified all seven
+judgments as reported in the paragraph above; they are recorded in `ASSUMPTIONS.md` under "Carried
+requirements", dated 2026-09-05, with judgment 5 carrying the ratification's addition — a rule whose
+subject is absence has no outage to report. The first cold gate at `e75f5dd` reported one surviving
+code mutant, the policy number passed into the insufficient branch swapped for `None`, equivalent
+because that branch is reached only with no number; restructured out at `652c2f1` rather than
+approved, the `key=`-lambda technique. The second cold gate at `652c2f1` was green on every gate,
+708 killed; out of band at the same ref, 54 applied, 54 killed, 0 survivors. Refs: spec `d06e236`,
+approval `6fe269c`, implementation `60ef615` / `e75f5dd` / `652c2f1`, merge `c3ecc4e`; the merge and
+the document commits around it change no file under `src/`, `tests/`, or `features/`.
+`docs/harness-findings.md` gains the `parsers.parse` empty-value sentence beside the fullmatch entry.
+Session start found `features/validation.feature` carrying a `_gauntlet` marker from a stop-check
+killed between turns; restored, digest confirmed against the lock — the routine case.
+`docs/session-prompts/ADVISOR.md`'s uncommitted change remains the human's, untouched and in no
+commit. Item 7d is next — retiring policy-number shape validation, reopening `validation.feature` —
+opening in a fresh session with its blast radius measured against the lock at the working ref before
+any drafting, including the interplay-rule scenario text and the five-code comment enumeration the
+7d entry now names. Nothing is in flight in code: no work open on any branch, no red gate.
