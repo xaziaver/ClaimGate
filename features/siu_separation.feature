@@ -101,7 +101,6 @@ Feature: Keeping SIU indicators off the notice
     # rather than from a precedence rule specified in another file.
     Given the carrier "AAAA" requires the claimant name
     And "AAAA" does not require the claimant contact
-    And "AAAA" recognizes the policy-number prefixes "HO;DP"
     And "AAAA" has no late reporting threshold configured
     And "AAAA" configures a recent policy inception threshold of 30 days
     And "AAAA" configures a duplicate match window of 60 days
