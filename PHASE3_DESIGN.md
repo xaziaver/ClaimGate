@@ -193,7 +193,7 @@ whose subject does not change and are re-measured against the lock at the item, 
 Background step in `notice_intake.feature`, `idempotency.feature` and `resolution.feature`, and
 `resolution.feature`'s partial-clearance row depended on `POLICY_NUMBER_MALFORMED`; a rule
 retirement changes what a column elsewhere can discriminate. Measured against the lock at
-`e29410e`: 3 approvals deleted, 37 untouched, 5 file approvals to re-issue.**
+`e29410e`: 3 approvals deleted, 34 untouched, 5 file approvals to re-issue.**
 
 ## Duplicate detection gets its caller
 

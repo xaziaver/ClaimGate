@@ -3652,3 +3652,18 @@ export the five files at `6ebea22`, run `gauntlet spec approve` on each and `gau
 features/validation.feature`, and the implementation commit — step glue, the domain retirement, the
 carrier rules files, `RULESET_VERSION` — follows the lock on the branch. The branch is a superset
 of `main`.
+
+**2026-09-06: the pre-approval suite instruction was wrong; the human approved the five specs at
+`6ebea22`, lock at `e78a04f` on the branch.** The advisor's instruction to run the five amended
+specs against the current code before approval was reasoned from the spec text, not from the step
+glue: `validation`'s run fixture read the context key the removed Background step set,
+`carrier_configuration`'s steps bound the "six values" text, and the carrier-rules loader still
+required the retired key — so 113 of 116 scenarios failed for glue reasons, none for a wrong
+expectation. One detail of the 2026-09-05 report was inference, not observation: the
+negative-threshold step was never unbound — the outline's field-and-value regex already matches
+it — so the only unbound step was the "six values" text. The agent stopped rather than changing
+glue before the lock, which was correct: a red tests gate between a reopening's spec commit and its
+implementation commit is the expected state, not a defect, and is why that state lives on a branch.
+`gauntlet mutant prune` was deliberately not run: read from source 2026-09-06, its path has no
+baseline check, and with the suite red it would have classified all 31 approvals on
+`validation.feature` as stale. Prune happens after this implementation, at a green ref.
