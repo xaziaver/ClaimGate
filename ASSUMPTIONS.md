@@ -948,6 +948,30 @@ or data. Nothing below was confirmed against a live book.
   Background step. The advisor's grep used code identifiers where the step text was English, and a
   Background step yields no mutant for the engine to diff. The reopening method for every later
   item: plain-word grep across `features/` plus the engine, never the engine alone.
+- **Item 7e decisions — advisor-recommended, human-ratified 2026-09-06.** (1) Port answers are shell
+  envelopes (`SearchAnswer`, `TermHistoryAnswer`, `ExistingClaimsAnswer`) carrying `as_of` and the
+  binding label around the domain's `TermHistory` and `ExistingClaim` unchanged; nothing under
+  `domain/` moved, and the killed count staying at 687 is the check. (2) The clock is injected: the
+  binding record carries it and the port stamps `as_of` from it, read once before the source call so
+  not-evaluated answers carry the same instant; the shell reads no clock. (3) `history_horizon` is a
+  required policy-binding parameter, an ISO date or `complete`, and every term-history answer's
+  `history_from` equals it — omission is a binding fault, so a port cannot silently assert a complete
+  history. A `history_horizon` on a claims entry is also a fault (reversed from the agent's first
+  reading, which stripped it silently). (4) Timeouts are enforced with a real futures timeout,
+  contract-tested with a 0.05 s budget against a 0.5 s sleep; a source raising `TimeoutError` itself
+  answers `SOURCE_TIMEOUT` because the two classes are one since Python 3.11. (5) Bindings resolve in
+  `shell/bindings.py` under one new code `PORT_BINDING_UNRESOLVABLE`; no endpoint answers it until
+  7f; the label is `<carrier>/<port>:<implementation>` and implementations receive it opaquely; keys
+  beyond the named ones pass through to the constructor for 7i's extract shape. (6) `SearchAnswer` is
+  FOUND with one or several candidates, NOT_FOUND, or NOT_EVALUATED; candidate count is 7f's
+  question; `match_basis` reuses the domain's arm names and the source states its own basis
+  (`matched_by`), an unknown word being `SOURCE_MALFORMED`; `IDENTIFIERS_INSUFFICIENT` at the port
+  means the source cannot search on the supplied combination, distinct from the domain's
+  `POLICY_IDENTIFIERS_INSUFFICIENT`. (7) An unknown policy reference answers `SOURCE_UNAVAILABLE`:
+  the reference is the source's own token from its own search. (8) Non-renewal and pending
+  cancellation do not cross the port — the domain's status-change kinds are cancellation and
+  reinstatement only (7a), and PHASE3_DESIGN's port description predates that. Parsers require every
+  wire key; no `.get` defaults in the translation.
 - **The continuous-coverage derivation is a domain rule, not port logic — advisor-recommended,
   ratified with `PHASE3_DESIGN.md`.** Amends the 2026-08-14 entry under "Data we do not have at
   intake", which has the adapter deriving the date: the semantics are unchanged in every clause —

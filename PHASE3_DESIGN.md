@@ -62,7 +62,9 @@ one.
 2. **`term_history`** — for a policy reference: every term with effective and expiration dates,
    plus dated status events — cancellation (with effective date), non-renewal, reinstatement
    (with effective date and whether retroactive), pending cancellation. Raw history; no
-   derivation.
+   derivation. *Annotation 2026-09-06 (item 7e): the domain's status-change kinds are cancellation
+   and reinstatement only, decided at 7a; these two never cross the port. Second passage in this
+   document found describing code that never existed.*
 
 ### Claims port operations
 

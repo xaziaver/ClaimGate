@@ -70,6 +70,23 @@ check as a live run. The stranded mutant happened to be the numeric member of th
 the locator entry below records; coincidence, no evidence weight, noted so the incident log does
 not read as significant.
 
+**Second correction, 2026-09-06: the raised timeout has been overtaken too, so a green stop-check
+now kills itself.** A cold green `gauntlet check` at 14 specs and 73 reviewed-equivalent measured
+2135.481s for the acceptance gate on 2026-09-06 (item 7e, run `20260906T140237`), past the 1800s
+Stop hook timeout in `.claude/settings.json`; the two green runs before it that day measured
+1879.917s and 1782.682s. Every stop-check therefore ends the same way whether or not a human
+replies: killed inside the acceptance gate, stranding whichever spec's mutation window spans
+1800s. The strand at `features/validation.feature:371` found at item 7e's start-up is the first
+attributed to the timeout, inferred from the run's shape and the session gap; the strand at
+`features/triage.feature:99` found one turn later, from the stop-check that fired on item 7e's
+implementation commit, is the second and the measured one — the eleventh and twelfth events under
+"A corrupted spec from an interrupted mutation run has a recovery path already on disk" carry the
+evidence and its limits. Unit-test growth
+does not contribute to this figure: the per-mutant run is `run_acceptance` in
+`adapters/python.py`, `pytest <steps>` over the acceptance directory alone (`_survivors` in
+`gates/acceptance.py`), so the wall time grows as scenarios times mutants. The hook timeout is not
+changed here; that is the human's, at the close-out lock.
+
 ### What a locked spec cannot see is found by breaking the implementation on purpose
 
 Item 5e had a rule no phrase in its spec could read — the notice's resolution timestamp must stay
@@ -605,6 +622,29 @@ substitution rules, and every rule added to the engine adds a shape. Restored
 from `.gauntlet/mutation-backup/`, digest confirmed. The rule in `CLAUDE.md` now
 says so.
 
+**Eleventh and twelfth events, 2026-09-06 — the first strands from the hook's own timeout rather
+than from an interrupt.** Events one to ten are logged in the harness's own findings file
+(`agent-gauntlet/gauntlet-findings.md`, "Events seven through ten"), where the trigger named for
+seven to ten is the operator's next message killing a stop-check. The two found during item 7e
+change the trigger. **Eleventh:** `features/validation.feature:371`, `"required"` mutated to
+`"required"_gauntlet` in the claimant-contact configuration step, found at 7e's session start. Run
+`20260906T115427`, stop-check shape (ten `gate.finished` events, none for `acceptance`, no
+`run.started`), fired on the 7d close-out save point; that session had ended and the next opened
+about ninety minutes later, so no message was there to kill it, and the day's green runs measured
+1782.682s, 1879.917s and 2135.481s against the 1800s hook timeout. Consistent with the timeout, and
+the human's reading; the `.gauntlet/mutation-backup/` mtimes that would place the kill were
+overwritten by the two later runs, so this one is inferred from the shape and the window, not
+measured. **Twelfth:** `features/triage.feature:99`, the loss date `2026-08-01` sibling-swapped to
+`2026-06-01` in the severity outline, no marker, found one turn later. Run `20260906T144106`,
+stop-check shape, fired on 7e's implementation commit at 14:41:06Z; the backup mtimes show the run
+entering `triage.feature` at 15:09:28Z, twenty-eight minutes in, and never reaching
+`validation.feature`, whose backup still carries the 14:33:23Z stamp of the previous run. 14:41:06Z
+plus 1800s is 15:11:06Z, inside `triage.feature`'s window, and no human message arrived until about
+15:58Z. This one is measured. Both restored with `git checkout --`, digests confirmed against the
+lock. At 2135s a green run outlives the hook, so every stop-check now strands the tree by itself,
+with no operator involved; see "The Stop hook's timeout is now shorter than a green acceptance
+run", second correction.
+
 ### The acceptance gate's wall time is growing, not fixed at ~150s
 
 Across 162 acceptance-gate runs in the log, the maximum observed is 260.3s,
@@ -651,6 +691,15 @@ survivor costs time, because it does not: `_survivors` applies every mutant and
 runs the full suite for each before the ledger is read, which is also what
 makes a stale approval detectable. Budget past 900s and keep rechecking rather
 than anchoring on any of these.
+
+**Fourth correction, 2026-09-06: 2135.481s, and the 300s floor this entry opens with is stale by a
+factor of seven.** Item 7e's cold green run — 14 specs, 73 reviewed-equivalent, a 762-test suite,
+no spec changed — took 2135.481s in the acceptance gate, with 1879.917s and 1782.682s on the same
+day's two earlier green runs. Every budget quoted above, 300s, 480s, 900s, is below the observed
+figure; the Stop hook's 1800s has been overtaken as well (see "The Stop hook's timeout is now
+shorter than a green acceptance run", second correction). Budget past 2200s for any tool timeout
+wrapping `gauntlet check`, run it in the background rather than under a foreground timeout, and
+keep rechecking the log.
 
 ### `scope = "changed"` in `gauntlet.toml` never reaches the mutation gate — but not because `--changed` goes unused
 
