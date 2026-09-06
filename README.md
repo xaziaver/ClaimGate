@@ -14,8 +14,8 @@ jurisdiction, or a second policy admin system — see the swappability tests des
 
 Inside the domain, that commitment is now literal rather than aspirational. Every rule that varies
 by carrier is a required parameter with **no default and no fallback** — the SIU thresholds, the
-duplicate-detection window, whether a claimant's name and contact details block intake, and which
-policy-number prefixes are recognized. A caller must state each one on every call. A configurable
+duplicate-detection window, and whether a claimant's name and contact details block intake. A
+caller must state each one on every call. A configurable
 value carrying a shipped default would be a rule nobody approved, reached by omission, so there
 isn't one.
 
@@ -48,8 +48,8 @@ complete and gated.** A structured design review of that domain surfaced defects
 issues, all since corrected: SIU indicators became a parallel attribute rather than a queue
 override, both SIU thresholds and the duplicate-detection window lost their domain defaults, the
 reason-code vocabulary was reconciled across files, Section II required fields became carrier
-configuration covering liability as well as injury, and the recognized policy-number prefix set
-became configuration rather than a constant.
+configuration covering liability as well as injury. The recognized policy-number prefix set, made
+configuration in that pass, was retired outright in phase 3 (item 7d) with the shape check it served.
 
 **Phase 2 — the HTTP and persistence shell — is complete and gated, merged 2026-08-30.** Notice
 intake, idempotency, pended-notice resolution, the append-only audit log, SIU separation, and

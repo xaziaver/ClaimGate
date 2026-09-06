@@ -943,7 +943,11 @@ or data. Nothing below was confirmed against a live book.
   `carrier_configuration.feature`'s multi-refusal scenario uses a negative late-reporting threshold
   as its malformed ingredient in place of the empty prefix set. (5) `resolution.feature`'s
   partial-clearance row uses `absent` — the reviewer says nothing about the number — so the column
-  still discriminates. (6) `RULESET_VERSION` bumps.
+  still discriminates. (6) `RULESET_VERSION` bumps. **Corrected 2026-09-06:** the radius was seven
+  specs, not five; `jurisdiction_selection.feature` and `siu_separation.feature` carried the prefix
+  Background step. The advisor's grep used code identifiers where the step text was English, and a
+  Background step yields no mutant for the engine to diff. The reopening method for every later
+  item: plain-word grep across `features/` plus the engine, never the engine alone.
 - **The continuous-coverage derivation is a domain rule, not port logic — advisor-recommended,
   ratified with `PHASE3_DESIGN.md`.** Amends the 2026-08-14 entry under "Data we do not have at
   intake", which has the adapter deriving the date: the semantics are unchanged in every clause —
