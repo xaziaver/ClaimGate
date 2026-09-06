@@ -32,9 +32,13 @@ continuous-coverage decisions (2026-09-04) record that a port omitting its
 horizon makes every derivation conclusive silently; requiring it here is how
 that is made impossible rather than discouraged.
 
-Keys beyond the three named above are the implementation's own parameters (an
-extract's file set, item 7i) and pass through untouched. The clock is whatever
-the deployment configured, passed in by the caller: nothing here reads one.
+Keys beyond the ones a binding recognises are the implementation's own
+parameters (an extract's file set, item 7i) and pass through untouched. A key a
+binding recognises somewhere else - a history horizon on a claims entry - is a
+misconfiguration, not a parameter, and faults like any other (ratified
+2026-09-06, reversing a first reading that stripped it silently). The clock is
+whatever the deployment configured, passed in by the caller: nothing here reads
+one.
 """
 
 from collections.abc import Callable, Mapping
@@ -46,7 +50,12 @@ from claimgate.shell.faults import PORT_BINDING_UNRESOLVABLE, DeploymentFaultErr
 from claimgate.shell.ports import ClaimsPort, Clock, PolicyPort
 
 COMPLETE_HISTORY: Final = "complete"
-_BINDING_KEYS: Final = frozenset({"implementation", "timeout_seconds", "history_horizon"})
+# What each port's binding recognises; the union is every key a binding
+# recognises anywhere, so a recognised key on the wrong port can be told apart
+# from an implementation's own parameter.
+_POLICY_KEYS: Final = frozenset({"implementation", "timeout_seconds", "history_horizon"})
+_CLAIMS_KEYS: Final = frozenset({"implementation", "timeout_seconds"})
+_BINDING_KEYS: Final = _POLICY_KEYS | _CLAIMS_KEYS
 
 BindingsSource = Mapping[str, Mapping[str, Mapping[str, Any]]]
 
@@ -111,7 +120,7 @@ def resolve_policy_port(
             timeout_seconds=_timeout(entry),
             history_horizon=_horizon(entry),
             clock=clock,
-            parameters=_parameters(entry),
+            parameters=_parameters(entry, _POLICY_KEYS),
         )
     )
 
@@ -126,7 +135,7 @@ def resolve_claims_port(
             binding=_label(carrier_code, "claims", entry),
             timeout_seconds=_timeout(entry),
             clock=clock,
-            parameters=_parameters(entry),
+            parameters=_parameters(entry, _CLAIMS_KEYS),
         )
     )
 
@@ -169,8 +178,10 @@ def _horizon(entry: Mapping[str, Any]) -> date | None:
         raise DeploymentFaultError(PORT_BINDING_UNRESOLVABLE) from malformed
 
 
-def _parameters(entry: Mapping[str, Any]) -> Mapping[str, Any]:
-    return {key: value for key, value in entry.items() if key not in _BINDING_KEYS}
+def _parameters(entry: Mapping[str, Any], recognised: frozenset[str]) -> Mapping[str, Any]:
+    if (_BINDING_KEYS - recognised) & entry.keys():
+        raise DeploymentFaultError(PORT_BINDING_UNRESOLVABLE)
+    return {key: value for key, value in entry.items() if key not in recognised}
 
 
 def _label(carrier_code: str, port: str, entry: Mapping[str, Any]) -> str:

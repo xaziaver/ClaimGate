@@ -152,6 +152,15 @@ def with_policy(entry: dict[str, Any]) -> dict[str, Any]:
             },
             id="claims missing timeout",
         ),
+        pytest.param(
+            {
+                "AAAA": {
+                    "policy": POLICY_ENTRY,
+                    "claims": {**CLAIMS_ENTRY, "history_horizon": "complete"},
+                }
+            },
+            id="claims entry carrying a history horizon",
+        ),
     ],
 )
 def test_every_gap_in_a_binding_is_the_one_deployment_fault(source: dict[str, Any]) -> None:
