@@ -681,7 +681,9 @@ Ordered by domain severity, not by effort. One line each on why that position.
     24-hour key lifetime — proven at `e75f5dd`, accepted again (`ASSUMPTIONS.md` 2026-09-05,
     judgment 7).
 
-7d. **Retire policy-number shape validation (reopens `validation.feature`).** Reverses items 4b and
+7d. **Retire policy-number shape validation (reopens `validation.feature`).** *(Closed at merge
+    `2e8ba71`, 2026-09-06 — see below: specs `6ebea22` and `fb47d43`, approvals `e78a04f` and `68f9e97`,
+    implementation `e62cdd6`, prune `cbbac25`; seven specs reopened, not five.)* Reverses items 4b and
     4j, ratified in `PHASE3_DESIGN.md`, "Identifiers". Delete the prefix scenario; retire
     `POLICY_NUMBER_MALFORMED` from the domain and `recognized_policy_number_prefixes` from the
     required carrier configuration, the rules files, and `carrier_configuration.feature`'s
@@ -3735,3 +3737,19 @@ the two files is the acceptance gate at its approval stage, on two MODIFIED file
 the ledger, so the 3 MISSING entries on `validation.feature` remain unobserved by any gate until
 then. Next, in order and all the human's: approve the two files, run the cold gate, prune
 `features/validation.feature` at the green ref, merge. The branch is a superset of `main`.
+
+**2026-09-06: item 7d is closed, merged to `main` at `2e8ba71`.** The human approved the two amended
+specs at `68f9e97`, ran the cold gate green at that ref — 14 specs, 73 reviewed-equivalent, the 3
+stale approvals on `validation.feature` reported — pruned exactly those three at `cbbac25` with the
+diff verified, and the gate is fully green at `cbbac25`. Refs: specs `6ebea22` (five files) and
+`fb47d43` (two more), approvals `e78a04f` and `68f9e97`, implementation `e62cdd6`, prune `cbbac25`,
+merge `2e8ba71`. Close-out on `main` at `a98a5bc`: `README.md` no longer lists the prefix set among the
+required configuration values — five, not six — and reads its history as retired; `ASSUMPTIONS.md`'s
+7d decisions entry carries the dated seven-spec correction and the reopening method for every
+later item. Reviewed-equivalent is 73. `RULESET_VERSION` is `2026-09-06`; every audit entry and SIU
+indicator event written from the merge names it. The advisor session ended at this save point.
+`docs/session-prompts/ADVISOR.md` is the human's: its last change landed in the human's own commit
+`e78a04f`, no agent commit touches it, and the tree was clean at this save point. Item 7e is next —
+port protocols, bindings and the live-query implementations — opening in a fresh session, with its
+blast radius measured by plain-word grep across `features/` plus the engine before any drafting.
+Nothing is in flight in code: no work open on any branch, no red gate.
