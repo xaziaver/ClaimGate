@@ -1035,6 +1035,29 @@ instruction to act on a gate's remedy rather than guessing, and one remedy in th
 harness names the wrong command. The correction cannot live where the instruction
 is. It lives in the `gauntlet-gates` skill instead.
 
+### An engine-based blast radius is blind to Background steps (2026-09-06)
+
+Item 7d's radius was measured against the lock through the engine, per "Mutant counts are checkable
+directly" above: five specs, 3 approvals deleted, 34 untouched. Exact for approvals, wrong about
+which files reopen. Two further locked specs, `jurisdiction_selection.feature` and
+`siu_separation.feature`, carried the retired step `And "AAAA" recognizes the policy-number
+prefixes "HO;DP"` in their Backgrounds, and a Background step yields no mutant, so enumeration sees
+nothing when it goes and nothing when it stays. The advisor's repo-wide grep missed them too, for a
+different reason: it searched the underscore identifiers, `recognized_policy_number_prefixes` and
+`POLICY_NUMBER_MALFORMED`, and the step text is hyphenated business language, "policy-number
+prefixes", which matches neither. They surfaced only when the step definition left with the code at
+`e62cdd6`: every scenario in both files failed at resolution with `StepDefinitionNotFoundError`, 30
+of 30, after a gate that had passed everything up to and including code mutation. Removing the line
+from each moves no locator and no digest (55 and 53 mutants unchanged, all 3 mutant approvals
+untouched, measured at `fb47d43`), so the cost was two file approvals; that is a fact about this
+step, not a rule, since a step whose value an `Examples` column also carried would move digests too.
+
+**The method for the next reopening is a plain-word grep across `features/` plus the engine, never
+the engine alone.** `grep -rn 'policy-number prefix' features/` is the radius for *binding* — every
+file that will fail to resolve — and the engine is the radius for *approvals* — every locator and
+digest that will move. They answer different questions, and the words to grep are the spec's, not
+the code's.
+
 ## Process and technique
 
 Lessons about working with the harness rather than about the harness itself.
@@ -1837,23 +1860,3 @@ their first element and no test had a tie on it. Both were equivalent, and appro
 have carried that argument into the ledger. Restructure instead: take `max` over the plain key
 values and select the pair by equality. Nothing is left to drop, and the selection's `==` becomes
 a mutant that any test with two candidates kills.
-
-### A Background step produces no mutant, so an engine-measured radius misses every spec that merely binds a retired step
-
-Item 7d's radius was measured against the lock through the engine, per "Mutant counts are checkable
-directly" above: five specs, 3 approvals deleted, 34 untouched. The measurement was exact for what
-it measures and wrong about which files reopen. Two further locked specs,
-`jurisdiction_selection.feature` and `siu_separation.feature`, carried the retired prefix step in
-their Backgrounds, and a Background step is never mutated, so enumeration sees nothing when it goes
-and nothing when it stays. They surfaced only when the step definition left with the code: every
-scenario in both files fails at resolution with `StepDefinitionNotFoundError`, 30 of 30, observed at
-`e62cdd6` on 2026-09-06 after a gate that had passed protect, static, size, complexity, boundary,
-coverage, crap, duplication and code mutation.
-
-The technique that follows: a step retirement has two radii that answer different questions.
-`grep -rn '<step text>' features/` is the radius for *binding* — every file that will fail to
-resolve — and the engine is the radius for *approvals* — every locator and digest that will move.
-Neither substitutes for the other. Removing the step from these two files moves no locator and no
-digest (55→55 and 53→53 mutants, all 3 mutant approvals untouched, measured), so the whole cost is
-two file approvals; that is a fact about this step, not a rule, since a step whose value an
-`Examples` column also carried would move digests too.

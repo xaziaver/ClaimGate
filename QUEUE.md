@@ -3711,3 +3711,27 @@ lock, so "touches only `gauntlet.lock.json`" was read as "no spec, code or test 
 proceeded. Next is the human's: decide the two extra specs — amend both by the one-line removal and
 approve, or something else — then `gauntlet mutant prune features/validation.feature` at a green
 ref, then merge. Not pruned, not merged. The branch is a superset of `main`.
+
+**2026-09-06: the radius is seven specs, not five; the two missed specs are amended at `fb47d43`,
+spec commit alone, awaiting approval.** The human ratified judgments 1–5 of the paragraph above;
+`README.md` is the agent's at close-out. `jurisdiction_selection.feature` and
+`siu_separation.feature` each lose the one Background line `And "AAAA" recognizes the policy-number
+prefixes "HO;DP"` and nothing else: from `git show fb47d43:<path>`, `b5adf23b9bc27653` (356 lines)
+and `c01c07a3f1ad3c6f` (510 lines), the digests measured before the edit. Enumerated against the
+lock at `e62cdd6` and `fb47d43`: 55 and 53 mutants unchanged (55 and 50 unique locators — the
+`siu_separation` collisions recorded under "Mutant counts and locator counts are different
+numbers"), all 3 mutant approvals untouched, no signature moved, both spec approvals MODIFIED; the
+suite at `fb47d43` is 667 passed. Why the radius was missed twice, and the method that replaces it:
+the advisor's repo-wide grep searched the underscore identifiers and missed the hyphenated step
+text, and the engine cannot see a Background dependency because a Background step yields no mutant —
+so the next reopening measures with a plain-word grep across `features/` plus the engine, never the
+engine alone (`docs/harness-findings.md`, "How the harness behaves", the entry of this date, into
+which the earlier entry under "Process and technique" is folded). Out-of-band survivors at
+`e62cdd6`, as measured: 28 on `validation.feature`, 2 on `carrier_configuration.feature`, 2 on
+`resolution.feature`, all approved and untouched, 0 new. What is red, and why it is guaranteed: at
+`e62cdd6` the tests gate was red only on the two unbound Background lines, every other gate green;
+at `fb47d43` those lines are gone and the suite passes, so what stays red until the human approves
+the two files is the acceptance gate at its approval stage, on two MODIFIED file approvals — before
+the ledger, so the 3 MISSING entries on `validation.feature` remain unobserved by any gate until
+then. Next, in order and all the human's: approve the two files, run the cold gate, prune
+`features/validation.feature` at the green ref, merge. The branch is a superset of `main`.
