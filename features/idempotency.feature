@@ -39,11 +39,9 @@ Feature: Idempotency on notice submission
   Background:
     Given the carrier "AAAA" requires the claimant name
     And "AAAA" does not require the claimant contact
-    And "AAAA" recognizes the policy-number prefixes "HO;DP"
     And "AAAA" configures a duplicate match window of 60 days
     And the carrier "BBBB" requires the claimant name
     And "BBBB" does not require the claimant contact
-    And "BBBB" recognizes the policy-number prefixes "HO;DP"
     And "BBBB" configures a duplicate match window of 60 days
     And the notice is submitted by carrier "AAAA"
     And the insured property is in "FL"

@@ -149,7 +149,6 @@ class JurisdictionSelectionResult:
 class CarrierRules:
     claimant_name_required: bool
     claimant_contact_required: bool
-    recognized_policy_number_prefixes: frozenset[str]
     late_reporting_threshold_days: int | None
     recent_inception_threshold_days: int | None
     window_days: int

@@ -7,15 +7,14 @@ import pytest
 
 from claimgate.domain.models import Candidate, FutureDatedLossResult, ValidationBlocker
 from claimgate.domain.validation import (
+    _SECTION_II_LOSS_TYPES,
     LOSS_DATE_IN_FUTURE,
     LOSS_TYPE_UNRECOGNIZED,
     MISSING_REQUIRED_FIELD,
     NO_JURISDICTION_DATE,
     NO_LOSS_DATE,
     NOTICE_TYPE_UNRECOGNIZED,
-    POLICY_NUMBER_MALFORMED,
     RECOGNIZED_LOSS_TYPES,
-    _SECTION_II_LOSS_TYPES,
     validate,
 )
 
@@ -63,7 +62,6 @@ def test_loss_date_must_not_be_in_the_future(
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == expected_blockers
@@ -88,7 +86,6 @@ def test_an_absent_loss_date_blocks_and_leaves_the_determination_unevaluated() -
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == (ValidationBlocker(MISSING_REQUIRED_FIELD, "loss_date"),)
@@ -114,7 +111,6 @@ def test_no_jurisdiction_date_leaves_the_determination_unevaluated_and_raises_no
         now=None,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == ()
@@ -128,21 +124,11 @@ def test_no_jurisdiction_date_leaves_the_determination_unevaluated_and_raises_no
     ("policy_number", "expected_blockers"),
     [
         ("HO-1234567", ()),
-        ("AU-1234567", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("CP-1234567", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("CA-1234567", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("GL-1234567", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("XX-1234567", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("HO-123456", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("HO-12345678", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("ho-1234567", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("HO1234567", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
-        ("HO-ABCDEFG", (ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),)),
         ("", (ValidationBlocker(MISSING_REQUIRED_FIELD, "policy_number"),)),
         ("   ", (ValidationBlocker(MISSING_REQUIRED_FIELD, "policy_number"),)),
     ],
 )
-def test_policy_number_format(
+def test_policy_number_presence(
     policy_number: str, expected_blockers: tuple[ValidationBlocker, ...]
 ) -> None:
     candidate = dataclasses.replace(BASE_CANDIDATE, policy_number=policy_number)
@@ -152,7 +138,6 @@ def test_policy_number_format(
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == expected_blockers
@@ -166,7 +151,6 @@ def test_absent_loss_type_is_a_missing_field() -> None:
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == (ValidationBlocker(MISSING_REQUIRED_FIELD, "loss_type"),)
@@ -204,7 +188,6 @@ def test_loss_type(
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == expected_blockers
@@ -231,7 +214,6 @@ def test_notice_type(
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == expected_blockers
@@ -323,7 +305,6 @@ def test_section_ii_required_fields(
         now=TODAY,
         claimant_name_required=claimant_name_required,
         claimant_contact_required=claimant_contact_required,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == expected_blockers
@@ -344,7 +325,6 @@ def test_incident_description_is_required_unconditionally(loss_type: str) -> Non
         now=TODAY,
         claimant_name_required=False,
         claimant_contact_required=False,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == (ValidationBlocker(MISSING_REQUIRED_FIELD, "incident_description"),)
@@ -358,7 +338,6 @@ def test_section_i_loss_does_not_require_claimant_details() -> None:
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == ()
@@ -378,7 +357,6 @@ def test_multiple_missing_claimant_fields_survive_ordered_by_field_name() -> Non
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == (
@@ -387,10 +365,9 @@ def test_multiple_missing_claimant_fields_survive_ordered_by_field_name() -> Non
     )
 
 
-def test_all_four_canonical_codes_fire_in_canonical_order() -> None:
+def test_notice_date_and_missing_field_codes_fire_in_canonical_order() -> None:
     candidate = dataclasses.replace(
         BASE_CANDIDATE,
-        policy_number="XX-1234567",
         notice_type="SUPPLEMENT",
         loss_date=date(2026, 8, 3),
         loss_type="injury",
@@ -404,11 +381,9 @@ def test_all_four_canonical_codes_fire_in_canonical_order() -> None:
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == (
-        ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),
         ValidationBlocker(NOTICE_TYPE_UNRECOGNIZED, "notice_type"),
         ValidationBlocker(LOSS_DATE_IN_FUTURE, "loss_date"),
         ValidationBlocker(MISSING_REQUIRED_FIELD, "claimant_name"),
@@ -418,7 +393,7 @@ def test_all_four_canonical_codes_fire_in_canonical_order() -> None:
 def test_non_contiguous_canonical_subset_still_sorts_correctly() -> None:
     candidate = dataclasses.replace(
         BASE_CANDIDATE,
-        policy_number="XX-1234567",
+        notice_type="SUPPLEMENT",
         loss_type="injury",
         claimant_name="Pat Rivera",
         claimant_contact="555-0101",
@@ -430,10 +405,9 @@ def test_non_contiguous_canonical_subset_still_sorts_correctly() -> None:
         now=TODAY,
         claimant_name_required=True,
         claimant_contact_required=True,
-        recognized_policy_number_prefixes={"HO"},
     )
 
     assert result.blockers == (
-        ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number"),
+        ValidationBlocker(NOTICE_TYPE_UNRECOGNIZED, "notice_type"),
         ValidationBlocker(MISSING_REQUIRED_FIELD, "incident_description"),
     )

@@ -282,24 +282,6 @@
       "reason": "All eleven survivors in this scenario are equivalent. They share one record because `gauntlet mutant approve` stamps every survivor in the scenario with one reason and all eleven fall here; --scenario cannot isolate a subset. Written 2026-08-15, sized to all eleven.\n\nEIGHT are loss-amount mutations. Severity derives from loss type alone and nothing in the domain reads the amount, so no mutation of that column can change severity, queue, or either indicator. The column is retained deliberately to demonstrate that independence (ASSUMPTIONS.md, item 4c); these eight survivors are the demonstration.\n\nTWO are coverage-start mutations on rows whose substituted date sits 78 days before that row's loss date against a 30-day threshold - outside the window before and after, so the indicator resolves FALSE either way.\n\nTHE ELEVENTH is a separate judgment and this paragraph is its own record: the coverage-start mutation on the theft row that fires late reporting and carries a coverage-start value. The substituted date postdates that row's loss date, producing a negative interval that resolves FALSE only because a coverage start later than the loss date is rejected before the threshold is applied (`_evaluate_recent_inception`, src/claimgate/domain/siu.py; symbol name verified 2026-08-15 - the text this replaces named `_is_recent_inception`, which has not existed since 2026-08-09). That behaviour IS specified: siu_indicators.feature's Rule on a continuous coverage date after the loss date covers it, and tests/unit/test_siu.py exercises it. The mutant is unkillable HERE not because the specification is silent but because this scenario asserts routing invariance, not indicator boundaries. It is structurally unavoidable rather than a data-choice artifact: the scenario must exercise recent inception TRUE and late reporting TRUE, which together guarantee that some coverage-start value in the column postdates some loss date in the column.\n\nREVISIT TRIGGER, applying only to the eleventh mutant: this approval is void if the rejection of a coverage-start date later than the loss date is removed, relaxed, or replaced - regardless of what the function implementing it is named at the time. Removal would also fail siu_indicators.feature's guard Rule and tests/unit/test_siu.py, both true as of 2026-08-15.",
       "reviewer": "xaziaver"
     },
-    "mutant:features/validation.feature#Policy number prefix recognition, by configuration|example|policy_number|HO|AU-1234567|POLICY_NUMBER_MALFORMED:policy_number": {
-      "approved_at": "2026-08-21T16:31:59+00:00",
-      "digest": "sha256:5d36cb30dc819ff581c26532e4c5fc0e0db06d579d45f90ebef5ba4aa5e28023",
-      "reason": "Three mutants across two mechanisms, recorded under one reason because approval is scoped per scenario and not per mutant - and because approve stamps every survivor in the scenario, not only the ones the gate reports as unapproved. Read this as two records. (a) Narrowing cannot rescue a rejection. On a row whose prefix already sits outside the configured set, substituting a different outside-the-set prefix, or removing a prefix the row never used, leaves it rejected for the same reason it was rejected before. Two mutants, one in each column. (b) Widening cannot break an acceptance. On the row whose prefix sits inside the configured set, adding a further prefix leaves the original one recognized, so the notice is still accepted. One mutant. What does kill, and what these rows exist for, is the pair that moves one policy number across the set boundary: the same number rejected under the narrow set and accepted under the widened one. That boundary is proven by the pair jointly and never by a single row, so none of these three survivors weakens it. Shape violations - digit count, case, separator - live in their own outline where the configured set is fixed above the table and therefore inert; nothing there survives, which is the check that this rule and the shape rule stayed separate. Rows are described by role rather than by literal value, per the convention in docs/harness-findings.md: example data is what a vocabulary pass changes, so a reason quoting it decays while its locator stays valid. REVISIT TRIGGER: void if an unrecognized prefix stops resolving POLICY_NUMBER_MALFORMED and gains a reason code of its own, if the number shape becomes configurable, or if this outline gains a row whose policy number is accepted under every configured set it appears with.",
-      "reviewer": "xaziaver"
-    },
-    "mutant:features/validation.feature#Policy number prefix recognition, by configuration|example|prefixes|HO;AU|CP-1234567|POLICY_NUMBER_MALFORMED:policy_number": {
-      "approved_at": "2026-08-21T16:31:59+00:00",
-      "digest": "sha256:8f94af3257f382ef4504181bef3f81625939c10c8bbc7d453a1a43d91681198d",
-      "reason": "Three mutants across two mechanisms, recorded under one reason because approval is scoped per scenario and not per mutant - and because approve stamps every survivor in the scenario, not only the ones the gate reports as unapproved. Read this as two records. (a) Narrowing cannot rescue a rejection. On a row whose prefix already sits outside the configured set, substituting a different outside-the-set prefix, or removing a prefix the row never used, leaves it rejected for the same reason it was rejected before. Two mutants, one in each column. (b) Widening cannot break an acceptance. On the row whose prefix sits inside the configured set, adding a further prefix leaves the original one recognized, so the notice is still accepted. One mutant. What does kill, and what these rows exist for, is the pair that moves one policy number across the set boundary: the same number rejected under the narrow set and accepted under the widened one. That boundary is proven by the pair jointly and never by a single row, so none of these three survivors weakens it. Shape violations - digit count, case, separator - live in their own outline where the configured set is fixed above the table and therefore inert; nothing there survives, which is the check that this rule and the shape rule stayed separate. Rows are described by role rather than by literal value, per the convention in docs/harness-findings.md: example data is what a vocabulary pass changes, so a reason quoting it decays while its locator stays valid. REVISIT TRIGGER: void if an unrecognized prefix stops resolving POLICY_NUMBER_MALFORMED and gains a reason code of its own, if the number shape becomes configurable, or if this outline gains a row whose policy number is accepted under every configured set it appears with.",
-      "reviewer": "xaziaver"
-    },
-    "mutant:features/validation.feature#Policy number prefix recognition, by configuration|example|prefixes|HO|HO-1234567|": {
-      "approved_at": "2026-08-21T16:31:59+00:00",
-      "digest": "sha256:25c3ddb369d1b2a48aec312345241f684ea2ac1841e604dc73eb490855c517f7",
-      "reason": "Three mutants across two mechanisms, recorded under one reason because approval is scoped per scenario and not per mutant - and because approve stamps every survivor in the scenario, not only the ones the gate reports as unapproved. Read this as two records. (a) Narrowing cannot rescue a rejection. On a row whose prefix already sits outside the configured set, substituting a different outside-the-set prefix, or removing a prefix the row never used, leaves it rejected for the same reason it was rejected before. Two mutants, one in each column. (b) Widening cannot break an acceptance. On the row whose prefix sits inside the configured set, adding a further prefix leaves the original one recognized, so the notice is still accepted. One mutant. What does kill, and what these rows exist for, is the pair that moves one policy number across the set boundary: the same number rejected under the narrow set and accepted under the widened one. That boundary is proven by the pair jointly and never by a single row, so none of these three survivors weakens it. Shape violations - digit count, case, separator - live in their own outline where the configured set is fixed above the table and therefore inert; nothing there survives, which is the check that this rule and the shape rule stayed separate. Rows are described by role rather than by literal value, per the convention in docs/harness-findings.md: example data is what a vocabulary pass changes, so a reason quoting it decays while its locator stays valid. REVISIT TRIGGER: void if an unrecognized prefix stops resolving POLICY_NUMBER_MALFORMED and gains a reason code of its own, if the number shape becomes configurable, or if this outline gains a row whose policy number is accepted under every configured set it appears with.",
-      "reviewer": "xaziaver"
-    },
     "mutant:features/validation.feature#Recognized notice types are accepted|example|notice_type|INITIAL": {
       "approved_at": "2026-08-08T09:10:08+00:00",
       "digest": "sha256:4a1bee26f506bf29001f52c22b1f11473efe8fe2946e7d9a440312b97ff74902",
@@ -469,8 +451,8 @@
       "reviewer": "xaziaver"
     },
     "spec:features/carrier_configuration.feature": {
-      "approved_at": "2026-08-23T12:48:07+00:00",
-      "digest": "sha256:99c29e034fd0d43c1164a2bd72642f0fbd396c36d44dc1f0726bc2fda65e2394"
+      "approved_at": "2026-09-06T09:28:29+00:00",
+      "digest": "sha256:49f1f2f04b7817398791921f8e56d16755ea647388b2ae025150f46889a0d6b6"
     },
     "spec:features/continuous_coverage.feature": {
       "approved_at": "2026-09-04T22:39:18+00:00",
@@ -485,44 +467,44 @@
       "digest": "sha256:29adb2bebdd52819d37979feff2755d3b0ad5d6441d4cc1166ae66e0e690d434"
     },
     "spec:features/idempotency.feature": {
-      "approved_at": "2026-08-28T07:51:13+00:00",
-      "digest": "sha256:a366d5b00a932d89b3202932c1d39782d88dd28797d9219a3643587852274aad"
+      "approved_at": "2026-09-06T09:28:29+00:00",
+      "digest": "sha256:31d5e828914cd162bbf18346e9ca547a84540aa9dc3a00ebad1eebcd8f41d063"
     },
     "spec:features/jurisdiction_date.feature": {
       "approved_at": "2026-08-23T17:50:52+00:00",
       "digest": "sha256:595006155edcabdbcca2f466361f79c0d33747708465422cb9a0841eb4317d73"
     },
     "spec:features/jurisdiction_selection.feature": {
-      "approved_at": "2026-08-29T17:12:37+00:00",
-      "digest": "sha256:3201e3142700a37e57e334c0181f3c423da3b8062225bcfd1a1e8c3bf4daf952"
+      "approved_at": "2026-09-06T09:54:39+00:00",
+      "digest": "sha256:b5adf23b9bc27653c1a1eb497f781b5b5d6360880f5edaeb1ad6efcec04c788a"
     },
     "spec:features/notice_intake.feature": {
-      "approved_at": "2026-08-28T07:51:02+00:00",
-      "digest": "sha256:5eca27f7aa6aef4028609982aceabac02895065ea164bd3a8df98d0006ea4952"
+      "approved_at": "2026-09-06T09:28:29+00:00",
+      "digest": "sha256:062d4ee4afed6689ed3b8cf6b593de67bd6176638d435925ab1a1c3f847e0e7c"
     },
     "spec:features/policy_identification.feature": {
       "approved_at": "2026-09-05T12:53:25+00:00",
       "digest": "sha256:a504421e2c3ef5ed98074fe9e1a87d6e075b1ee1bbeec06eea6942d1f969782a"
     },
     "spec:features/resolution.feature": {
-      "approved_at": "2026-08-28T07:50:52+00:00",
-      "digest": "sha256:bd8b4fd8324a74d9c30e5c017f893f23371c3e75490050d6c6cc6db45e1fbd58"
+      "approved_at": "2026-09-06T09:28:29+00:00",
+      "digest": "sha256:d134439ad7b483cc298fa36ca61a9138ac6478c6d0d3a2cd5d85e62184344b40"
     },
     "spec:features/siu_indicators.feature": {
       "approved_at": "2026-08-21T20:09:42+00:00",
       "digest": "sha256:1e7f697ecbcd62cd7447f331f935e94369e9768dfa0a45e9e2cf990dd370fec9"
     },
     "spec:features/siu_separation.feature": {
-      "approved_at": "2026-08-27T12:16:25+00:00",
-      "digest": "sha256:4aa68f2801c13b1fc83e322cd409b55be5eb49a7f57a52c30849249ec6fdc586"
+      "approved_at": "2026-09-06T09:54:40+00:00",
+      "digest": "sha256:c01c07a3f1ad3c6fdd90219657b8be15324abdf6d9a550d55c2be401a29b7061"
     },
     "spec:features/triage.feature": {
       "approved_at": "2026-08-15T11:34:27+00:00",
       "digest": "sha256:269a12ba9c697f6d83b1d6b6a4881259fba603eb89a92d9dbf65c8b01661ca37"
     },
     "spec:features/validation.feature": {
-      "approved_at": "2026-08-27T17:44:23+00:00",
-      "digest": "sha256:d32ba62f5a3d8fe792fba6cbc408203684feb97aaf20cef2a6378ada105c8fd8"
+      "approved_at": "2026-09-06T09:28:29+00:00",
+      "digest": "sha256:7d9e727a6bcd2f1cfce1e973b9bb1d1403fa7b944f5e3b96a94b759c636ea4bf"
     }
   },
   "version": 1

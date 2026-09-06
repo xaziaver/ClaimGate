@@ -31,7 +31,6 @@ Feature: FNOL validation
     # effect.
     Given claimant name is "required" by configuration
     And claimant contact is "required" by configuration
-    And the recognized policy-number prefixes are "HO" by configuration
 
   Rule: The loss date must be stated, and must not be in the future
 
@@ -122,105 +121,26 @@ Feature: FNOL validation
       When the candidate FNOL record is validated
       Then there are no blockers
 
-  Rule: The policy number must have a recognized line-of-business prefix and a 7-digit number
+  Rule: A policy number must be stated
 
-    # The recognized prefix SET is carrier configuration, not a domain
-    # constant - QUEUE.md item 4j, ASSUMPTIONS.md's "Carrier-varying rules
-    # are caller-supplied configuration with no domain default." Policy
-    # numbering is carrier-specific with no industry standard, so which
-    # prefixes are recognized is a fact about the configured book, not
-    # about a notice of loss; HO is what the shipped configuration
-    # recognizes today, not a fact every carrier shares. Required,
-    # caller-supplied, no default - the same shape as claimant_name_required
-    # and claimant_contact_required above. The configuration reaches the
-    # domain already resolved, as a collection of prefixes rather than a
-    # string the domain parses (ASSUMPTIONS.md, "A carrier configuration
-    # crosses into the domain already resolved"), so there is no
-    # unrecognized-configuration-value case and no new reason code to
-    # specify: a malformed or unsupplied configuration is a caller contract
-    # violation above this boundary, not a business outcome. An unrecognized
-    # prefix in a well-formed number still resolves POLICY_NUMBER_MALFORMED
-    # like any other malformed policy number - a blocker, not a refusal;
-    # PHASE2_DESIGN.md's record state model has no rejected or discarded
-    # state, so a notice carrying this blocker still lands PENDED, not
-    # refused, and a reviewer can still act on it.
-    #
-    # The number SHAPE - two letters, a hyphen, seven digits - is not
-    # configurable. ASSUMPTIONS.md's open POLICY_NUMBER_PATTERN decision
-    # concludes the shape is structural, a fact about phase 2's adapter
-    # layer rather than a scalar a parameter could resolve, so it stays a
-    # domain-layer constant; that decision is unchanged and out of scope
-    # here.
-    #
-    # Prefix recognition and number shape get separate outlines below rather
-    # than one, because they vary independently and mixing them cost more
-    # than it proved: every row pairing a rejected prefix with a rejected
-    # shape resolves the identical POLICY_NUMBER_MALFORMED outcome, so a
-    # mutation swapping one such row's value for another's survives without
-    # exercising anything the other row didn't already - proving nothing
-    # beyond the approval it costs to dismiss, the same shape the loss-type
-    # rule below explains and avoids. Splitting keeps each outline narrow
-    # enough that its rows discriminate.
-    #
-    # AU, CP, CA, and GL previously stayed as four separate rows because
-    # they "document which lines of business this book does not write" - a
-    # fact about one shipped configuration, not about this rule. That
-    # framing doesn't survive the configuration split: which lines a book
-    # excludes is now a property of the configured set, stated once via the
-    # prefix column below, not a fact worth four same-outcome rows in the
-    # spec. One prefix outside the configured set proves the rule; which
-    # specific lines a shipped configuration happens to exclude belongs in
-    # the configuration, not repeated here.
-    #
-    # The configured set is a column below rather than a fixed Given,
-    # because mutation reaches quoted Examples-cell text and plain-scenario
-    # steps, not a fixed Given above a table - anything this outline intends
-    # mutation to protect, including the set-widens-and-narrows-back
-    # boundary, has to be a quoted cell.
-    Scenario Outline: Policy number prefix recognition, by configuration
-      Given the recognized policy-number prefixes are "<prefixes>" by configuration
-      And the policy number is "<policy_number>"
-      When the candidate FNOL record is validated
-      Then the blockers are <blockers>
+    # Item 7d (PHASE3_DESIGN.md, "Identifiers"): the line-of-business prefix
+    # check and the two-letters-hyphen-seven-digits shape check are retired,
+    # and POLICY_NUMBER_MALFORMED with them. A policy number is accepted as
+    # given; whether it finds a policy is the policy search's answer (item 7f),
+    # and a mistyped number beside a correct insured name and postal code is a
+    # search, not a pend. What remains here is presence. That too is on notice:
+    # item 7g replaces these two scenarios with the identification blocker from
+    # features/policy_identification.feature, because a notice carrying an
+    # insured name and risk postal code can be searched without a number.
 
-      Examples:
-        | prefixes | policy_number | blockers                              |
-        | HO       | HO-1234567    |                                       |
-        | HO       | AU-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
-        | HO;AU    | AU-1234567    |                                       |
-        | HO;AU    | CP-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
-
-    # The shape-violation rows stay together in their own outline, with the
-    # configured prefix set fixed above the table rather than a column. The
-    # set is inert on every row here - each row's malformed outcome comes
-    # from digit count, case, or the separator, never from the prefix - and
-    # a fixed Given is never reached by mutation, which is correct for a
-    # value this outline doesn't intend to exercise: making it a column
-    # would generate mutants that swap an already-irrelevant value and
-    # assert nothing new.
-    Scenario Outline: Policy number shape
-      Given the recognized policy-number prefixes are "HO" by configuration
-      And the policy number is "<policy_number>"
-      When the candidate FNOL record is validated
-      Then the blockers are <blockers>
-
-      Examples:
-        | policy_number | blockers                              |
-        | HO-1234567    |                                       |
-        | HO-123456     | POLICY_NUMBER_MALFORMED:policy_number |
-        | HO-12345678   | POLICY_NUMBER_MALFORMED:policy_number |
-        | ho-1234567    | POLICY_NUMBER_MALFORMED:policy_number |
-        | HO1234567     | POLICY_NUMBER_MALFORMED:policy_number |
-        | HO-ABCDEFG    | POLICY_NUMBER_MALFORMED:policy_number |
-
-    Scenario: An absent policy number is a missing field, not a malformed one
+    Scenario: An absent policy number is a missing field
       Given the policy number is ""
       When the candidate FNOL record is validated
       Then the blockers are:
         | code                   | field         |
         | MISSING_REQUIRED_FIELD | policy_number |
 
-    Scenario: A whitespace-only policy number is a missing field, not a malformed one
+    Scenario: A whitespace-only policy number is a missing field
       Given the policy number is "   "
       When the candidate FNOL record is validated
       Then the blockers are:
@@ -418,52 +338,33 @@ Feature: FNOL validation
   Rule: All blockers are reported together, in canonical order, regardless of how many checks fail or which ones
 
     # Canonical order is a declared property of the code enumeration, not an
-    # artifact of check sequence: POLICY_NUMBER_MALFORMED, then
-    # NOTICE_TYPE_UNRECOGNIZED, then LOSS_TYPE_UNRECOGNIZED, then
-    # LOSS_DATE_IN_FUTURE, then MISSING_REQUIRED_FIELD.
+    # artifact of check sequence: NOTICE_TYPE_UNRECOGNIZED, then
+    # LOSS_TYPE_UNRECOGNIZED, then LOSS_DATE_IN_FUTURE, then
+    # MISSING_REQUIRED_FIELD. POLICY_NUMBER_MALFORMED led this order until item
+    # 7d retired it (2026-09-05); every scenario in this rule used it as an
+    # ingredient and was rewritten without it.
     #
-    # No candidate reaches all five codes at once. POLICY_NUMBER_MALFORMED,
-    # NOTICE_TYPE_UNRECOGNIZED, and LOSS_TYPE_UNRECOGNIZED each require their
-    # own field to be non-empty - a field that's empty produces
-    # MISSING_REQUIRED_FIELD instead, never both from the same field.
-    # LOSS_DATE_IN_FUTURE and MISSING_REQUIRED_FIELD:loss_date stand in that
-    # same relation to one another, which is why the loss date does not break
-    # the argument it now takes part in. The other sources of
-    # MISSING_REQUIRED_FIELD are the Section II claimant fields (claimant_name,
-    # claimant_contact, incident_description), which only apply when the loss
-    # type is injury or liability, both of which are recognized and so never
-    # the source of LOSS_TYPE_UNRECOGNIZED. So whenever all three
-    # field-recognition codes fire together with a loss date present, every
-    # field that could still supply MISSING_REQUIRED_FIELD is already
-    # accounted for, and a fifth code has nowhere left to come from.
-    #
-    # **Amended for item 5h, 2026-08-27: four distinct four-code combinations
-    # became five, and the fifth is the one this item makes reachable.** Four
-    # is still the maximum - the argument above is unchanged by an absent loss
-    # date, since absence and futurity are the two mutually exclusive outcomes
-    # of one field. What changes is the count of ways to reach four. Before
-    # this item, a maximal combination always contained LOSS_DATE_IN_FUTURE,
-    # because the only way to raise MISSING_REQUIRED_FIELD alongside all three
-    # recognition codes was a Section II claimant field, and Section II loss
-    # types are recognized. An absent loss date is a source of
-    # MISSING_REQUIRED_FIELD that costs no recognition code, so
-    # POLICY_NUMBER_MALFORMED, NOTICE_TYPE_UNRECOGNIZED, LOSS_TYPE_UNRECOGNIZED
-    # and MISSING_REQUIRED_FIELD can now fire together with no loss-date code
-    # at all - the only maximal combination that omits LOSS_DATE_IN_FUTURE, and
-    # the last scenario in this rule. Re-derived by exhaustive enumeration over
-    # the same simulated closed loss-type set on 2026-08-27, which reproduced
-    # the earlier figure of four for the pre-item model before producing five
-    # for this one; nothing revalidates either number if a sixth code or a
-    # sixth field-recognition check is added.
+    # Three is the maximum this rule exercises. NOTICE_TYPE_UNRECOGNIZED and
+    # LOSS_TYPE_UNRECOGNIZED each require their own field to be non-empty - an
+    # empty field produces MISSING_REQUIRED_FIELD instead, never both from the
+    # same field - and LOSS_DATE_IN_FUTURE and MISSING_REQUIRED_FIELD:loss_date
+    # stand in the same relation. The Section II claimant fields supply
+    # MISSING_REQUIRED_FIELD only for a recognized loss type, so they never
+    # compose with LOSS_TYPE_UNRECOGNIZED. Until item 7g an absent policy
+    # number is one more source of MISSING_REQUIRED_FIELD and would let all
+    # four codes fire at once; that composition is deliberately not exercised
+    # here, so 7g's retirement of the requirement does not reopen this rule.
+    # After 7g, three is the maximum outright. Re-derived by hand from the four
+    # codes and their exclusions on 2026-09-05; nothing revalidates it if a
+    # fifth code or field-recognition check is added.
     #
     # The scenarios below prove that a fixed emission sequence in the
     # implementation cannot satisfy every case: three different maximal
     # combinations, a subset that skips the earliest codes, and a subset that
     # is non-contiguous in the canonical order.
 
-    Scenario: Policy, notice, and date codes fire together with a missing claimant field
-      Given the policy number is "XX-1234567"
-      And the notice type is "SUPPLEMENT"
+    Scenario: Notice and date codes fire together with a missing claimant field
+      Given the notice type is "SUPPLEMENT"
       And the loss date is "2026-08-03"
       And the loss type is "injury"
       And claimant name is "required" by configuration
@@ -474,25 +375,22 @@ Feature: FNOL validation
       When the candidate FNOL record is validated
       Then the blockers are:
         | code                     | field         |
-        | POLICY_NUMBER_MALFORMED  | policy_number |
         | NOTICE_TYPE_UNRECOGNIZED | notice_type   |
         | LOSS_DATE_IN_FUTURE      | loss_date     |
         | MISSING_REQUIRED_FIELD   | claimant_name |
-      And the reason codes are "POLICY_NUMBER_MALFORMED;NOTICE_TYPE_UNRECOGNIZED;LOSS_DATE_IN_FUTURE;MISSING_REQUIRED_FIELD"
+      And the reason codes are "NOTICE_TYPE_UNRECOGNIZED;LOSS_DATE_IN_FUTURE;MISSING_REQUIRED_FIELD"
 
-    Scenario: Policy, notice, and date codes fire together with an unrecognized loss type
-      Given the policy number is "XX-1234567"
-      And the notice type is "SUPPLEMENT"
+    Scenario: Notice, loss-type, and date codes fire together
+      Given the notice type is "SUPPLEMENT"
       And the loss date is "2026-08-03"
       And the loss type is "watr_damage"
       When the candidate FNOL record is validated
       Then the blockers are:
         | code                     | field         |
-        | POLICY_NUMBER_MALFORMED  | policy_number |
         | NOTICE_TYPE_UNRECOGNIZED | notice_type   |
         | LOSS_TYPE_UNRECOGNIZED   | loss_type     |
         | LOSS_DATE_IN_FUTURE      | loss_date     |
-      And the reason codes are "POLICY_NUMBER_MALFORMED;NOTICE_TYPE_UNRECOGNIZED;LOSS_TYPE_UNRECOGNIZED;LOSS_DATE_IN_FUTURE"
+      And the reason codes are "NOTICE_TYPE_UNRECOGNIZED;LOSS_TYPE_UNRECOGNIZED;LOSS_DATE_IN_FUTURE"
 
     Scenario: A later-canonical subset fires without any earlier code present
       Given the loss date is "2026-08-03"
@@ -509,7 +407,7 @@ Feature: FNOL validation
         | MISSING_REQUIRED_FIELD | claimant_contact |
 
     Scenario: A non-contiguous subset of canonical order still sorts correctly
-      Given the policy number is "XX-1234567"
+      Given the notice type is "SUPPLEMENT"
       And the loss type is "injury"
       And claimant name is "required" by configuration
       And claimant contact is "required" by configuration
@@ -519,31 +417,25 @@ Feature: FNOL validation
       When the candidate FNOL record is validated
       Then the blockers are:
         | code                     | field                 |
-        | POLICY_NUMBER_MALFORMED  | policy_number         |
+        | NOTICE_TYPE_UNRECOGNIZED | notice_type           |
         | MISSING_REQUIRED_FIELD   | incident_description  |
 
-    # The maximal combination that omits LOSS_DATE_IN_FUTURE, unreachable
-    # before this item. It is here on reachability grounds rather than
-    # mutation grounds, and the distinction is worth stating because the two
-    # usually coincide and here they do not: every value in a plain scenario's
-    # step takes the marker when mutated, and a marked step no longer resolves,
-    # so all five of this scenario's mutants die without testing anything,
-    # exactly as the five in "Policy, notice, and date codes fire together with
-    # an unrecognized loss type" already do. The scenario directly above this
-    # one carries seven, not five. What this one proves is that an absent loss
-    # date composes with the three recognition codes and sorts into canonical
-    # position among them, which no other scenario can show because no other
-    # scenario can reach this combination.
-    Scenario: Policy, notice, and loss-type codes fire together with an absent loss date
-      Given the policy number is "XX-1234567"
-      And the notice type is "SUPPLEMENT"
+    # The maximal combination that omits LOSS_DATE_IN_FUTURE (item 5h,
+    # 2026-08-27). It is here on reachability grounds rather than mutation
+    # grounds: every value in a plain scenario's step takes the marker when
+    # mutated, and a marked step no longer resolves, so this scenario's mutants
+    # die without testing anything, as the ones in "Notice, loss-type, and
+    # date codes fire together" do. What it proves is that an absent loss date
+    # composes with both recognition codes and sorts into canonical position
+    # among them, which no other scenario can show.
+    Scenario: Notice and loss-type codes fire together with an absent loss date
+      Given the notice type is "SUPPLEMENT"
       And the loss type is "watr_damage"
       And the loss date is "absent"
       When the candidate FNOL record is validated
       Then the blockers are:
         | code                     | field         |
-        | POLICY_NUMBER_MALFORMED  | policy_number |
         | NOTICE_TYPE_UNRECOGNIZED | notice_type   |
         | LOSS_TYPE_UNRECOGNIZED   | loss_type     |
         | MISSING_REQUIRED_FIELD   | loss_date     |
-      And the reason codes are "POLICY_NUMBER_MALFORMED;NOTICE_TYPE_UNRECOGNIZED;LOSS_TYPE_UNRECOGNIZED;MISSING_REQUIRED_FIELD"
+      And the reason codes are "NOTICE_TYPE_UNRECOGNIZED;LOSS_TYPE_UNRECOGNIZED;MISSING_REQUIRED_FIELD"

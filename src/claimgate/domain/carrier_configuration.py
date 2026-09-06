@@ -1,8 +1,9 @@
 """Per-carrier configuration resolution.
 
-Resolves a carrier's raw rules-source entry to the six values phase 1 moved
-out of the domain with no default - validate's claimant_name_required,
-claimant_contact_required, and recognized_policy_number_prefixes;
+Resolves a carrier's raw rules-source entry to the five values phase 1 moved
+out of the domain with no default and phase 3 kept - validate's
+claimant_name_required and claimant_contact_required (item 7d retired
+recognized_policy_number_prefixes with the prefix check);
 compute_siu_indicators's late_reporting_threshold_days and
 recent_inception_threshold_days; find_duplicates's window_days - or refuses
 the load, naming every value it rejected. A carrier configuration crosses
@@ -54,7 +55,6 @@ def _is_valid_day_count(value: Any) -> bool:
 _REQUIRED_FIELDS: tuple[tuple[str, str, Any], ...] = (
     ("claimant_name_required", "claimant name", _is_boolean),
     ("claimant_contact_required", "claimant contact", _is_boolean),
-    ("recognized_policy_number_prefixes", "recognized policy-number prefixes", bool),
     ("window_days", "duplicate match window", _is_valid_day_count),
 )
 
@@ -85,7 +85,6 @@ def _build_rules(entry: Mapping[str, Any], thresholds: dict[str, int | None]) ->
     return CarrierRules(
         claimant_name_required=entry["claimant_name_required"],
         claimant_contact_required=entry["claimant_contact_required"],
-        recognized_policy_number_prefixes=frozenset(entry["recognized_policy_number_prefixes"]),
         late_reporting_threshold_days=thresholds["late_reporting_threshold_days"],
         recent_inception_threshold_days=thresholds["recent_inception_threshold_days"],
         window_days=entry["window_days"],

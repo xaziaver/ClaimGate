@@ -85,7 +85,6 @@ Feature: Resolving a pended notice
     # keep meaning the same thing across all three.
     Given the carrier "AAAA" requires the claimant name
     And "AAAA" does not require the claimant contact
-    And "AAAA" recognizes the policy-number prefixes "HO;DP"
     And "AAAA" configures a duplicate match window of 60 days
     And the notice is submitted by carrier "AAAA"
     And the insured property is in "FL"
@@ -413,7 +412,7 @@ Feature: Resolving a pended notice
         | supplied_policy_number | supplied_notice_type | response | state   | blockers                             | outcome | actor | entry_blockers                       |
         | HO-7654321             | SUPPLEMENTAL         | 200      | TRIAGED |                                      | APPLIED | USER  |                                      |
         | HO-7654321             | SUPPLEMENT           | 422      | PENDED  | NOTICE_TYPE_UNRECOGNIZED:notice_type | REFUSED | USER  | NOTICE_TYPE_UNRECOGNIZED:notice_type |
-        | HO-12                  | SUPPLEMENTAL         | 422      | PENDED  | POLICY_NUMBER_MALFORMED:policy_number | REFUSED | USER  | POLICY_NUMBER_MALFORMED:policy_number |
+        | absent                 | SUPPLEMENTAL         | 422      | PENDED  | MISSING_REQUIRED_FIELD:policy_number | REFUSED | USER  | MISSING_REQUIRED_FIELD:policy_number |
 
   Rule: A reviewer may correct a field the notice already had, not only supply one it was missing
 

@@ -10,8 +10,6 @@ absent loss date is additionally a blocker in its own right, which the
 determination is deliberately not the carrier of - see _check_loss_date_present.
 """
 
-import re
-from collections.abc import Collection
 from datetime import date
 
 from claimgate.domain.models import (
@@ -21,7 +19,6 @@ from claimgate.domain.models import (
     ValidationResult,
 )
 
-POLICY_NUMBER_PATTERN = re.compile(r"^([A-Z]{2})-\d{7}$")
 RECOGNIZED_NOTICE_TYPES = frozenset({"INITIAL", "REOPENED", "SUPPLEMENTAL", "LOSS_ASSESSMENT"})
 RECOGNIZED_LOSS_TYPES = frozenset(
     {
@@ -48,7 +45,6 @@ RECOGNIZED_LOSS_TYPES = frozenset(
 # module (QUEUE.md item 4h).
 _SECTION_II_LOSS_TYPES = frozenset({"injury", "liability"})
 
-POLICY_NUMBER_MALFORMED = "POLICY_NUMBER_MALFORMED"
 NOTICE_TYPE_UNRECOGNIZED = "NOTICE_TYPE_UNRECOGNIZED"
 LOSS_TYPE_UNRECOGNIZED = "LOSS_TYPE_UNRECOGNIZED"
 LOSS_DATE_IN_FUTURE = "LOSS_DATE_IN_FUTURE"
@@ -72,8 +68,9 @@ NO_LOSS_DATE = "NO_LOSS_DATE"
 # different from this so that a mutant deleting the sort in _canonical_order
 # is caught by a scenario expecting canonical order rather than passing by
 # coincidence. Do not reorder the checks below to match this tuple.
+# POLICY_NUMBER_MALFORMED led this tuple until item 7d retired it with the
+# shape check (2026-09-06).
 _CANONICAL_CODE_ORDER = (
-    POLICY_NUMBER_MALFORMED,
     NOTICE_TYPE_UNRECOGNIZED,
     LOSS_TYPE_UNRECOGNIZED,
     LOSS_DATE_IN_FUTURE,
@@ -87,7 +84,6 @@ def validate(
     *,
     claimant_name_required: bool,
     claimant_contact_required: bool,
-    recognized_policy_number_prefixes: Collection[str],
 ) -> ValidationResult:
     future_dated_loss = _determine_future_dated_loss(candidate, now)
     blockers = (
@@ -100,7 +96,7 @@ def validate(
         )
         + _check_notice_type(candidate)
         + _check_loss_type(candidate)
-        + _check_policy_number(candidate, recognized_policy_number_prefixes)
+        + _check_policy_number(candidate)
     )
     return ValidationResult(
         blockers=tuple(_canonical_order(blockers)), future_dated_loss=future_dated_loss
@@ -157,14 +153,14 @@ def _check_loss_date_present(candidate: Candidate) -> list[ValidationBlocker]:
     return []
 
 
-def _check_policy_number(
-    candidate: Candidate, recognized_policy_number_prefixes: Collection[str]
-) -> list[ValidationBlocker]:
+def _check_policy_number(candidate: Candidate) -> list[ValidationBlocker]:
+    """Presence only. Item 7d retired the prefix check and the
+    two-letters-hyphen-seven-digits shape check (PHASE3_DESIGN.md,
+    "Identifiers"): a policy number is accepted as given, and whether it finds
+    a policy is the policy search's answer, not a validation blocker. Item 7g
+    retires the presence requirement too, with the identification blocker."""
     if not candidate.policy_number.strip():
         return [ValidationBlocker(MISSING_REQUIRED_FIELD, "policy_number")]
-    match = POLICY_NUMBER_PATTERN.match(candidate.policy_number)
-    if not match or match.group(1) not in recognized_policy_number_prefixes:
-        return [ValidationBlocker(POLICY_NUMBER_MALFORMED, "policy_number")]
     return []
 
 

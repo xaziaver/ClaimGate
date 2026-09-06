@@ -36,7 +36,10 @@ from tests.shell.support import (
 )
 
 _CLEARS_THE_PEND = {"policy_number": "HO-7654321"}
-_LEAVES_IT_BLOCKED = {"policy_number": "HO-12"}
+# Says nothing about the number, so the pend stays. Item 7d retired the shape
+# check, so a number of any shape now clears it - the same move
+# resolution.feature's partial-clearance row made from HO-12 to absent.
+_LEAVES_IT_BLOCKED = {"notice_type": "SUPPLEMENTAL"}
 
 
 def test_a_refused_resolution_keeps_its_payload_its_blockers_and_its_entry(
