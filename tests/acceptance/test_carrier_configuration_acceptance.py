@@ -15,7 +15,6 @@ scenarios("../../features/carrier_configuration.feature")
 _FIELD_KEYS = {
     "claimant name": "claimant_name_required",
     "claimant contact": "claimant_contact_required",
-    "recognized policy-number prefixes": "recognized_policy_number_prefixes",
     "late reporting threshold": "late_reporting_threshold_days",
     "recent policy inception threshold": "recent_inception_threshold_days",
     "duplicate match window": "window_days",
@@ -24,7 +23,6 @@ _FIELD_KEYS = {
 _COMPLETE_VALID_ENTRY = {
     "claimant_name_required": True,
     "claimant_contact_required": True,
-    "recognized_policy_number_prefixes": ["HO", "DP"],
     "late_reporting_threshold_days": 30,
     "recent_inception_threshold_days": 30,
     "window_days": 60,
@@ -34,7 +32,7 @@ _COMPLETE_VALID_ENTRY = {
 @given(
     parsers.parse(
         'the carrier rules source recognizes "{carrier}", with a complete and '
-        "valid entry for every one of the six values"
+        "valid entry for every one of the five values"
     )
 )
 def set_up_rules_source(context: dict[str, Any], carrier: str) -> None:
@@ -49,16 +47,6 @@ def set_claimant_name_required(context: dict[str, Any], carrier: str) -> None:
 @given(parsers.parse('"{carrier}" does not require the claimant contact'))
 def set_claimant_contact_not_required(context: dict[str, Any], carrier: str) -> None:
     context["rules_source"][carrier]["claimant_contact_required"] = False
-
-
-@given(parsers.parse('"{carrier}" recognizes the policy-number prefixes "{prefixes}"'))
-def set_recognized_prefixes(context: dict[str, Any], carrier: str, prefixes: str) -> None:
-    context["rules_source"][carrier]["recognized_policy_number_prefixes"] = prefixes.split(";")
-
-
-@given(parsers.parse('"{carrier}" recognizes no policy-number prefixes'))
-def set_no_recognized_prefixes(context: dict[str, Any], carrier: str) -> None:
-    context["rules_source"][carrier]["recognized_policy_number_prefixes"] = []
 
 
 @given(parsers.parse('"{carrier}" configures a late reporting threshold of {value:d} days'))
@@ -119,8 +107,6 @@ def set_configured_field(context: dict[str, Any], carrier: str, field: str, valu
         entry.pop(key, None)
     elif value == "neither yes nor no":
         entry[key] = "neither yes nor no"
-    elif value == "an empty set":
-        entry[key] = []
     elif value == "a negative number of days":
         entry[key] = -1
     else:
@@ -146,12 +132,6 @@ def check_claimant_contact_required(context: dict[str, Any], value: str) -> None
     assert context["carrier_configuration_result"].rules.claimant_contact_required == (
         value == "required"
     )
-
-
-@then(parsers.parse('the recognized policy-number prefixes are received as "{value}"'))
-def check_recognized_prefixes(context: dict[str, Any], value: str) -> None:
-    rules = context["carrier_configuration_result"].rules
-    assert rules.recognized_policy_number_prefixes == frozenset(value.split(";"))
 
 
 @then(parsers.parse("the late reporting threshold is received as {value:d} days"))

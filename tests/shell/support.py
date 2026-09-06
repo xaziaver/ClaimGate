@@ -24,7 +24,6 @@ JURISDICTIONS = JURISDICTION_REFERENCE
 VALID_RULES: dict[str, Any] = {
     "claimant_name_required": False,
     "claimant_contact_required": False,
-    "recognized_policy_number_prefixes": ["HO"],
     "late_reporting_threshold_days": None,
     "recent_inception_threshold_days": 30,
     "window_days": 60,

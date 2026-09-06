@@ -121,11 +121,6 @@ def set_claimant_contact_not_required(context: dict[str, Any], carrier: str) -> 
     _rules_entry(context, carrier)["claimant_contact_required"] = False
 
 
-@given(parsers.parse('"{carrier}" recognizes the policy-number prefixes "{prefixes}"'))
-def set_recognized_prefixes(context: dict[str, Any], carrier: str, prefixes: str) -> None:
-    _rules_entry(context, carrier)["recognized_policy_number_prefixes"] = prefixes.split(";")
-
-
 @given(parsers.parse('"{carrier}" configures a late reporting threshold of {value:d} days'))
 def set_carrier_late_reporting_threshold(
     context: dict[str, Any], carrier: str, value: int

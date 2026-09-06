@@ -1522,6 +1522,15 @@ adapter" as "phase 3's".**
   nothing left justifying it, and phase 2's adapter layer is now the only defensible home. Do not
   read 4j as having closed this entry.
 
+  **Closed 2026-09-06 by item 7d — by retirement, not relocation.** The shape check moves nowhere:
+  `POLICY_NUMBER_PATTERN`, the prefix check and `POLICY_NUMBER_MALFORMED` are gone from the domain,
+  `recognized_policy_number_prefixes` from the carrier configuration, and nothing checks a policy
+  number's shape anywhere. A mistyped number beside a correct insured name and postal code is one
+  weak identifier among several, and whether a number finds a policy is the policy search's answer
+  (item 7f). Decision (1) of "Item 7d decisions, taken before the specs were re-locked" under
+  "Carried requirements — decided, not yet built" is the record; the history above stands as
+  written.
+
 - **Item 5e's resolution endpoint: five points the design leaves open — escalated 2026-08-25,
   undecided, nothing drafted against any of them.** `PHASE2_DESIGN.md`'s "Pending resolution and
   tolling" section, its audit-log entry schema, and its closed status-code table together settle the

@@ -156,7 +156,6 @@ def apply_domain_rules(
         today,
         claimant_name_required=rules.claimant_name_required,
         claimant_contact_required=rules.claimant_contact_required,
-        recognized_policy_number_prefixes=rules.recognized_policy_number_prefixes,
     )
     marking, determination = marking_for(jurisdiction), result.future_dated_loss
     if result.blockers:
