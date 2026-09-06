@@ -1837,3 +1837,23 @@ their first element and no test had a tie on it. Both were equivalent, and appro
 have carried that argument into the ledger. Restructure instead: take `max` over the plain key
 values and select the pair by equality. Nothing is left to drop, and the selection's `==` becomes
 a mutant that any test with two candidates kills.
+
+### A Background step produces no mutant, so an engine-measured radius misses every spec that merely binds a retired step
+
+Item 7d's radius was measured against the lock through the engine, per "Mutant counts are checkable
+directly" above: five specs, 3 approvals deleted, 34 untouched. The measurement was exact for what
+it measures and wrong about which files reopen. Two further locked specs,
+`jurisdiction_selection.feature` and `siu_separation.feature`, carried the retired prefix step in
+their Backgrounds, and a Background step is never mutated, so enumeration sees nothing when it goes
+and nothing when it stays. They surfaced only when the step definition left with the code: every
+scenario in both files fails at resolution with `StepDefinitionNotFoundError`, 30 of 30, observed at
+`e62cdd6` on 2026-09-06 after a gate that had passed protect, static, size, complexity, boundary,
+coverage, crap, duplication and code mutation.
+
+The technique that follows: a step retirement has two radii that answer different questions.
+`grep -rn '<step text>' features/` is the radius for *binding* — every file that will fail to
+resolve — and the engine is the radius for *approvals* — every locator and digest that will move.
+Neither substitutes for the other. Removing the step from these two files moves no locator and no
+digest (55→55 and 53→53 mutants, all 3 mutant approvals untouched, measured), so the whole cost is
+two file approvals; that is a fact about this step, not a rule, since a step whose value an
+`Examples` column also carried would move digests too.
