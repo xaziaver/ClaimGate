@@ -3667,3 +3667,47 @@ implementation commit is the expected state, not a defect, and is why that state
 `gauntlet mutant prune` was deliberately not run: read from source 2026-09-06, its path has no
 baseline check, and with the suite red it would have classified all 31 approvals on
 `validation.feature` as stale. Prune happens after this implementation, at a green ref.
+
+**2026-09-06: 7d implementation at `e62cdd6` on `phase3/7d-retire-policy-number-shape`, green on
+every gate but two, and stopped on a stop condition — two locked specs beyond the five bind the
+retired step.** The retirement is complete in the listed files: `validation.py` keeps presence only
+and its canonical order is four codes; `carrier_configuration.py` and `models.py` drop the key and
+the loader requires five values; `shell/rules.py` and `tests/shell/support.py` stop passing and
+supplying it; `RULESET_VERSION` is `2026-09-06`; the validation, carrier_configuration and conftest
+step files and `tests/api/validation.py` follow; the unit tests retire the malformed rows and add
+none asserting shape; `ASSUMPTIONS.md` closes the `POLICY_NUMBER_PATTERN` entry with a dated
+paragraph pointing at the 7d decisions. Cold gate at `e62cdd6`, `mutants/` cleared first: protect,
+static (0 findings), size (worst function 25), complexity 6, boundary (16 step files, 0 direct
+imports), coverage 100/100, crap 6.0, duplication 0, code mutation 100% with 687 killed (708
+before; the removed code carried the difference) — all green; tests red at 637/667; acceptance red
+at its baseline stage, "scenarios failing", so it never reached the ledger and the 3 MISSING
+approvals were not observed by the gate. Every failure has one cause: `jurisdiction_selection.feature`
+line 76 and `siu_separation.feature` line 104 carry `And "AAAA" recognizes the policy-number
+prefixes "HO;DP"` in their Backgrounds, a step whose definition left with the code, and all 30
+scenarios in the two files fail at resolution. The advisor's radius missed them because a
+Background step produces no mutant — `docs/harness-findings.md` gains the entry. Not touched, and
+not bound to a no-op: the instruction says stop. Measured out of band and reverted, digests
+confirmed against the lock: with that one line removed from each file the suite is 667 passed, and
+the edit moves no locator and no digest (55→55 and 53→53 mutants, all 3 mutant approvals
+untouched), so its cost is two file approvals — sha256 `b5adf23b9bc27653` (356 lines) and
+`c01c07a3f1ad3c6f` (510 lines) if made exactly so. Out of band at `e62cdd6`, in a worktree, every
+mutant of three specs applied through the engine and the step file run: `validation.feature` 165
+applied, 137 killed, 28 survivors, all 28 approved and untouched, 0 new, the 3 non-surviving
+approvals the deleted prefix outline's; `carrier_configuration.feature` 73 applied, 71 killed, 2
+survivors, both approved, 0 new; `resolution.feature` 133 applied, 131 killed, 2 survivors, both
+approved, 0 new — each file restored to its locked digest. Exactly the floors. Judgments beyond the
+locked specs, for ratification: (1) `tests/shell/test_resolution.py`'s leaves-it-blocked
+resolution moved from `HO-12` to a payload that says nothing about the number,
+`{"notice_type": "SUPPLEMENTAL"}`, the move the spec's row made; (2) the negative
+late-reporting-threshold step needed no new binding — the outline's field-and-value regex already
+matched it — so none was added; (3) that step's "an empty set" branch was removed as dead once no
+row supplies it; (4) `test_policy_number_format` became `test_policy_number_presence` with the
+three presence rows, and the two interplay unit tests use `SUPPLEMENT` where they used the
+malformed number; (5) the `ASSUMPTIONS.md` closing paragraph rode the implementation commit on the
+branch, as instructed, rather than a document commit on `main`; (6) `README.md` lines 18 and 51
+still describe the prefix set as required configuration and were left, being outside the listed
+files. Also: the approval commit `e78a04f` carries the human's `ADVISOR.md` update beside the
+lock, so "touches only `gauntlet.lock.json`" was read as "no spec, code or test file" and the work
+proceeded. Next is the human's: decide the two extra specs — amend both by the one-line removal and
+approve, or something else — then `gauntlet mutant prune features/validation.feature` at a green
+ref, then merge. Not pruned, not merged. The branch is a superset of `main`.
