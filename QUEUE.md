@@ -3822,3 +3822,55 @@ decisions are in `ASSUMPTIONS.md` under this date; the one that changes the queu
 a new spec rather than reopening `policy_identification.feature`, whose locked preamble says no
 search runs in it. Tests red on the new file's unbound steps, as a spec commit is. Next: the human
 approves seven files, then the implementation prompt.
+
+**2026-09-07: 7f implemented at `69a5f45` on `phase3/7f-intake-wiring`, red on two locked scenarios
+that await the human; cold gate run `20260907T205240-37029`.** Predicted, then measured, line for
+line: protect 3/3; static 0 findings; size worst function 25, worst module `store.py` 248;
+complexity 6; boundary 17 step files, 0 direct imports; tests 825/827, the same two failures
+predicted from the suite; coverage 100/100; CRAP 6; duplication 0; code mutation 100 %, 756 killed —
+687 plus 69 from the new domain code (`domain/policy_match.py`, the deciding-term reading in
+`domain/coverage.py`, `carry_onto_candidate`), 0 survivors once two `pytest.raises(match=)` patterns
+were anchored; acceptance `15 spec(s), scenarios failing` in 3.697 s, stopping before any mutant, so
+the run took 45 s against the 3600 s budget and carries no reviewed-equivalent figure (73 stands; no
+approval was added). Out of band, `policy_match.feature`: 49 applied, 49 killed — 42 example, 7
+literal — 0 survivors, every kill a failure beyond the baseline's; the advisor's simulation held for
+the mutants and not for the baseline. The 2026-09-07 spec paragraph's 'Tests red on the new file's
+unbound steps' was the advisor's text and wrong: the new file had no test module and produced no
+failure; the red was the five locked specs' new Background line, unbound until this commit — 83 of
+764. **The two failures are spec gaps, not retries.** (1) `idempotency.feature`'s Background
+configures `BBBB`'s rules and one row submits under `BBBB` expecting `201`; the amendment bound only
+`AAAA`, so `BBBB` is an unbound carrier and answers `500 PORT_BINDING_UNRESOLVABLE` by design. The
+fix is one Background line, `And "BBBB"'s policy source is unavailable`, after line 46; measured on
+the amended text: 46 mutants, 46 locators, 0 signatures moved, both approvals untouched, sha256
+`2c8b5c234060b523` at 262 lines — a spec commit and one file approval, the human's. (2)
+`policy_match.feature`'s term-verdict row `2025-01-15 | 2026-01-15 | NOT_IN_FORCE | 2025-01-15`
+asserts a continuous-coverage date on a loss dated after the only term expired;
+`continuous_coverage.feature`, locked, makes that `NOT_EVALUATED` with `NO_COVERAGE_ON_LOSS_DATE`,
+and the implementation follows the locked rule. The row cannot pass as written; the advisor decides
+its shape — the step `the notice has no continuous coverage date` exists for it. Both are in
+`docs/harness-findings.md` under this date. Shape as built: `shell/coverage_verifications.py` (231
+lines: table, record, view, delegators reading `NoticeStore.connection`), `shell/policy_match.py`
+(84: sufficiency, search, history, the three domain rules), `domain/policy_match.py` (91),
+`coverage.py` split into `coverage_types.py` and `term_periods.py` (158/75/125);
+`tests/api/policy_match.py` binds each carrier's `tests.fixtures.core_system` through the live-query
+registry with a `source` parameter and holds a fault for the scenario; the recorded-indicator step
+moved from `test_siu_separation_acceptance.py` to `conftest.py`; the two split-era docstring phrases
+are rewritten. **Judgments for ratification:** (1) the binding is resolved in the receipt step
+beside the rules and jurisdiction, not in `_decide`, because the spec row says the fault creates no
+notice and a fault after receipt would leave one at RECEIVED; (2) the term-in-force rule cites the
+one bounding term on a boundary day and, on an uncovered date with no standing cancellation, the
+term whose coverage most recently ended before it — `policy_match.feature`'s rows 2 and 3 require
+it, `coverage_verification.feature`'s citations are unchanged, and a date two terms share cites
+neither; (3) a notice with no loss date, or nothing searchable, is not searched and no row is
+written — the term rules have no reason code for a missing loss date and adding one is an
+escalation; such a notice pends on validation regardless, and 7g's re-search verifies it; (4)
+`POLICY_NOT_MATCHED` and `POLICY_AMBIGUOUS` carry an empty blocker field and sort after every
+blocker about what arrived; (5) the verification row also stores the continuous-coverage date and
+reason, which the design's column list omitted and the spec reads, and the view carries
+`continuous_coverage_reason` so an absent date is never shown without its reason; (6) `as_of` and
+`binding` are the search answer's; (7) `NoticeStore` exposes its connection for the table module,
+since two delegators would put `store.py` over 250; (8) the shell tests' default binding is an
+unavailable source for `AAAA` and `WXYZ`, the statement the locked Backgrounds make; (9) the fixture
+gained persistent faults because five locked specs submit more than once under an unavailable
+source. Next: the human amends `idempotency.feature`, decides row 3 and approves; the gate is then
+expected green and the item closes. The branch is a superset of `main`.
