@@ -133,6 +133,47 @@ Feature: Coverage verification - term in force at the loss date
       And the determination cites the term effective "2026-01-15" and expiring "2027-01-15"
       And the determination cites the cancellation effective "2026-06-10"
 
+    # Item 7f, 2026-09-07. The citation on the other verdicts was unspecified
+    # until intake started showing it on the notice. The principle is the
+    # cancelled case's: name the term that explains the verdict. On a
+    # boundary day that is the one term the date bounds; where two terms
+    # share the date, neither explains it alone and the determination cites
+    # no term rather than picking. Outside every term, the term whose
+    # coverage most recently ended before the loss is the one that lapsed;
+    # a loss before any term began has nothing to cite.
+    Scenario: A boundary-day determination on a single term cites that term
+      Given a policy term effective "2026-01-15" and expiring "2027-01-15"
+      When the in-force determination runs for a loss dated "2027-01-15"
+      Then the determination is "BOUNDARY_DAY"
+      And the determination cites the term effective "2026-01-15" and expiring "2027-01-15"
+
+    Scenario: A boundary day two terms share cites neither
+      Given a policy term effective "2025-03-01" and expiring "2026-03-01"
+      And a policy term effective "2026-03-01" and expiring "2027-03-01"
+      When the in-force determination runs for a loss dated "2026-03-01"
+      Then the determination is "BOUNDARY_DAY"
+      And the determination cites no term
+
+    Scenario: A not-in-force determination after every term expired cites the term that lapsed
+      Given a policy term effective "2025-01-15" and expiring "2026-01-15"
+      When the in-force determination runs for a loss dated "2026-06-01"
+      Then the determination is "NOT_IN_FORCE"
+      And the determination cites the term effective "2025-01-15" and expiring "2026-01-15"
+      And the determination cites no cancellation
+
+    Scenario: A loss in a gap between terms cites the term that ended before it
+      Given a policy term effective "2025-01-15" and expiring "2026-01-15"
+      And a policy term effective "2026-03-01" and expiring "2027-03-01"
+      When the in-force determination runs for a loss dated "2026-02-01"
+      Then the determination is "NOT_IN_FORCE"
+      And the determination cites the term effective "2025-01-15" and expiring "2026-01-15"
+
+    Scenario: A loss before any term began has no term to cite
+      Given a policy term effective "2026-03-01" and expiring "2027-03-01"
+      When the in-force determination runs for a loss dated "2026-02-01"
+      Then the determination is "NOT_IN_FORCE"
+      And the determination cites no term
+
   Rule: A determination that cannot be made is NOT_EVALUATED with the reason, never a negative
 
     Scenario: Term history could not be obtained

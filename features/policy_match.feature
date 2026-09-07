@@ -79,11 +79,10 @@ Feature: Policy match at intake - what the search finds, and what the notice car
   Rule: A matched notice carries the term verdict, the deciding term, and the instant the answer reflects
 
     # The term rule itself is coverage_verification.feature's; here the
-    # rows show the verdict reaching the notice unchanged, including the
-    # one that would tempt a blocker. NOT_IN_FORCE is a fact for the
-    # coverage reviewer, not a reason intake may hold the notice: the
-    # reporter has given notice, and the acknowledgment clock is running.
-    Scenario Outline: The term verdict is an attribute, whatever it says
+    # rows show the verdict reaching the notice unchanged. A boundary day on
+    # the term's expiration belongs to the run that ended that day
+    # (continuous_coverage.feature), so both rows carry a coverage date.
+    Scenario Outline: The term verdict is an attribute, and a covered date carries its run
       Given that policy's only term is effective "<effective>" and expiring "<expiration>"
       And the notice reports a policy number of "HO-4471209"
       When the notice is submitted for intake
@@ -97,7 +96,24 @@ Feature: Policy match at intake - what the search finds, and what the notice car
         | effective  | expiration | term         | continuous_coverage_date |
         | 2026-01-15 | 2027-01-15 | IN_FORCE     | 2026-01-15               |
         | 2025-06-01 | 2026-06-01 | BOUNDARY_DAY | 2025-06-01               |
-        | 2025-01-15 | 2026-01-15 | NOT_IN_FORCE | 2025-01-15               |
+
+    # The verdict that would tempt a blocker. NOT_IN_FORCE is a fact for the
+    # coverage reviewer, not a reason intake may hold the notice: the
+    # reporter has given notice, and the acknowledgment clock is running.
+    # No run of coverage contains the loss, so there is no coverage date to
+    # derive, and the locked rule says so rather than reaching for the
+    # lapsed term's inception. The lapsed term is cited, as the reviewer's
+    # starting point. Fixed values throughout: the shape is what mutation
+    # cannot reach here, and the verdict itself is protected above.
+    Scenario: A loss after the only term expired proceeds, not in force, with no coverage date
+      Given that policy's only term is effective "2025-01-15" and expiring "2026-01-15"
+      And the notice reports a policy number of "HO-4471209"
+      When the notice is submitted for intake
+      Then the notice's state is TRIAGED
+      And the term in force at the loss date is NOT_IN_FORCE
+      And the deciding term is effective "2025-01-15" and expiring "2026-01-15"
+      And the notice has no continuous coverage date
+      And the continuous coverage reason is NO_COVERAGE_ON_LOSS_DATE
 
     # The first producer of the continuous-coverage date. Until this item
     # the recent policy inception indicator was NOT_EVALUATED on every real

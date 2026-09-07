@@ -44,6 +44,7 @@ Feature: Idempotency on notice submission
     And the carrier "BBBB" requires the claimant name
     And "BBBB" does not require the claimant contact
     And "BBBB" configures a duplicate match window of 60 days
+    And "BBBB"'s policy source is unavailable
     And the notice is submitted by carrier "AAAA"
     And the insured property is in "FL"
     And the notice is submitted at "2026-08-24T16:00Z"
