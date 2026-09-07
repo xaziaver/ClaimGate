@@ -8,6 +8,12 @@ appends "_gauntlet" to a literal, and a step that tolerated one - by
 defaulting, skipping, or parsing leniently - would let that mutant survive. An
 unparseable date is a step error on purpose, and the determination and reason
 strings are compared exactly for the same reason.
+
+Item 7f added the citation on every verdict - five scenarios and the two
+negative phrases below. A citation that is absent is asserted as None on the
+determination itself, never inferred from a missing step: "cites no term" and
+"cites no cancellation" are statements the spec makes, and each has a step that
+would fail if a term or a cancellation were cited.
 """
 
 from datetime import date
@@ -52,6 +58,19 @@ def check_cited_term(context: dict[str, Any], effective: str, expiration: str) -
 @then(parsers.parse('the determination cites the cancellation effective "{effective}"'))
 def check_cited_cancellation(context: dict[str, Any], effective: str) -> None:
     assert context["determination"].cancellation_effective == date.fromisoformat(effective)
+
+
+@then("the determination cites no term")
+def check_no_cited_term(context: dict[str, Any]) -> None:
+    # A date two terms share, or a loss before any term ran: no single term
+    # explains the verdict, and none is cited over another (item 7f).
+    assert context["determination"].term is None
+
+
+@then("the determination cites no cancellation")
+def check_no_cited_cancellation(context: dict[str, Any]) -> None:
+    # The coverage that lapsed ended at an expiration, not a cancellation.
+    assert context["determination"].cancellation_effective is None
 
 
 @then(parsers.parse('the determination reason is "{reason}"'))

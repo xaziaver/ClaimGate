@@ -3888,3 +3888,14 @@ cites neither, expired cites the lapsed term, gap cites the term before it, loss
 cites nothing), 20 new locators, 0 moved, 0 approvals. Digests: idempotency `2c8b5c234060b523`,
 coverage_verification `4ce741d06d7f53f7`, policy_match `59b52fa7a7c09fa5`. Next: the human approves
 three files, then the binding commit and the cold gate.
+
+**2026-09-07: the three steps the amendment introduced are bound before approval, at the human's
+request; the gate is red on the approval stage alone.** `the determination cites no term` and `the
+determination cites no cancellation` in `test_coverage_verification_acceptance.py`, `the continuous
+coverage reason is …` in `test_policy_match_acceptance.py`; no code touched, and the `BBBB` row
+already passes on the amended Background. Cold run `20260907T210809-40620`: tests 832/832, code
+mutation 100 %, 756 killed, size worst function 25, complexity 6, boundary 17 step files and 0
+direct imports, coverage 100/100, CRAP 6, duplication 0, acceptance `3 unapproved or modified
+spec(s)` in 0.004 s — idempotency, coverage_verification and policy_match at the digests in the
+paragraph above, awaiting `gauntlet spec approve`. Next: the human approves three files, then the
+cold gate is expected green and the item closes.

@@ -112,6 +112,13 @@ def check_no_continuous_coverage_date(context: dict[str, Any]) -> None:
     assert verification.continuous_coverage_reason is not None
 
 
+@then(parsers.re(r"^the continuous coverage reason is (?P<value>.*)$"))
+def check_continuous_coverage_reason(context: dict[str, Any], value: str) -> None:
+    # The derivation's own reason, from continuous_coverage.feature's closed
+    # enumeration; compared exactly, as every reason code in these files is.
+    assert _verification(context).continuous_coverage_reason == value
+
+
 def _verification(context: dict[str, Any]) -> CoverageVerificationView:
     view = get_notice(context["store"], context["notice_id"])
     assert view is not None
