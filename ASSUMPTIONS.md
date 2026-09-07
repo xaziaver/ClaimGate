@@ -983,6 +983,28 @@ or data. Nothing below was confirmed against a live book.
   something a reviewer can supply. Nobody can supply an outage, and pending a book on
   infrastructure asks humans to clear a machine fault one notice at a time. Phase 6 owns the
   system re-evaluation this creates a need for.
+- **Item 7f spec decisions — advisor-recommended, human-ratified 2026-09-07.** (1) The intake
+  surface of the search is a new spec, `policy_match.feature`, not a reopening of
+  `policy_identification.feature`, whose locked preamble states that no search runs in it and that
+  the search's outcomes are not its rule's; the 7f queue text is corrected. (2) The five locked
+  specs that submit notices declare `"AAAA"'s policy source is unavailable` in their Backgrounds —
+  the honest statement of what they already assume, since their SIU rows assert
+  `NO_CONTINUOUS_COVERAGE_DATE` and no TRIAGED outcome in them ever saw a search; declaring a known
+  policy instead would move real rows in `siu_separation.feature`, and a default binding in step
+  glue would be configuration no spec describes. Measured: 0 locators moved, five file approvals. A
+  later item may upgrade a file to a held policy deliberately. (3) 7f binds and calls the policy
+  port only; the claims port is first called at 7h, which owns its only consumer, `find_duplicates`.
+  (4) The search runs on every notice whose identifiers are sufficient, whether or not it pends for
+  another reason; the verification is on a PENDED notice too. (5) A NOT_EVALUATED coverage date
+  leaves the recent-inception indicator at `NO_CONTINUOUS_COVERAGE_DATE`; the port's reason lives on
+  the coverage verification, and the SIU event does not learn it. (6) `POLICY_NOT_MATCHED` and
+  `POLICY_AMBIGUOUS` persist through resolution at 7f: resolution re-evaluates against the stored
+  verification, so correcting an unrelated field cannot land an unmatched policy TRIAGED; such a
+  pend clears only when 7g re-searches on the merged identifiers. (7) `PORT_BINDING_UNRESOLVABLE` is
+  a row of `notice_intake.feature`'s deployment-fault table, on 5i's pattern. (8) The insured-name
+  search and `POLICY_IDENTIFIERS_INSUFFICIENT` are unreachable at the HTTP surface until 7g retires
+  the policy-number requirement; the spec says so rather than pretending. (9) In the live-query
+  shape the verification's `as_of` is the submission instant, from the clock 7e injects.
 
 ## Undocumented phase-1 thresholds
 

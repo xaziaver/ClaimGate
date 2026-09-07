@@ -719,8 +719,8 @@ Ordered by domain severity, not by effort. One line each on why that position.
     manufacturing one. `register_claim` is named in the protocol documentation as phase 6's and is
     not defined.
 
-7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).** Reopens 7c's spec
-    `features/policy_identification.feature`: the five-row outcome table in `PHASE3_DESIGN.md` —
+7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).** New spec
+    `features/policy_match.feature`, beside 7c's locked rule: the outcome table in `PHASE3_DESIGN.md` —
     matched proceeds; zero candidates pends `POLICY_NOT_MATCHED`; several pend `POLICY_AMBIGUOUS`;
     port `NOT_EVALUATED` triages with the verification attribute carrying the reason; insufficient
     identifiers pend from 7c's rule. Port calls sit between the two transactions, ordered search →
@@ -3810,3 +3810,15 @@ and measured in the next advisor session against the lock at the branch tip. No 
 supplies bindings yet and no scenario reaches `PORT_BINDING_UNRESOLVABLE` through HTTP — 7f's spec
 has to decide whether that is its scenario or `carrier_configuration.feature`'s. The branch is a
 superset of `main`.
+
+**2026-09-07: 7f spec committed at `a20e06e`, seven files, awaiting approval.** New
+`features/policy_match.feature` (163 lines, sha256 `1e73c8f3c1c7be15`; 49 mutants, 45 locators, 7
+literal; simulated 0 survivors, labelled a simulation), and one Background line in five locked
+intake specs — `"AAAA"'s policy source is unavailable` — because wiring the policy port makes an
+unbound carrier a `500` on every existing submission; measured against the lock: 0 locators moved, 0
+approvals touched, five file approvals to re-issue. `notice_intake.feature` gains the
+`PORT_BINDING_UNRESOLVABLE` row of its deployment-fault table (5 new locators). The advisor's
+decisions are in `ASSUMPTIONS.md` under this date; the one that changes the queue is that 7f writes
+a new spec rather than reopening `policy_identification.feature`, whose locked preamble says no
+search runs in it. Tests red on the new file's unbound steps, as a spec commit is. Next: the human
+approves seven files, then the implementation prompt.
