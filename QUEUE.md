@@ -3784,3 +3784,29 @@ session was housekeeping on `main`, one commit, no item opened: `CLAUDE.md`'s st
 save-point rules, a prediction section in the `gauntlet-gates` skill, `repo-edits/scripts/radius.py`,
 `ROADMAP.md`'s clean-up stage, and the two findings above logged. 7f is still next and still
 opens in a fresh session.
+
+**2026-09-07: item 7f is open on `phase3/7f-intake-wiring`; the pre-spec split is done and green at
+`56419cf`, no spec touched.** `shell/receipt.py` (131 lines, seam `receive_or_replay`) takes the
+five receipt-transaction functions from `notice_intake.py`, now 127;
+`shell/resolution_evaluation.py` (142 lines, seam `evaluate`) takes the five evaluation functions
+from `resolution.py`, now 116. All ten moved bodies AST-identical to `main`; the only non-import
+change in kept code is the two seam calls. Three test files updated at the call site, nothing
+re-exported: `tests/api/resolution.py` and `tests/shell/test_notice_intake.py` for
+`merged_view`/`notice_records`, and `tests/shell/test_siu_evaluation.py`, whose
+both-paths-share-`siu` assertion now names `resolution_evaluation`. Gate predicted before the run
+and matched line for line at run `20260907T115727`: size worst function 25, complexity 6, boundary
+16/0, tests 763/763, coverage 100/100, duplication 0, code mutation 100% with 687 killed (flat — a
+move leaks nothing into scope), acceptance 14 specs, 73 reviewed-equivalent, digests unchanged,
+1630.582 s against the 3600 s budget. Two corrections to earlier paragraphs: the 7e merge carried
+763 tests, not 762 — 762 was `b846768`, and the judgment-6 reversal `ef751fc` added one
+`test_bindings.py` case; and the acceptance pair is now 1630.582 s at this run and 1629.698 s at run
+`20260907T095331` on `1b60af5`, both green, both under the budget by more than half. `8a08916`
+annotates `PHASE3_DESIGN.md`'s notice-content bullet (the four identifier fields since 7c at
+`e75f5dd`; the other five bullets hold at `56419cf`, with the intake and resolution functions now in
+their new modules) and adds the radius sentence to the gherkin-specs skill and the `origin/main`
+note to repo-edits. Stop-check on `8a08916`: `20260907T122622`, 1768.307 s.
+`policy_identification.feature` is unchanged at `a504421e2c3ef5ed`; the reopening's spec is drafted
+and measured in the next advisor session against the lock at the branch tip. No `tests/api` fixture
+supplies bindings yet and no scenario reaches `PORT_BINDING_UNRESOLVABLE` through HTTP — 7f's spec
+has to decide whether that is its scenario or `carrier_configuration.feature`'s. The branch is a
+superset of `main`.
