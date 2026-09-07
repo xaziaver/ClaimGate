@@ -459,16 +459,16 @@
       "digest": "sha256:dc00a588ea21644220016844c630ddfb3b40449aac7dffca8b25dfe88cc97347"
     },
     "spec:features/coverage_verification.feature": {
-      "approved_at": "2026-09-03T17:52:14+00:00",
-      "digest": "sha256:b9bcedcb3cfa8f3f2b814aad20fb63a93b4415e498f8742684c988ffab4a8b44"
+      "approved_at": "2026-09-07T21:10:08+00:00",
+      "digest": "sha256:4ce741d06d7f53f7df2910fe355a2ba33643a1ce887864fa8c147aad292109f0"
     },
     "spec:features/duplicates.feature": {
       "approved_at": "2026-08-17T13:09:14+00:00",
       "digest": "sha256:29adb2bebdd52819d37979feff2755d3b0ad5d6441d4cc1166ae66e0e690d434"
     },
     "spec:features/idempotency.feature": {
-      "approved_at": "2026-09-07T20:02:02+00:00",
-      "digest": "sha256:40b7b92a120ec78ae6094e03739fc8ec84cb1d729def45ff5a3c44104f4271fa"
+      "approved_at": "2026-09-07T21:10:08+00:00",
+      "digest": "sha256:2c8b5c234060b523363e2819123232a173eca55b9442f0d2e0fc097c2cb7d334"
     },
     "spec:features/jurisdiction_date.feature": {
       "approved_at": "2026-08-23T17:50:52+00:00",
@@ -487,8 +487,8 @@
       "digest": "sha256:a504421e2c3ef5ed98074fe9e1a87d6e075b1ee1bbeec06eea6942d1f969782a"
     },
     "spec:features/policy_match.feature": {
-      "approved_at": "2026-09-07T20:02:02+00:00",
-      "digest": "sha256:1e73c8f3c1c7be15257c6b54efd88ad0c1eb2817c93d845f2139d30389fcabdb"
+      "approved_at": "2026-09-07T21:10:08+00:00",
+      "digest": "sha256:59b52fa7a7c09fa5ff931727d56ae3aca186adddeb77be4497031183cc54367a"
     },
     "spec:features/resolution.feature": {
       "approved_at": "2026-09-07T20:02:02+00:00",
