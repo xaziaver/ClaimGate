@@ -719,7 +719,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
     manufacturing one. `register_claim` is named in the protocol documentation as phase 6's and is
     not defined.
 
-7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).** New spec
+7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).**
+    *(Closed 2026-09-07 — spec `a20e06e`, amendment `2ad4055`, approvals `6cc3e56` and `eb794e4`,
+    implementation `69a5f45`, bindings `1e2bfc0`; green run `20260907T214626-43332`, 832 tests, 756
+    killed, 73 reviewed-equivalent; the merge to `main` is the human's after the advisor verifies
+    the run.)*
+    New spec
     `features/policy_match.feature`, beside 7c's locked rule: the outcome table in `PHASE3_DESIGN.md` —
     matched proceeds; zero candidates pends `POLICY_NOT_MATCHED`; several pend `POLICY_AMBIGUOUS`;
     port `NOT_EVALUATED` triages with the verification attribute carrying the reason; insufficient
@@ -3899,3 +3904,28 @@ direct imports, coverage 100/100, CRAP 6, duplication 0, acceptance `3 unapprove
 spec(s)` in 0.004 s — idempotency, coverage_verification and policy_match at the digests in the
 paragraph above, awaiting `gauntlet spec approve`. Next: the human approves three files, then the
 cold gate is expected green and the item closes.
+
+**2026-09-07: item 7f is closed at the close-out commit on `phase3/7f-intake-wiring`; the merge to
+`main` is the human's after the advisor verifies run `20260907T214626-43332`.** Cold gate at
+`eb794e4`, `mutants/` cleared, predicted then measured: protect 3/3; static 0; size worst function
+25, worst module `store.py` 248; complexity 6; boundary 17 step files, 0 direct imports; tests
+832/832 — 827 plus the five citation scenarios plus the reshaped NOT_IN_FORCE scenario minus the
+retired row, as predicted; coverage 100/100; CRAP 6; duplication 0; code mutation 100 %, 756 killed,
+unchanged since `69a5f45` with `src/` untouched; acceptance `15 spec(s), 73 reviewed-equivalent`, 0
+diagnostics, 2427.14 s against the 3600 s Stop hook budget — the pair this close records, and the
+one miss in the prediction, which said 1800–2000 s by scaling the last green 1685 s at 1070 mutants
+to 1155: the run grew 44 % on 8 % more mutants, so the scaling is not linear and the margin under
+the budget is 1173 s. Out of band, at the locked digests and restored to them afterward:
+`policy_match.feature` 50 applied, 50 killed, 0 survivors — 38 example and 12 literal, where the
+advisor's 43/7 split counted the reshaped NOT_IN_FORCE scenario's five fixed values as table cells;
+the totals agree — and `coverage_verification.feature` 108 applied, 108 killed, 0 survivors (40
+example, 68 literal); every kill a new failure and no baseline failure in either. The item's
+commits, in order: spec `a20e06e`, documents `a9a9a14`, approval `6cc3e56`, implementation
+`69a5f45`, documents `26b818d`, amendment `2ad4055`, documents `fe50e7e`, bindings `1e2bfc0`,
+approval `eb794e4`, this close-out. Judgments 1–9 were ratified 2026-09-07 and stand in the
+implementation paragraph above; decisions 10 and 11 are in `ASSUMPTIONS.md`'s 7f entry. 7g inherits
+the debt that a notice with no loss date, or nothing searchable, receives its verification at the
+re-search on resolution, and the insured-name search; 7h the claims port and `find_duplicates`'
+caller. `ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today"
+carry dated 7f notes. Nothing is in flight in code; the branch is a superset of `main` and is not
+merged.

@@ -44,6 +44,17 @@ Established from `src/claimgate/shell/` at `4a42d2f`, 2026-09-01. Treat as measu
   `evaluated_at`, and `BEFORE UPDATE`/`BEFORE DELETE` triggers. `jurisdiction_marking` is a
   nullable column on `notices`.
 
+**Annotation 2026-09-07 (item 7f closed, green run `20260907T214626-43332`):** the policy port is
+wired at intake — `shell/receipt.py` resolves the carrier's binding beside its rules and
+jurisdiction, and `shell/policy_match.py` runs sufficiency, search and term history between the two
+transactions — and `coverage_verifications` exists (`shell/coverage_verifications.py`, on
+`siu_indicator_events`' pattern, shown on `GET /notices/{id}` through an allow-list of its own).
+`Candidate.continuous_coverage_date` has its producer, `carry_onto_candidate`. Still as measured
+above: the claims port is resolved by nothing and `find_duplicates` has no shell caller (7h); the
+insured-name search and `POLICY_IDENTIFIERS_INSUFFICIENT` are unreachable at intake while validation
+requires a policy number, and the resolution path searches nothing and re-asserts the stored match
+(7g).
+
 ## Two ports, not one adapter
 
 **Decision.** Phase 3 defines two independent port protocols: a **policy port** and a **claims
