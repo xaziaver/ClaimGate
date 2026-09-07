@@ -703,7 +703,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     have become survivors; 7g retargets the row's code. `RULESET_VERSION` bumps: this changes live
     decisions.
 
-7e. **Port protocols, bindings, and the live-query implementations (shell).** The policy port
+7e. **Port protocols, bindings, and the live-query implementations (shell).** *(Closed at merge
+    `ce104ea`, 2026-09-07 — implementation `b846768`, judgment-6 reversal `ef751fc`, ratification
+    documents `4e08b19`; no spec, no approvals; killed count 687 flat as predicted, 95 tests added.)*
+    The policy port
     (`search`, `term_history`) and claims port (`existing_claims`) protocols; three-valued results
     with reason codes and `as_of`, never raising; the per-carrier bindings file with per-binding
     timeout budgets and no defaults; unresolvable binding → deployment fault, new code, item 5i's
@@ -784,7 +787,7 @@ later.
 | 5j | `ASSUMPTIONS.md` — the item 5h three-decision entry dated 2026-08-27; `jurisdiction_selection.feature`'s Rule 3; item 4k's entry above |
 | 6 | `ROADMAP.md`; `PHASE2_DESIGN.md` in full; `STATUTORY_REGISTER.md`; `README.md` |
 | 7a–7d | `PHASE3_DESIGN.md`; the item's spec file; 7b also the 2026-08-14 entry in `ASSUMPTIONS.md`; 7d also the blast-radius technique in `docs/harness-findings.md` |
-| 7e–7i | `PHASE3_DESIGN.md` in full; `PHASE2_DESIGN.md` "The two-transaction shape" and "SIU handling"; 7f–7h also `shell/notice_intake.py` and `shell/resolution.py` as they stand at the item's start |
+| 7e–7i | `PHASE3_DESIGN.md` in full; `PHASE2_DESIGN.md` "Record state model" (the two-write receipt paragraph) and "SIU handling"; 7f–7h also `shell/notice_intake.py` and `shell/resolution.py` as they stand at the item's start |
 | A regulatory value, anywhere | `STATUTORY_REGISTER.md` |
 | A record state, the audit log, idempotency, or the HTTP surface | `PHASE2_DESIGN.md` |
 
@@ -3753,3 +3756,22 @@ indicator event written from the merge names it. The advisor session ended at th
 port protocols, bindings and the live-query implementations — opening in a fresh session, with its
 blast radius measured by plain-word grep across `features/` plus the engine before any drafting.
 Nothing is in flight in code: no work open on any branch, no red gate.
+
+**2026-09-07: item 7e is closed, merged to `main` at `ce104ea`.** Implementation `b846768`,
+judgment-6 reversal `ef751fc`, ratification documents `4e08b19`; no spec, no approvals; killed
+count 687 flat as predicted; 95 tests added, 762 passing at the merge. The Stop hook timeout is
+raised from 1800 to 3600 in `.claude/settings.json` and re-locked with `gauntlet lock` in the commit
+that carries this paragraph — the human's decision, the second raise after 600→1800 on 2026-08-25 —
+because a cold green acceptance run measured 2135 s against the 1800 s hook, so every stop-check was
+being killed by its own timeout and stranding a spec at every turn end (events 11 and 12 in
+`docs/harness-findings.md`; a thirteenth, `validation.feature` from the 16:05:39Z stop-check on the
+ratification commit, killed 43 s after entering that file, was restored at this close-out and is
+not yet in that log). The full gauntlet runs at the end of the close-out turn under the new budget;
+if it completes, the next start-up should read the acceptance gate's duration for that run from
+`.gauntlet/events.jsonl` and record it here and in `docs/harness-findings.md` — that figure is
+wanted, as the first green stop-check since the raise and the current cost of a turn end. Item 7f
+opens in a fresh session. 7f reads `shell/notice_intake.py` and `shell/resolution.py` as they stand,
+and both are at 250 lines, the size gate's module ceiling, so 7f cannot add a line to either without
+a split — plan the split before the spec is drafted, not after the gate goes red.
+`docs/session-prompts/ADVISOR.md` is modified in the working tree; it is the human's and is in no
+agent commit. Nothing is in flight in code: no work open on any branch, no red gate.

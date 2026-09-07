@@ -45,7 +45,7 @@
                 "--max-attempts",
                 "1"
             ],
-            "timeout": 1800,
+            "timeout": 3600,
             "statusMessage": "Gauntlet: full run"
           }
         ]
