@@ -27,6 +27,12 @@ Established from `src/claimgate/shell/` at `4a42d2f`, 2026-09-01. Treat as measu
 - **Notice content** (`shell/messages.py`, `NoticeFields`): `policy_number`, `loss_date`,
   `loss_type`, `notice_type`, `property_state`, `claimant_name`, `claimant_contact`,
   `incident_description`. No insured name and no risk address beyond the state.
+  **Annotation 2026-09-07 (item 7f): `NoticeFields` has carried `insured_name`, `risk_address`,
+  `risk_city` and `risk_postal_code` since item 7c (`e75f5dd`, 2026-09-05), with `property_state`
+  serving as the address's state component, so the last sentence no longer holds. The other five
+  bullets were checked against source at `56419cf` and hold; since that commit the receipt
+  transaction lives in `shell/receipt.py` and `_judge` in `shell/resolution_evaluation.py`, a
+  split with no behaviour change.**
 - **Attribute storage pattern.** `siu_indicator_events` is an append-only table keyed
   `(notice_id, ordinal)`, one row per indicator per evaluation, with `ruleset_version` and
   `evaluated_at`, and `BEFORE UPDATE`/`BEFORE DELETE` triggers. `jurisdiction_marking` is a
