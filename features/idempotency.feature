@@ -40,6 +40,7 @@ Feature: Idempotency on notice submission
     Given the carrier "AAAA" requires the claimant name
     And "AAAA" does not require the claimant contact
     And "AAAA" configures a duplicate match window of 60 days
+    And "AAAA"'s policy source is unavailable
     And the carrier "BBBB" requires the claimant name
     And "BBBB" does not require the claimant contact
     And "BBBB" configures a duplicate match window of 60 days

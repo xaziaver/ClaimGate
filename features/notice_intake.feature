@@ -64,6 +64,7 @@ Feature: Notice intake
     And "AAAA" has no late reporting threshold configured
     And "AAAA" configures a recent policy inception threshold of 30 days
     And "AAAA" configures a duplicate match window of 60 days
+    And "AAAA"'s policy source is unavailable
     And the notice is submitted by carrier "AAAA"
     And the insured property is in "FL"
     And the notice is submitted at "2026-08-24T16:00Z"
@@ -333,6 +334,7 @@ Feature: Notice intake
         | this deployment is configured correctly             | 201      | none                       | creates the notice | is kept, and reachable through the notice   |
         | the carrier's rules entry cannot be resolved        | 500      | CARRIER_RULES_UNRESOLVABLE | creates no notice  | is kept anyway, with a reference of its own |
         | the jurisdiction map entry names no usable timezone | 500      | JURISDICTION_MAP_UNUSABLE  | creates no notice  | is kept anyway, with a reference of its own |
+        | the carrier's policy source binding cannot be resolved | 500 | PORT_BINDING_UNRESOLVABLE | creates no notice  | is kept anyway, with a reference of its own |
 
   # Removed 2026-08-26 with item 5g's submission-surface change: the rule that
   # stood here - "A notice is judged against the jurisdiction's calendar date
