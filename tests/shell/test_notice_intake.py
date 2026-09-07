@@ -21,7 +21,7 @@ from claimgate.shell.faults import CARRIER_RULES_UNRESOLVABLE, JURISDICTION_MAP_
 from claimgate.shell.messages import NoticeFields
 from claimgate.shell.notice_intake import get_notice
 from claimgate.shell.records import PayloadRecord, payload_reference
-from claimgate.shell.resolution import merged_view
+from claimgate.shell.resolution_evaluation import merged_view
 from claimgate.shell.store import NoticeStore
 from tests.shell.support import (
     DEFAULT_FIELDS,

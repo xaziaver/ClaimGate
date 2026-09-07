@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 
 from claimgate.domain.ruleset import RULESET_VERSION
-from claimgate.shell import notice_intake, resolution, siu
+from claimgate.shell import notice_intake, resolution_evaluation, siu
 from claimgate.shell.messages import NoticeFields
 from claimgate.shell.store import NoticeStore
 from tests.shell.support import (
@@ -166,7 +166,7 @@ def siu_write_fails(monkeypatch: pytest.MonkeyPatch) -> None:
         raise SiuWriteError("the SIU trail was written and the transaction then failed")
 
     monkeypatch.setattr(siu, "record_evaluation", _write_then_raise)
-    assert notice_intake.siu is siu and resolution.siu is siu
+    assert notice_intake.siu is siu and resolution_evaluation.siu is siu
 
 
 def _only_notice(store: NoticeStore) -> str:
