@@ -3874,3 +3874,17 @@ unavailable source for `AAAA` and `WXYZ`, the statement the locked Backgrounds m
 gained persistent faults because five locked specs submit more than once under an unavailable
 source. Next: the human amends `idempotency.feature`, decides row 3 and approves; the gate is then
 expected green and the item closes. The branch is a superset of `main`.
+
+**2026-09-07: 7f spec amended at `2ad4055`, three files, awaiting approval; both gate failures at
+`69a5f45` were the advisor's spec errors.** (1) The binding radius of the `"AAAA"` Background line
+was measured by grepping the literal, not the step's shape; `idempotency.feature` also submits under
+`BBBB`, so `BBBB` gains the same line. (2) The `NOT_IN_FORCE` row asserted a continuous-coverage
+date the locked `continuous_coverage.feature` denies — `NO_COVERAGE_ON_LOSS_DATE` — because the
+advisor drafted from the design's account of the rule without reading the locked file. The row is
+now a fixed-value scenario asserting no date and its reason. Judgment 2's extension of the citation
+rule is ratified on the condition that it be specified where the rule lives:
+`coverage_verification.feature` gains five citation scenarios (boundary on one term, shared boundary
+cites neither, expired cites the lapsed term, gap cites the term before it, loss before any term
+cites nothing), 20 new locators, 0 moved, 0 approvals. Digests: idempotency `2c8b5c234060b523`,
+coverage_verification `4ce741d06d7f53f7`, policy_match `59b52fa7a7c09fa5`. Next: the human approves
+three files, then the binding commit and the cold gate.

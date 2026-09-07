@@ -1004,7 +1004,16 @@ or data. Nothing below was confirmed against a live book.
   a row of `notice_intake.feature`'s deployment-fault table, on 5i's pattern. (8) The insured-name
   search and `POLICY_IDENTIFIERS_INSUFFICIENT` are unreachable at the HTTP surface until 7g retires
   the policy-number requirement; the spec says so rather than pretending. (9) In the live-query
-  shape the verification's `as_of` is the submission instant, from the clock 7e injects.
+  shape the verification's `as_of` is the submission instant, from the clock 7e injects. (10) The
+  term-in-force citation covers every verdict, on the cancelled case's principle — name the term
+  that explains it: `BOUNDARY_DAY` on one term cites that term, a date two terms share cites
+  neither, `NOT_IN_FORCE` outside every term cites the term whose coverage most recently ended
+  before the loss, and a loss before any term cites nothing. Implemented at 7f for the notice view;
+  specified in `coverage_verification.feature` at the same item, since a domain rule's only guard
+  may not be another file's Examples rows. (11) A notice with no loss date, or nothing searchable,
+  is not searched at 7f and no verification row is written; it pends on validation regardless, and
+  the re-search on resolution at 7g verifies it. Both advisor-recommended, human-ratified
+  2026-09-07.
 
 ## Undocumented phase-1 thresholds
 

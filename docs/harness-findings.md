@@ -1983,3 +1983,18 @@ collected as `import file mismatch ... imported module 'test_policy_match' has t
 the same rootless-import behaviour "Two locked specs sharing a Background..." (above) records for
 `conftest.py`. A shell test for a domain module of the same name needs a different basename;
 `tests/shell/test_policy_search.py` is the one this session chose.
+
+### The binding radius grep is over the step's shape, not the literal the amendment used; and the advisor reads every locked spec its draft cites
+
+Recorded 2026-09-07 as the method lessons of the two 7f spec errors above, ratified as such by the
+human. First: an amendment that adds a per-carrier step was radiused by grepping the literal it
+happened to use, `"AAAA"'s policy source`, which found every file and missed the second carrier one
+of them submits under. The radius grep for a step is over the step's *shape* - every carrier code the
+file names and every value the step could take, read from its Backgrounds and from every Examples
+column that feeds the step - so the count is of carriers, or of values, and never of files.
+Second: `policy_match.feature`'s red row was drafted from `PHASE3_DESIGN.md`'s account of the
+continuous-coverage rule, not from the locked `continuous_coverage.feature`, whose
+`NO_COVERAGE_ON_LOSS_DATE` scenarios forbid the value the row asserted. A draft whose attributes are
+produced by other locked rules is written after reading each of those locked files in full, the
+reading table notwithstanding: the table budgets a session's context, and a locked spec the draft
+cites is part of what the item needs, not a document it can skip.
