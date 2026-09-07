@@ -169,6 +169,26 @@ Web form, agency portal, call-centre UI, email or SMS ingestion, mortgagee and v
 photographs and documents at first notice, with the storage, scanning and retention that implies.
 First post-pilot expansion. Every channel here is a client of the API, not a second intake path.
 
+## Clean-up stage — after the last queued item closes
+
+Added 2026-09-07. **Trigger:** the last queued item closes with the ledger green and no open
+reopening — not before. The principle in one sentence: during the build the harness is frozen and
+the work moves; in clean-up the work is frozen and the harness moves. Then, in order:
+
+1. **Tag.** `main` is tagged `prototype-1`, with `gauntlet.lock.json` and `.gauntlet/events.jsonl`
+   retained as they stand at the tag.
+2. **Document consolidation**, with no spec or approval change and the gate green throughout.
+   `QUEUE.md` becomes a short live queue plus `docs/queue-history/` per phase. `ASSUMPTIONS.md`
+   becomes an index of the decisions in force, retired ones dated, with its history moved beside
+   the queue history. `docs/harness-findings.md` keeps "How the harness behaves" as the live
+   document and moves the chronology to an appendix. Both `PHASE*_DESIGN.md` files lose their
+   "what the code does today" sections outright, source being the record. `.gitignore` is audited
+   for `mutants/`, `.gauntlet/` state and review exports. The gate proves nothing moved: the same
+   spec digests, the same ledger entry count, the same killed count.
+3. **The harness moves against the frozen tag**, sequenced in agent-gauntlet's
+   `gauntlet-findings.md` under "Note for the v1 effort", which this repository does not read.
+4. **Phase 4 opens on the new harness**, with a fresh "How the harness behaves".
+
 ## Not in any planned phase, not excluded
 
 A second real jurisdiction. The structure supports it (`PHASE2_DESIGN.md`, "Jurisdiction axis"); a

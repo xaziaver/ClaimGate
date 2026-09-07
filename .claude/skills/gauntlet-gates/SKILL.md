@@ -107,6 +107,37 @@ dependency and is not one. Run project tooling through the venv
 (`.venv/bin/python`, or activate it first), never through bare `python3`.
 Installing a newer system Python does not help and is not the fix.
 
+## Predict the gate before running it
+
+For every item, write the predicted figure per gate before the cold run, run with
+`mutants/` cleared, and report predicted beside measured. The figures, with the
+values from the last green run on 2026-09-07 (run `20260907T064859`):
+
+- **mutation** — killed count and score: `score 100.0%, 687 killed`
+- **tests** — test count: `763/763 passing`
+- **acceptance** — specs and reviewed-equivalent: `14 spec(s), 73 reviewed-equivalent`
+- **size** — worst module and worst function against the ceilings in `gauntlet.toml`,
+  250 lines per module and 25 per function
+- **duplication** — duplicate blocks, ceiling 0
+
+Each measured figure is the `actual` field of that gate's `gate.finished` line in
+`.gauntlet/events.jsonl`; the previous close's figures are in `QUEUE.md`'s status
+paragraph. The rules that make a prediction checkable:
+
+- **On a shell-only item the killed count is flat.** Code mutation scopes to
+  `src/claimgate/domain/`, so a rise means a rule leaked into the mutation scope —
+  a finding, not a bonus. Item 7e's close in `QUEUE.md` (2026-09-07) is the first
+  shell-shaped example: killed count 687 flat as predicted, 95 tests added.
+- **On a spec item the survivor count is the advisor's simulation.** A gap between
+  the simulated and the measured survivors means implementation and intent
+  diverged; find which before anything is approved.
+- **A shell item that changes an endpoint signature is a spec item.** Every
+  Background calling that endpoint is in the radius, and a Background step yields
+  no mutant, so the engine alone will not show it (`docs/harness-findings.md`, "An
+  engine-based blast radius is blind to Background steps"). Measure with
+  `repo-edits/scripts/radius.py` at the ref plus a plain-word grep across
+  `features/`.
+
 ## When the answer is not here
 
 Read these three files, not the tree:

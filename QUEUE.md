@@ -3775,3 +3775,12 @@ and both are at 250 lines, the size gate's module ceiling, so 7f cannot add a li
 a split — plan the split before the spec is drafted, not after the gate goes red.
 `docs/session-prompts/ADVISOR.md` is modified in the working tree; it is the human's and is in no
 agent commit. Nothing is in flight in code: no work open on any branch, no red gate.
+
+**2026-09-07, start-up after the 7e close: the stop-check on the close-out commit finished green.**
+Run `20260907T064859`, acceptance 1993.92 s against the 3600 s Stop hook budget — the pair the
+save-point now records at every close — 14 specs, 73 reviewed-equivalent, 763 tests, killed 687.
+`docs/session-prompts/ADVISOR.md` landed in the human's commit `db2970b`; the tree is clean. This
+session was housekeeping on `main`, one commit, no item opened: `CLAUDE.md`'s start-up and
+save-point rules, a prediction section in the `gauntlet-gates` skill, `repo-edits/scripts/radius.py`,
+`ROADMAP.md`'s clean-up stage, and the two findings above logged. 7f is still next and still
+opens in a fresh session.

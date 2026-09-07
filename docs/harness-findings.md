@@ -645,6 +645,19 @@ lock. At 2135s a green run outlives the hook, so every stop-check now strands th
 with no operator involved; see "The Stop hook's timeout is now shorter than a green acceptance
 run", second correction.
 
+**Thirteenth event, 2026-09-06, and the first stop-check to finish since the raise, 2026-09-07.**
+`features/validation.feature`, stranded by the stop-check that fired at 16:05:39Z on item 7e's
+ratification commit `4e08b19`: run `20260906T160539`, stop-check shape in `.gauntlet/events.jsonl`
+(ten `gate.finished` events, none for `acceptance`, no `run.started`), the 1800s hook still in
+force. Found and restored at 7e's close-out, digest confirmed; the "killed 43s after entering that
+file" in `QUEUE.md`'s status paragraph is that session's reading of the backup mtimes, since
+overwritten, so it is quoted from the record rather than re-measured. Logged here 2026-09-07. The
+next stop-check, run `20260907T064859` on the close-out commit that raised the hook to 3600s, is
+the first since the raise to reach `acceptance` and finish: eleven `gate.finished` events,
+`acceptance` passed in 1993.92s, 14 specs, 73 reviewed-equivalent. A passing stop-check prints
+nothing, so that line is the only evidence the turn end completed; `CLAUDE.md`'s start-up step 4
+now reads it before anything else.
+
 ### The acceptance gate's wall time is growing, not fixed at ~150s
 
 Across 162 acceptance-gate runs in the log, the maximum observed is 260.3s,
@@ -700,6 +713,14 @@ figure; the Stop hook's 1800s has been overtaken as well (see "The Stop hook's t
 shorter than a green acceptance run", second correction). Budget past 2200s for any tool timeout
 wrapping `gauntlet check`, run it in the background rather than under a foreground timeout, and
 keep rechecking the log.
+
+**Fifth measurement, 2026-09-07: 1993.92s under the 3600s hook, the first green stop-check since
+the raise.** Run `20260907T064859`, the stop-check on item 7e's close-out commit: 14 specs, 73
+reviewed-equivalent, 763 tests, `acceptance` 1993.92s. Below the 2135.481s above, so the four
+green figures at this spec count span 1782–2135s; read that as the variance band to budget
+against, not a trend reversal. The 3600s hook clears a green run by about 1600s today.
+`CLAUDE.md`'s start-up step 3 carries the pair and `QUEUE.md`'s status paragraph records it at
+every close, so the next raise is planned rather than discovered from a strand.
 
 ### `scope = "changed"` in `gauntlet.toml` never reaches the mutation gate — but not because `--changed` goes unused
 

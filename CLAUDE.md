@@ -141,8 +141,11 @@ Work through it in this order, and stop at the first honest answer:
    name: the branch and tip ref of any work in progress, whether a spec is
    drafted or locked and who owns the next action, any gate failure that is
    currently expected and why it is guaranteed rather than a defect, and what
-   remains before the item closes. Rewrite it if it does not. If it already
-   does, say so and change nothing.
+   remains before the item closes. At every close it also records the acceptance
+   gate's duration, from the last green `gate.finished` line in
+   `.gauntlet/events.jsonl`, beside the Stop hook budget in `.claude/settings.json`,
+   as a pair, so the race between them is visible. Rewrite it if it does not. If it
+   already does, say so and change nothing.
 5. Is anything you learned this session recorded nowhere? Decisions go to
    `ASSUMPTIONS.md` with provenance and a date. Harness behaviour and technique
    go to `docs/harness-findings.md`, established from source or an observed run,
@@ -172,7 +175,12 @@ Before any work, orient and verify. Report before acting.
    the status section names. If any file under `features/` is modified, a mutation
    run was likely killed mid-flight — this is routine, not exceptional: a
    stop-check runs the full gauntlet after every turn, and any human reply inside
-   its roughly fifteen-minute window kills it. The strand takes one of the engine's substitution
+   its window kills it. The window is the acceptance gate's wall time, last measured at
+   1993.92 s on fourteen specs (run `20260907T064859`, 2026-09-07), against a Stop hook budget
+   of 3600 s in `.claude/settings.json`. Both figures move — the duration is recorded in
+   `QUEUE.md`'s status paragraph at each close — and when the run outgrows the budget the hook
+   kills its own run at every turn end without any human reply (events eleven to thirteen in
+   `docs/harness-findings.md`). The strand takes one of the engine's substitution
    shapes — a value swapped for a sibling cell's value (including an empty one), a number
    incremented at its own precision, a boolean flipped, or a string literal with `_gauntlet`
    appended — and only the last carries a marker, so never identify a strand by its text; the
@@ -184,17 +192,28 @@ Before any work, orient and verify. Report before acting.
    you have. First check no gauntlet run is alive using `ps -eo pid,etime,cmd`
    read by eye — a bare `pgrep -af gauntlet` matches its own command string and
    reads as a live run.
-4. If a spec is described as drafted-not-locked, confirm with `gauntlet spec list`
+4. Read the last `gate.finished` line for the `acceptance` gate from
+   `.gauntlet/events.jsonl` and report its verdict, duration and run id. A passing
+   `stop-check` prints nothing, so the previous turn's outcome is confirmed from
+   that line, never from silence.
+5. For any item inside a phase, check each claim in the phase design document's
+   "what the code actually does today" section against source before item work,
+   and annotate stale claims in place, dated, in the documentation commit that
+   opens the item. Two such claims have been found in `PHASE3_DESIGN.md` already.
+6. If a spec is described as drafted-not-locked, confirm with `gauntlet spec list`
    whether it has since been approved. The lock is the human's action and may have
    happened after the handoff was written.
-5. State what you understand the current state to be and what you propose to do
+7. State what you understand the current state to be and what you propose to do
    next. If the status section and the repository disagree, say which you are
    believing and why. Then wait — do not start work on your own reading of the
    queue unless the task you were given says otherwise.
 
 ### Environment notes
 
-- The acceptance gate runs over 300s and is growing. Long timeout or background.
+- The acceptance gate's wall time is the Stop hook's window: 1993.92 s at the last
+  green run (2026-09-07) and growing, under a 3600 s hook budget. Run `gauntlet check`
+  in the background, never under a foreground timeout; the current pair is in
+  `QUEUE.md`'s status paragraph. (Corrected 2026-09-07 from "over 300s".)
 - `gauntlet check` signals pass/fail by exit status, and the piped form returns
   tail's status. Read the printed verdict, never `$?`.
 - A concurrent `gauntlet check` exits 0 having executed zero gates. Never relaunch

@@ -35,6 +35,16 @@ something that would change if the edit went wrong:
 A purely additive edit must show `N 0` in `git diff --numstat`. A nonzero
 deletion count on an edit you believed additive means something was overwritten.
 
+## Measuring a blast radius at a ref
+
+    scripts/radius.py --ref <ref> --gauntlet-src ~/Code/agent-gauntlet/src [--feature features/x.feature]
+
+Per feature at that ref — read with `git show`, never from the working tree — it prints the
+mutant count, the unique-locator count and how many of those locators hold an approval in the
+lock at the same ref, then totals. It is the blast-radius measurement both the advisor and the
+agent run, so the two enumerations are the same enumeration and only the survivor model is
+independent. Run it through `.venv/bin/python`; it writes nothing.
+
 ## Handing work back
 
     scripts/handoff.sh <ref> [<ref> ...]
