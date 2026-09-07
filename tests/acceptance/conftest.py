@@ -22,6 +22,17 @@ and writes to its own context key, which neither submit_notice nor resolve_notic
 reads. Written here on the _rules_entry pattern instead, it replaces the value in
 place, which is what lets a scenario configure a threshold after the notice has
 already arrived.
+
+Item 7f added the carrier's policy source. Every spec that submits a notice now
+declares one in its Background - five locked specs say it is unavailable, and
+features/policy_match.feature gives it a policy to find - so the source-fault
+phrase, the binding fault, and the bindings the submission is made with all live
+here, and the recorded-indicator phrase moved here from
+test_siu_separation_acceptance.py when policy_match.feature became the second
+spec to state it word for word. A source fault is not a deployment fault:
+"this deployment is configured correctly" clears the three configuration faults
+and leaves an unavailable source unavailable, because the source is another
+system and nothing about this deployment's configuration made it so.
 """
 
 from datetime import date, datetime
@@ -30,7 +41,12 @@ from typing import Any
 import pytest
 from pytest_bdd import given, parsers, then, when
 
-from tests.acceptance.support import parse_compact_blockers, parse_instant, policy_terms
+from tests.acceptance.support import (
+    assert_recorded_indicator,
+    parse_compact_blockers,
+    parse_instant,
+    policy_terms,
+)
 from tests.api.coverage import (
     cancelled,
     policy_term,
@@ -46,6 +62,7 @@ from tests.api.notice_intake import (
     NoticeStore,
     submit_notice,
 )
+from tests.api.policy_match import PolicySources
 from tests.api.resolution import resolve_notice
 
 DEFAULT_TODAY = date(2026, 8, 2)
@@ -63,7 +80,10 @@ _SUPPLIED_FIELDS = {
 
 @pytest.fixture
 def context() -> dict[str, Any]:
-    return {"today": DEFAULT_TODAY, "fields": {}, "idempotency_key": None}
+    return {
+        "today": DEFAULT_TODAY, "fields": {}, "idempotency_key": None,
+        "policy_sources": PolicySources(),
+    }
 
 
 @given(parsers.parse('today is "{value}"'))
@@ -147,6 +167,19 @@ def set_duplicate_match_window(context: dict[str, Any], carrier: str, value: int
     _rules_entry(context, carrier)["window_days"] = value
 
 
+# The three faults a policy source can show, in the words policy_match.feature
+# and five locked Backgrounds use. Each holds for the rest of the scenario: the
+# locked specs submit more than once under an unavailable source.
+@given(
+    parsers.re(
+        r'^"(?P<carrier>[^"]+)"\'s policy source (?P<fault>is unavailable'
+        r"|does not answer within its budget|answers in a shape that is not its own)$"
+    )
+)
+def set_policy_source_fault(context: dict[str, Any], carrier: str, fault: str) -> None:
+    context["policy_sources"].fault(carrier, fault)
+
+
 @given(parsers.parse('the notice is submitted by carrier "{carrier_code}"'))
 @when(parsers.parse('the notice is submitted by carrier "{carrier_code}"'))
 def set_carrier_code(context: dict[str, Any], carrier_code: str) -> None:
@@ -222,6 +255,8 @@ def submit(context: dict[str, Any]) -> None:
         carrier_identity_reference=CARRIER_IDENTITY_REFERENCE,
         jurisdiction_reference=jurisdiction_map(context),
         carrier_rules_source=rules_source(context),
+        bindings_source=policy_bindings(context),
+        implementation_registry=context["policy_sources"].registry(),
         fields=NoticeFields(**context["fields"]),
         idempotency_key=context["idempotency_key"],
     )
@@ -239,9 +274,10 @@ def remember_the_original(context: dict[str, Any]) -> None:
 
 _CARRIER_RULES_FAULT = "carrier rules"
 _JURISDICTION_MAP_FAULT = "jurisdiction map"
+_POLICY_BINDING_FAULT = "policy binding"
 
 
-# The three fault phrases are character-identical in notice_intake.feature,
+# The fault phrases are character-identical in notice_intake.feature,
 # resolution.feature and idempotency.feature, so each binds one definition here
 # (docs/harness-findings.md, "Two locked specs sharing a Background can only
 # share step definitions through conftest.py"). They record which fault is in
@@ -262,6 +298,11 @@ def set_carrier_rules_fault(context: dict[str, Any]) -> None:
 @given("the jurisdiction map entry names no usable timezone")
 def set_jurisdiction_map_fault(context: dict[str, Any]) -> None:
     context["deployment_fault"] = _JURISDICTION_MAP_FAULT
+
+
+@given("the carrier's policy source binding cannot be resolved")
+def set_policy_binding_fault(context: dict[str, Any]) -> None:
+    context["deployment_fault"] = _POLICY_BINDING_FAULT
 
 
 def rules_source(context: dict[str, Any]) -> dict[str, Any]:
@@ -287,6 +328,17 @@ def jurisdiction_map(context: dict[str, Any]) -> dict[str, Any]:
     if context.get("deployment_fault") != _JURISDICTION_MAP_FAULT:
         return dict(JURISDICTION_REFERENCE)
     return {code: {} for code in JURISDICTION_REFERENCE}
+
+
+def policy_bindings(context: dict[str, Any]) -> Any:
+    """The port bindings this call is made with (item 7f). Under the binding
+    fault the administered carrier has no policy entry at all - a carrier this
+    deployment claims to administer and has not bound to any source, which is
+    the third row of notice_intake.feature's deployment-fault table."""
+    faulted = context.get("deployment_fault") == _POLICY_BINDING_FAULT
+    return context["policy_sources"].bindings_source(
+        unresolvable_for=context["carrier_code"] if faulted else None
+    )
 
 
 # Stated in the same words by notice_intake.feature and resolution.feature: one
@@ -364,6 +416,21 @@ def check_state(context: dict[str, Any], value: str) -> None:
 def check_blockers(context: dict[str, Any], value: str) -> None:
     actual = [(b.code, b.field) for b in context["response"].blockers]
     assert actual == parse_compact_blockers(value)
+
+
+# Stated in the same words by features/siu_separation.feature and
+# features/policy_match.feature (item 7f), so it moved here from the former's
+# module; the reading has been in support.py since item 5g, shared with
+# features/jurisdiction_selection.feature, whose module narrows it to the one
+# indicator that spec asserts.
+@then(
+    parsers.re(
+        r"^the (?P<indicator>late reporting|recent policy inception) indicator recorded for "
+        r"the notice is (?P<phrase>.*)$"
+    )
+)
+def check_recorded_indicator(context: dict[str, Any], indicator: str, phrase: str) -> None:
+    assert_recorded_indicator(context, indicator, phrase)
 
 
 # The term-history steps features/coverage_verification.feature (item 7a) and

@@ -20,7 +20,13 @@ Established from `src/claimgate/shell/` at `4a42d2f`, 2026-09-01. Treat as measu
 - **Resolution path.** `resolution.resolve_notice` opens one transaction and `_judge` runs
   `apply_domain_rules` inside it. The two paths have different transaction shapes.
 - **`Candidate.continuous_coverage_date` has no producer in the shell.** The recent-inception
-  indicator is `NOT_EVALUATED` on every real notice.
+  indicator is `NOT_EVALUATED` on every real notice. **Annotation 2026-09-07 (item 7f): no longer
+  true. `domain/continuous_coverage.py`'s `carry_onto_candidate` is the producer, called on the
+  intake path from `shell/notice_intake.py` with the derivation the policy port's history yields
+  and on the resolution path from `shell/resolution_evaluation.py` with the stored verification's
+  date; the indicator reads it. The intake-path bullet above still holds in shape - two
+  transactions, evaluation between them - with the policy search now running before the rules
+  in that gap (`shell/policy_match.py`).**
 - **`find_duplicates` has no caller in the shell.** Its callers are `tests/api/duplicates.py` and
   `tests/unit/test_duplicates.py`. `window_days` is already carrier configuration
   (`carrier_configuration.py`) and is loaded on every call and used by nothing.

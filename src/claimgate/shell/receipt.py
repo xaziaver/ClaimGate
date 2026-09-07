@@ -10,14 +10,20 @@ Refusals before the receipt persist differently. An unrecognized carrier_code
 persists nothing at all; the two that keep what arrived share one shape, in
 `_receipt_only`; a repeat carrying different content is a 409, in idempotency.py.
 
-The rules this module runs moved to rules.py in item 5e, because decision 2(a)
-wants one definition of "no blocker" rather than one per endpoint; the
-deployment faults are raised there and answered here (item 5i, faults.py).
-**Both are answered before any notice exists**, which is a measured fact about
-this order rather than a choice - the carrier's rules and the jurisdiction
-resolve above `_create_notice`, so neither fault leaves a notice at RECEIVED nor
-remembers the idempotency key, and a reporter's identical retry creates a notice
-rather than replaying one no rule ever ran over (idempotency.feature, Rule 6).
+No rule runs here. The domain rules the intake path applies live in rules.py
+since item 5e, because decision 2(a) wants one definition of "no blocker" rather
+than one per endpoint, and they run in notice_intake.py after this transaction
+commits. What this module does resolve is the configuration the decision will
+need - the carrier's rules and the jurisdiction (rules.py), and since item 7f
+the carrier's policy port (bindings.py) - whose deployment faults are raised
+there and answered here (item 5i, faults.py). **All three are answered before
+any notice exists**, which is a measured fact about this order rather than a
+choice: the lookups resolve above `_create_notice`, so no fault leaves a notice
+at RECEIVED or remembers the idempotency key, and a reporter's identical retry
+creates a notice rather than replaying one no rule ever ran over
+(idempotency.feature, Rule 6; notice_intake.feature's deployment-fault table).
+The port's clock is the submission instant (ASSUMPTIONS.md, 7f decision 9), so
+the shell still reads none of its own.
 """
 
 import uuid
@@ -25,6 +31,7 @@ from datetime import date
 
 from claimgate.domain.carrier_identity import resolve_carrier_identity
 from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction
+from claimgate.shell.bindings import resolve_policy_port
 from claimgate.shell.faults import DeploymentFaultError
 from claimgate.shell.idempotency import (
     answer_repeated_key,
@@ -33,6 +40,7 @@ from claimgate.shell.idempotency import (
     replay_after_losing_the_race,
 )
 from claimgate.shell.messages import AcceptedNotice, Submission, SubmitNoticeResponse
+from claimgate.shell.ports import PolicyPort
 from claimgate.shell.rules import (
     build_candidate,
     parse_loss_date,
@@ -78,19 +86,33 @@ def _first_submission(
     if parsed.value == "UNPARSEABLE":
         return _receipt_only(submission, status=400)
     try:
-        rules = resolve_rules(submission.carrier_code, submission.carrier_rules_source)
-        jurisdiction = resolve_jurisdiction(
-            submission.fields.property_state, submission.jurisdiction_reference
-        )
-        today = resolve_today(submission.submitted_at, jurisdiction)
+        rules, jurisdiction, today, policy_port = _configure(submission)
     except DeploymentFaultError as fault:
         return _receipt_only(submission, status=500, error=fault.code)
     # ABSENT is deliberately not refused here: it flows through as None and the
     # domain pends the notice on MISSING_REQUIRED_FIELD:loss_date (item 5h).
     candidate = build_candidate(submission.fields, parsed.loss_date)
     return _create_notice(
-        submission, candidate, jurisdiction, today, rules, expired_key=expired_key
+        submission, candidate, jurisdiction, today, rules, policy_port, expired_key=expired_key
     )
+
+
+def _configure(
+    submission: Submission,
+) -> tuple[CarrierRules, Jurisdiction | None, date | None, PolicyPort]:
+    """The configuration the decision will need, resolved before any notice
+    exists so a fault in any of it creates none (module docstring). The port's
+    clock is the submission instant, so the shell still reads none of its own."""
+    rules = resolve_rules(submission.carrier_code, submission.carrier_rules_source)
+    jurisdiction = resolve_jurisdiction(
+        submission.fields.property_state, submission.jurisdiction_reference
+    )
+    today = resolve_today(submission.submitted_at, jurisdiction)
+    policy_port = resolve_policy_port(
+        submission.carrier_code, submission.bindings_source,
+        submission.implementation_registry, lambda: submission.submitted_at,
+    )
+    return rules, jurisdiction, today, policy_port
 
 
 def _receipt_only(
@@ -110,7 +132,7 @@ def _receipt_only(
 
 def _create_notice(
     submission: Submission, candidate: Candidate, jurisdiction: Jurisdiction | None,
-    today: date | None, rules: CarrierRules, *, expired_key: bool,
+    today: date | None, rules: CarrierRules, policy_port: PolicyPort, *, expired_key: bool,
 ) -> AcceptedNotice:
     """Everything the receipt transaction writes: the payload record and the
     notice at RECEIVED with its audit entry, and the key row, which belongs
@@ -127,5 +149,5 @@ def _create_notice(
         )
     return AcceptedNotice(
         notice_id=notice_id, candidate=candidate, jurisdiction=jurisdiction,
-        today=today, rules=rules,
+        today=today, rules=rules, policy_port=policy_port,
     )

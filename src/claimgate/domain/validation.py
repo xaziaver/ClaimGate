@@ -10,6 +10,7 @@ absent loss date is additionally a blocker in its own right, which the
 determination is deliberately not the carrier of - see _check_loss_date_present.
 """
 
+from collections.abc import Sequence
 from datetime import date
 
 from claimgate.domain.models import (
@@ -18,6 +19,7 @@ from claimgate.domain.models import (
     ValidationBlocker,
     ValidationResult,
 )
+from claimgate.domain.policy_match import POLICY_AMBIGUOUS, POLICY_NOT_MATCHED
 
 RECOGNIZED_NOTICE_TYPES = frozenset({"INITIAL", "REOPENED", "SUPPLEMENTAL", "LOSS_ASSESSMENT"})
 RECOGNIZED_LOSS_TYPES = frozenset(
@@ -75,6 +77,13 @@ _CANONICAL_CODE_ORDER = (
     LOSS_TYPE_UNRECOGNIZED,
     LOSS_DATE_IN_FUTURE,
     MISSING_REQUIRED_FIELD,
+    # Item 7f: the policy search's two blockers (domain/policy_match.py) sort
+    # after every blocker about what arrived. The search runs over what arrived,
+    # and a reviewer reads the fields to correct before the match they are meant
+    # to change. No locked scenario carries both kinds on one row; the order is
+    # asserted by tests/unit/test_policy_match.py and by nothing else.
+    POLICY_NOT_MATCHED,
+    POLICY_AMBIGUOUS,
 )
 
 
@@ -98,13 +107,15 @@ def validate(
         + _check_loss_type(candidate)
         + _check_policy_number(candidate)
     )
-    return ValidationResult(
-        blockers=tuple(_canonical_order(blockers)), future_dated_loss=future_dated_loss
-    )
+    return ValidationResult(blockers=canonical_order(blockers), future_dated_loss=future_dated_loss)
 
 
-def _canonical_order(blockers: list[ValidationBlocker]) -> list[ValidationBlocker]:
-    return sorted(blockers, key=lambda b: (_CANONICAL_CODE_ORDER.index(b.code), b.field))
+def canonical_order(blockers: Sequence[ValidationBlocker]) -> tuple[ValidationBlocker, ...]:
+    """Every blocker a notice carries, whichever rule raised it, in the
+    declared order. Public since item 7f: shell/rules.py joins the policy
+    search's blockers to validate()'s through this one function, so the
+    notice's list has one order on both endpoint paths."""
+    return tuple(sorted(blockers, key=lambda b: (_CANONICAL_CODE_ORDER.index(b.code), b.field)))
 
 
 def _determine_future_dated_loss(

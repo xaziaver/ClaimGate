@@ -44,12 +44,25 @@ negatives read the whole serialized surface as text and cannot tell two codes of
 one spelling apart. Putting the determination on an ordinary surface would make
 a legitimate value indistinguishable from the leak those negatives exist to
 catch, and the pressure would then be on the negatives to get looser.
+
+**Item 7f put the coverage verification on the notice view, through an
+allow-list of its own.** PHASE3_DESIGN.md's "Persistence" makes both phase-3
+tables ordinary attributes, and the view names what features/policy_match.feature
+reads: the match and the matched reference, the identification's reason, the
+term verdict with the deciding term's dates, the continuous-coverage date with
+its reason, and the instant the answer reflects. It is a nested surface with a
+list of its own rather than nine more names on the notice's list, so the
+mechanism above - a field added to the type fails until someone decides - holds
+for the verification's fields exactly as it does for the notice's. Nothing on
+it can name an SIU indicator: the SIU event that reads the date is its own
+table, and the verification records the date, never the indicator.
 """
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import date
 from typing import Any
 
+from claimgate.shell.coverage_verifications import CoverageVerificationView
 from claimgate.shell.messages import NoticeView, ResolutionResponse, SubmitNoticeResponse
 from claimgate.shell.records import AuditEntry
 
@@ -62,6 +75,11 @@ RESOLUTION_RESPONSE_FIELDS = (
 )
 NOTICE_VIEW_FIELDS = (
     "notice_id", "state", "blockers", "severity", "queue", "jurisdiction_marking",
+    "coverage_verification",
+)
+COVERAGE_VERIFICATION_FIELDS = (
+    "policy_match", "matched_policy", "reason", "term_in_force", "deciding_term_effective",
+    "deciding_term_expiration", "continuous_coverage_date", "continuous_coverage_reason", "as_of",
 )
 AUDIT_ENTRY_FIELDS = (
     "notice_id", "carrier_code", "from_state", "to_state", "actor_id", "actor_type",
@@ -97,11 +115,14 @@ def _project(message: Any, allowed: Sequence[str]) -> dict[str, Any]:
 
 
 def _rendered(value: Any) -> Any:
-    """Blockers and instants are the only two field types on these surfaces that
-    are not already a string, a number, a bool or None."""
+    """Blockers, the nested verification, and dates and instants are the only
+    field types on these surfaces that are not already a string, a number, a
+    bool or None. A datetime is a date, so one test renders both."""
     if isinstance(value, tuple):
         return [{"code": blocker.code, "field": blocker.field} for blocker in value]
-    if isinstance(value, datetime):
+    if isinstance(value, CoverageVerificationView):
+        return _project(value, COVERAGE_VERIFICATION_FIELDS)
+    if isinstance(value, date):
         return value.isoformat()
     return value
 

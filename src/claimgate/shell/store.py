@@ -33,7 +33,8 @@ rather than here for the same reason. The notices table itself moved to
 notices.py in item 5g, which adds three columns to it. What is left here is the
 connection, the transaction boundary, and the composition each caller wants; the
 methods below that name a table delegate to its module so callers keep one
-store.
+store - except coverage_verifications.py (item 7f), which reads the connection
+through the property below because this module has no room for its delegators.
 
 No statement anywhere in this package updates or deletes an SIU indicator event
 (ASSUMPTIONS.md, item 5f decision 3); tests/shell/test_store.py reads the
@@ -89,6 +90,11 @@ class NoticeStore:
             self._connection.execute("ROLLBACK")
             raise
         self._connection.execute("COMMIT")
+
+    @property
+    def connection(self) -> sqlite3.Connection:
+        """Every write goes through this; a table module's rows join the open transaction."""
+        return self._connection
 
     def receive_notice(
         self,

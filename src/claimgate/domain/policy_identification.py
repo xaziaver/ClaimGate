@@ -12,9 +12,12 @@ field it checks. Nothing is checked for shape: a mistyped number beside a
 correct name and postal code is a search, not a pend, and whether a number
 finds a policy is the search's answer (items 7d and 7f).
 
-Not wired until item 7g, which also retires policy_number as a required field;
-until then the second arm cannot be reached at intake (PHASE3_DESIGN.md's
-2026-09-05 annotation). No decision changes here, so RULESET_VERSION does not.
+Called from the intake path since item 7f, where it decides whether the policy
+search runs at all (shell/policy_match.py). The blocker is not raised there
+until item 7g, which retires policy_number as a required field: until then a
+notice with no number pends on validation's own MISSING_REQUIRED_FIELD before
+this rule's answer could matter, and the second arm cannot be reached at intake
+(PHASE3_DESIGN.md's 2026-09-05 annotation).
 """
 
 from dataclasses import dataclass

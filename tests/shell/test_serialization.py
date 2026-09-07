@@ -9,12 +9,13 @@ decided, rather than by whichever of the two nobody updated.
 """
 
 from dataclasses import fields
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
 from claimgate.domain.models import ValidationBlocker
 from claimgate.shell import serialization
+from claimgate.shell.coverage_verifications import CoverageVerificationView
 from claimgate.shell.messages import NoticeView, ResolutionResponse, SubmitNoticeResponse
 from claimgate.shell.records import AuditEntry
 
@@ -22,10 +23,17 @@ _SURFACES = (
     (SubmitNoticeResponse, serialization.SUBMIT_NOTICE_RESPONSE_FIELDS),
     (ResolutionResponse, serialization.RESOLUTION_RESPONSE_FIELDS),
     (NoticeView, serialization.NOTICE_VIEW_FIELDS),
+    (CoverageVerificationView, serialization.COVERAGE_VERIFICATION_FIELDS),
     (AuditEntry, serialization.AUDIT_ENTRY_FIELDS),
 )
 _BLOCKER = ValidationBlocker(code="MISSING_REQUIRED_FIELD", field="policy_number")
 _RECEIVED_AT = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+_VERIFICATION = CoverageVerificationView(
+    policy_match="MATCHED", matched_policy="POL-88213", reason=None, term_in_force="IN_FORCE",
+    deciding_term_effective=date(2026, 1, 15), deciding_term_expiration=date(2027, 1, 15),
+    continuous_coverage_date=date(2026, 1, 15), continuous_coverage_reason=None,
+    as_of=_RECEIVED_AT,
+)
 
 
 @pytest.mark.parametrize(("message_type", "allowed"), _SURFACES)
@@ -57,12 +65,27 @@ def test_the_two_response_types_are_serialized_through_their_own_lists() -> None
 
 
 def test_a_serialized_notice_view_and_audit_entry_carry_their_own_lists_keys() -> None:
-    view = NoticeView("notice-1", "PENDED", (_BLOCKER,), None, None, None)
+    view = NoticeView("notice-1", "PENDED", (_BLOCKER,), None, None, None, None)
     entry = _entry()
 
     assert tuple(serialization.serialize_notice_view(view)) == serialization.NOTICE_VIEW_FIELDS
+    assert serialization.serialize_notice_view(view)["coverage_verification"] is None
     assert tuple(serialization.serialize_audit_entry(entry)) == serialization.AUDIT_ENTRY_FIELDS
     assert serialization.serialize_audit_entry(entry)["occurred_at"] == _RECEIVED_AT.isoformat()
+
+
+def test_the_coverage_verification_is_nested_through_its_own_list_with_dates_as_text() -> None:
+    # Item 7f: the nested surface is built from its own allow-list, so a field
+    # added to the view and not to the list stays off the wire, and every date
+    # on it renders the way an instant does.
+    view = NoticeView("notice-1", "TRIAGED", (), "standard", "standard", None, _VERIFICATION)
+
+    nested = serialization.serialize_notice_view(view)["coverage_verification"]
+
+    assert tuple(nested) == serialization.COVERAGE_VERIFICATION_FIELDS
+    assert nested["deciding_term_effective"] == "2026-01-15"
+    assert nested["as_of"] == _RECEIVED_AT.isoformat()
+    assert nested["matched_policy"] == "POL-88213"
 
 
 def _entry() -> AuditEntry:

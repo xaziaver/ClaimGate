@@ -4,86 +4,77 @@ Verification, not determination: this answers whether a term of the policy was
 in force on the loss date and records which term, and which status change,
 decided it. Whether the policy covers the loss is coverage determination, which
 is permanently out of scope (ROADMAP.md). The rule reads no configuration and
-no clock. The term history arrives as data - from the policy port once item 7f
-wires it, and until then from callers that build it themselves.
+no clock. The term history arrives as data - from the policy port on the intake
+path since item 7f (shell/policy_match.py), and from callers that build it
+themselves.
+
+The shapes every caller names are in coverage_types.py and re-exported here, and
+the mechanics of a term's in-force periods in term_periods.py; both were split
+out in item 7f, when this module had one line of headroom under the size gate
+and the deciding-term reading below needed more. No behaviour moved with the
+code.
+
+**Which term decides.** IN_FORCE cites the term in force. BOUNDARY_DAY cites the
+one term whose boundary the date is, and no term where two share it - a seamless
+renewal, a rewrite on the cancellation date - because the date belongs to both
+and citing one would be a silent pick (coverage_verification.feature, "A seamless
+renewal date is a boundary day"). NOT_IN_FORCE cites the term whose standing
+cancellation holds the date, with that cancellation; otherwise the term whose
+coverage most recently ended before the date - the expiration or the
+cancellation that left it uncovered - and no term where none had run by then.
+The BOUNDARY_DAY reading and the no-cancellation reading are item 7f's, asked for
+by features/policy_match.feature's term-verdict rows, which cite a single-term
+policy's term on its expiration date and after it; coverage_verification.feature
+states neither case and every citation it does state is unchanged. Recorded as a
+judgment in QUEUE.md's 7f implementation paragraph.
 """
 
-from dataclasses import dataclass
+from bisect import bisect_left
 from datetime import date
-from itertools import combinations
-from typing import Final, Literal
 
-IN_FORCE: Final = "IN_FORCE"
-NOT_IN_FORCE: Final = "NOT_IN_FORCE"
-BOUNDARY_DAY: Final = "BOUNDARY_DAY"
-NOT_EVALUATED: Final = "NOT_EVALUATED"
-TermInForceValue = Literal["IN_FORCE", "NOT_IN_FORCE", "BOUNDARY_DAY", "NOT_EVALUATED"]
+from claimgate.domain.coverage_types import (
+    BOUNDARY_DAY,
+    CANCELLATION,
+    IN_FORCE,
+    NOT_EVALUATED,
+    NOT_IN_FORCE,
+    REINSTATEMENT,
+    PolicyTerm,
+    PriorCoverage,
+    StatusChangeKind,
+    TermHistory,
+    TermInForceDetermination,
+    TermInForceValue,
+    TermStatusChange,
+)
+from claimgate.domain.term_periods import Coverage, coverages_of
 
-CANCELLATION: Final = "CANCELLATION"
-REINSTATEMENT: Final = "REINSTATEMENT"
-StatusChangeKind = Literal["CANCELLATION", "REINSTATEMENT"]
-
-
-@dataclass(frozen=True)
-class TermStatusChange:
-    kind: StatusChangeKind
-    effective: date
-
-
-@dataclass(frozen=True)
-class PolicyTerm:
-    effective: date
-    expiration: date
-    # In any order; the rule sorts by effective date. A reinstatement dated on
-    # the cancellation it follows is retroactive: it rescinds the cancellation
-    # and the lapse never existed. One dated later leaves a lapse between the
-    # two. That is how a policy administration system records the two kinds of
-    # reinstatement - one transaction shape, told apart by its date.
-    status_changes: tuple[TermStatusChange, ...] = ()
-
-
-@dataclass(frozen=True)
-class PriorCoverage:
-    # Coverage on the risk by a prior carrier, as the source records it: a data
-    # point for the continuous-coverage rule (item 7b), never a term in force here.
-    effective: date
-    ending: date
-
-
-@dataclass(frozen=True)
-class TermHistory:
-    # The policy source's answer, in the shape every port answer takes
-    # (PHASE3_DESIGN.md): reason is set only when the history was not obtained,
-    # terms only when it was.
-    value: Literal["OBTAINED", "NOT_OBTAINED"]
-    terms: tuple[PolicyTerm, ...] = ()
-    reason: str | None = None
-    # Item 7b, read by the continuous-coverage rule only. history_from is the
-    # source's horizon - every term in force on or after it is supplied, earlier
-    # ones may be missing; None asserts a complete history.
-    history_from: date | None = None
-    prior_coverage: PriorCoverage | None = None
-
-
-@dataclass(frozen=True)
-class TermInForceDetermination:
-    # term is the deciding term: the one in force for IN_FORCE, the one whose
-    # cancellation ended coverage for NOT_IN_FORCE, and None where no term
-    # decided - a loss outside every term, a boundary day, or NOT_EVALUATED.
-    # cancellation_effective is set only when a cancellation produced the
-    # value; reason only for NOT_EVALUATED, and it is the source's reason.
-    value: TermInForceValue
-    term: PolicyTerm | None = None
-    cancellation_effective: date | None = None
-    reason: str | None = None
+__all__ = [
+    "BOUNDARY_DAY",
+    "CANCELLATION",
+    "IN_FORCE",
+    "NOT_EVALUATED",
+    "NOT_IN_FORCE",
+    "REINSTATEMENT",
+    "PolicyTerm",
+    "PriorCoverage",
+    "StatusChangeKind",
+    "TermHistory",
+    "TermInForceDetermination",
+    "TermInForceValue",
+    "TermStatusChange",
+    "determine_term_in_force",
+    "in_force_periods",
+]
 
 
 def determine_term_in_force(history: TermHistory, loss_date: date) -> TermInForceDetermination:
     if history.value == "NOT_OBTAINED":
         return _not_evaluated(history)
-    coverages = _coverages(history)
-    if any(coverage.position(loss_date) == "BOUNDARY" for coverage in coverages):
-        return TermInForceDetermination(value=BOUNDARY_DAY)
+    coverages = coverages_of(history)
+    bounding = [c.term for c in coverages if c.position(loss_date) == "BOUNDARY"]
+    if bounding:
+        return TermInForceDetermination(value=BOUNDARY_DAY, term=_only(bounding))
     covering = _covering(coverages, loss_date)
     if covering is not None:
         return TermInForceDetermination(value=IN_FORCE, term=covering.term)
@@ -94,34 +85,18 @@ def in_force_periods(history: TermHistory) -> list[tuple[date, date]]:
     """Every period a term was actually in force, earliest first, for the
     continuous-coverage rule. Terms only, never prior-carrier coverage; a
     malformed history raises exactly as determine_term_in_force does."""
-    return sorted(period for coverage in _coverages(history) for period in coverage.periods)
+    return sorted(period for coverage in coverages_of(history) for period in coverage.periods)
 
 
-def _coverages(history: TermHistory) -> list["_Coverage"]:
-    coverages = [_coverage_of(term) for term in history.terms]
-    _require_disjoint(coverages)
-    return coverages
+def _only(terms: list[PolicyTerm]) -> PolicyTerm | None:
+    # One term's boundary is that term's; a date two terms share belongs to
+    # both, and neither is cited over the other.
+    return terms[0] if len(terms) == 1 else None
 
 
-def _require_disjoint(coverages: list["_Coverage"]) -> None:
-    # Two terms of one policy in force on the same day is malformed source
-    # data, not a history to answer: neither term could be cited over the
-    # other. Periods that touch at a date - a seamless renewal, a rewrite
-    # effective on the cancellation date - are disjoint; only a day strictly
-    # inside both counts.
-    periods = [(period, coverage.term) for coverage in coverages for period in coverage.periods]
-    for ((start1, end1), term1), ((start2, end2), term2) in combinations(periods, 2):
-        if max(start1, start2) < min(end1, end2):
-            first, second = sorted((term1.effective, term2.effective))
-            raise ValueError(
-                f"term history is inconsistent: terms effective {first} and {second}"
-                " were both in force on the same day"
-            )
-
-
-def _covering(coverages: list["_Coverage"], loss_date: date) -> "_Coverage | None":
-    # At most one once _require_disjoint has held: two terms both strictly
-    # inside a period would be two periods sharing a day.
+def _covering(coverages: list[Coverage], loss_date: date) -> Coverage | None:
+    # At most one once the history's periods are disjoint (term_periods.py):
+    # two terms both strictly inside a period would be two periods sharing a day.
     return next((c for c in coverages if c.position(loss_date) == "COVERED"), None)
 
 
@@ -135,14 +110,15 @@ def _not_evaluated(history: TermHistory) -> TermInForceDetermination:
     return TermInForceDetermination(value=NOT_EVALUATED, reason=history.reason)
 
 
-def _not_in_force(coverages: list["_Coverage"], loss_date: date) -> TermInForceDetermination:
+def _not_in_force(coverages: list[Coverage], loss_date: date) -> TermInForceDetermination:
     # The loss date is strictly inside no period of any term. If it falls
     # within a term's dates after a cancellation that stands, that cancellation
     # ended the coverage and is cited - the latest such one, whose lapse the
-    # date is in. Otherwise no term ran on that date and nothing is cited.
+    # date is in. Otherwise no term ran on that date, and the one whose
+    # coverage most recently ended before it is cited, with no status change.
     standing = _standing_cancellations(coverages, loss_date)
     if not standing:
-        return TermInForceDetermination(value=NOT_IN_FORCE)
+        return TermInForceDetermination(value=NOT_IN_FORCE, term=_last_ended(coverages, loss_date))
     latest = max(cancelled for cancelled, _ in standing)
     terms = [term for cancelled, term in standing if cancelled == latest]
     if len(terms) > 1:
@@ -157,8 +133,22 @@ def _not_in_force(coverages: list["_Coverage"], loss_date: date) -> TermInForceD
     )
 
 
+def _last_ended(coverages: list[Coverage], loss_date: date) -> PolicyTerm | None:
+    """The term whose coverage most recently ended before the loss date, or None
+    where none had run by then. Reached only for a date strictly outside every
+    period, so no period ends on it: the split is found by bisection rather than
+    by a comparison whose equality case nothing could reach."""
+    ended = sorted(
+        (end, ordinal, coverage.term)
+        for ordinal, coverage in enumerate(coverages)
+        for _, end in coverage.periods
+    )
+    before = bisect_left([end for end, _, _ in ended], loss_date)
+    return None if before == 0 else ended[before - 1][2]
+
+
 def _standing_cancellations(
-    coverages: list["_Coverage"], loss_date: date
+    coverages: list[Coverage], loss_date: date
 ) -> list[tuple[date, PolicyTerm]]:
     standing: list[tuple[date, PolicyTerm]] = []
     for coverage in coverages:
@@ -166,84 +156,3 @@ def _standing_cancellations(
         if cancelled is not None:
             standing.append((cancelled, coverage.term))
     return standing
-
-
-@dataclass(frozen=True)
-class _Coverage:
-    """One term as the periods it was actually in force. A period's first and
-    last dates are boundaries - coverage incepts and ends at 12:01 a.m., and
-    intake holds a date, not an instant - and a date strictly inside one is
-    covered. A term's nominal expiration after a mid-term cancellation, and its
-    effective date under a cancellation flat from inception, end no period and
-    so are not boundaries: nothing turns on the loss time on a date the term
-    did not run to, which is the spec's own precedence for a rescinded date."""
-
-    term: PolicyTerm
-    periods: tuple[tuple[date, date], ...]
-    cancellations: tuple[date, ...]
-
-    def position(self, loss_date: date) -> Literal["BOUNDARY", "COVERED", "UNCOVERED"]:
-        for start, end in self.periods:
-            if start <= loss_date <= end:
-                return "BOUNDARY" if loss_date in (start, end) else "COVERED"
-        return "UNCOVERED"
-
-    def lapse_cancellation(self, loss_date: date) -> date | None:
-        """The standing cancellation whose lapse holds the loss date, or None."""
-        if not self.term.effective <= loss_date <= self.term.expiration:
-            return None
-        return max((c for c in self.cancellations if c <= loss_date), default=None)
-
-
-def _coverage_of(term: PolicyTerm) -> _Coverage:
-    if term.expiration <= term.effective:
-        raise ValueError(f"term effective {term.effective} expires on or before it takes effect")
-    periods: list[tuple[date, date]] = []
-    cancellations: list[date] = []
-    in_force_from: date | None = term.effective
-    for change in _ordered_changes(term):
-        in_force_from = _apply_change(change, in_force_from, periods, cancellations)
-    if in_force_from is not None:
-        periods.append((in_force_from, term.expiration))
-    # A period with no days in it - cancelled flat on the effective date - is
-    # dropped: it covers nothing and bounds nothing.
-    return _Coverage(term, tuple(p for p in periods if p[0] < p[1]), tuple(cancellations))
-
-
-def _ordered_changes(term: PolicyTerm) -> list[TermStatusChange]:
-    for change in term.status_changes:
-        if not term.effective <= change.effective <= term.expiration:
-            raise ValueError(
-                f"{change.kind.lower()} effective {change.effective} is dated outside its term"
-                f" {term.effective} to {term.expiration}"
-            )
-    # A cancellation and a reinstatement on the same date read in that order:
-    # the reinstatement rescinds the cancellation. The other order would be a
-    # reinstatement of nothing, which _apply_change refuses.
-    return sorted(term.status_changes, key=lambda c: (c.effective, c.kind == REINSTATEMENT))
-
-
-def _apply_change(
-    change: TermStatusChange,
-    in_force_from: date | None,
-    periods: list[tuple[date, date]],
-    cancellations: list[date],
-) -> date | None:
-    """The date coverage has run from once this change applies; None while cancelled."""
-    if change.kind == CANCELLATION:
-        if in_force_from is None:
-            raise ValueError(
-                f"cancellation effective {change.effective} on a term already cancelled"
-            )
-        periods.append((in_force_from, change.effective))
-        cancellations.append(change.effective)
-        return None
-    if in_force_from is not None:
-        raise ValueError(
-            f"reinstatement effective {change.effective} with no cancellation to reinstate"
-        )
-    if change.effective == cancellations[-1]:
-        # Retroactive: the cancellation is rescinded and coverage was continuous.
-        cancellations.pop()
-        return periods.pop()[0]
-    return change.effective

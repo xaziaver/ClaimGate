@@ -48,8 +48,9 @@ from claimgate.domain.jurisdiction import (
     select_jurisdiction,
 )
 from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction
+from claimgate.domain.policy_match import PolicyMatch, match_blockers
 from claimgate.domain.triage import triage_and_route
-from claimgate.domain.validation import validate
+from claimgate.domain.validation import canonical_order, validate
 from claimgate.shell.faults import (
     CARRIER_RULES_UNRESOLVABLE,
     JURISDICTION_MAP_UNUSABLE,
@@ -146,19 +147,23 @@ def resolve_today(instant: datetime, jurisdiction: Jurisdiction | None) -> date 
 
 def apply_domain_rules(
     candidate: Candidate, jurisdiction: Jurisdiction | None, today: date | None,
-    rules: CarrierRules,
+    rules: CarrierRules, policy_match: PolicyMatch | None,
 ) -> Decision:
     """One notice's whole decision. The resolution path calls this over a merged
     current view and intake calls it over a submission; both get the same answer
-    to "is anything missing" by construction."""
+    to "is anything missing" by construction. The policy match is the search's
+    answer as the domain reads it (item 7f): intake hands in what its search
+    found, a resolution what the stored verification says, and None means no
+    search has run over this notice at all."""
     result = validate(
         candidate,
         today,
         claimant_name_required=rules.claimant_name_required,
         claimant_contact_required=rules.claimant_contact_required,
     )
+    blockers = canonical_order([*result.blockers, *match_blockers(policy_match)])
     marking, determination = marking_for(jurisdiction), result.future_dated_loss
-    if result.blockers:
-        return Decision("PENDED", result.blockers, None, None, marking, determination)
+    if blockers:
+        return Decision("PENDED", blockers, None, None, marking, determination)
     outcome = triage_and_route(candidate)
     return Decision("TRIAGED", (), outcome.severity, outcome.queue, marking, determination)

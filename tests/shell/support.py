@@ -14,6 +14,7 @@ from typing import Any
 from claimgate.domain.carrier_identity import CARRIER_IDENTITY_REFERENCE
 from claimgate.domain.jurisdiction import JURISDICTION_REFERENCE
 from claimgate.shell.messages import NoticeFields, ResolutionResponse, SubmitNoticeResponse
+from tests.api.policy_match import PolicySources, bound_sources
 
 # The two configuration sources every call names explicitly (item 5g). Bound
 # here rather than defaulted inside the shell so a test wanting a different
@@ -46,6 +47,22 @@ PENDING_FIELDS = NoticeFields(
     notice_type="INITIAL", property_state="FL",
 )
 DEFAULT_REVIEWER = "adjuster-4471"
+# Every carrier a shell test submits under and expects a binding for; ZZZZ is
+# refused by the identity reference before any binding is read.
+BOUND_CARRIERS = ("AAAA", "WXYZ")
+
+
+def unavailable_sources() -> PolicySources:
+    """What a submission is bound to unless a test says otherwise (item 7f):
+    every carrier has a source and every call to it fails, so the search is
+    NOT_EVALUATED, no coverage date reaches the candidate, and every outcome
+    these tests asserted before the search existed still holds - the same
+    statement five locked specs make in their Backgrounds. A test about the
+    search stands up bound_sources of its own and gives it a policy to find."""
+    sources = bound_sources(BOUND_CARRIERS)
+    for carrier in BOUND_CARRIERS:
+        sources.system(carrier).raise_on_every_call()
+    return sources
 
 Submitter = Callable[..., SubmitNoticeResponse]
 Resolver = Callable[..., ResolutionResponse]

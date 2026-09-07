@@ -26,9 +26,11 @@ discharged long before. See notice_intake.py and resolution.py.
 
 PORT_BINDING_UNRESOLVABLE is item 7e's: a carrier's port bindings (bindings.py)
 name no implementation this deployment holds, or omit a budget or a history
-horizon (PHASE3_DESIGN.md, "Configuration"). Nothing on either endpoint path
-resolves a binding until item 7f wires the ports, so neither endpoint answers
-this code yet; when 7f does, the catch below is what answers it, unchanged.
+horizon (PHASE3_DESIGN.md, "Configuration"). Since item 7f the intake path
+resolves the carrier's policy binding beside its rules and jurisdiction, before
+any notice exists, and answers this code the way it answers the other two -
+notice_intake.feature's deployment-fault table has the row. The resolution path
+resolves no binding until item 7g re-searches on that path.
 """
 
 CARRIER_RULES_UNRESOLVABLE = "CARRIER_RULES_UNRESOLVABLE"

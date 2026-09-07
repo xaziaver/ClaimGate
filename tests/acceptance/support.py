@@ -54,13 +54,15 @@ def parse_compact_blockers(value: str) -> list[tuple[str, str]]:
     """The CODE:field;CODE:field spelling three specs use for a blocker list, as
     ordered pairs. An empty cell is an empty list, not "any blockers": every
     caller compares with == so that a mutated row producing two blockers where
-    one is asserted is caught."""
+    one is asserted is caught. A bare CODE is a blocker with no field - the
+    policy search's two (item 7f), which failed on whatever identifiers the
+    notice carried and name none of them."""
     value = value.strip()
     if not value:
         return []
     pairs: list[tuple[str, str]] = []
     for pair in value.split(";"):
-        code, field = pair.split(":", 1)
+        code, _, field = pair.partition(":")
         pairs.append((code, field))
     return pairs
 
@@ -70,10 +72,10 @@ def assert_recorded_indicator(context: dict[str, Any], indicator: str, phrase: s
     indicator is ..." reads what the domain returned and this reads what the
     trail kept. Two subjects, two phrases, on purpose.
 
-    Shared by features/siu_separation.feature and features/jurisdiction_selection.
-    feature, which state the phrase in the same words. It is here rather than in
-    conftest.py because both files must keep their own step definitions - see
-    assert_notice_state above - and pytest-bdd binds those per module.
+    Shared by features/siu_separation.feature, features/jurisdiction_selection.
+    feature and, since item 7f, features/policy_match.feature. The step
+    definition is conftest.py's since 7f; jurisdiction_selection's module keeps a
+    narrower one of its own, and the reading stays here so both bind one.
 
     The expected value is compared case-insensitively, and only the value: the
     acceptance engine substitutes an upper-case TRUE with a lower-case `true`

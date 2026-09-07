@@ -35,11 +35,26 @@ nothing. The rules that evaluation applies are the ones _judge resolved for this
 transaction, carried out of it rather than read a second time (decision 6), and
 the interval it measures is counted from the notice's own receipt instant rather
 than from this resolution's (decision 2): a pend does not make the reporter late.
+
+**The policy match is re-asserted from the stored verification, not searched
+again** (item 7f; ASSUMPTIONS.md, 7f decision 6). _judge reads the notice's
+latest coverage verification (coverage_verifications.py) and hands the rules the
+match it recorded, so POLICY_NOT_MATCHED and POLICY_AMBIGUOUS persist through a
+resolution that corrects an unrelated field, and the continuous-coverage date it
+recorded travels onto the candidate through the same producer intake uses, so
+the SIU evaluation a release owes reads the date the term history yielded. No
+port is called on this path and no verification row is written: nothing new was
+verified. Item 7g re-searches on the merged identifiers, which is what will
+clear such a pend once a reviewer has corrected the policy number.
 """
 
 from typing import Any
 
-from claimgate.shell import rules, siu
+from claimgate.domain.continuous_coverage import carry_onto_candidate
+from claimgate.domain.models import Candidate
+from claimgate.domain.policy_match import PolicyMatch
+from claimgate.shell import coverage_verifications, rules, siu
+from claimgate.shell.coverage_verifications import CoverageVerification
 from claimgate.shell.messages import (
     Decision,
     Judgement,
@@ -107,10 +122,8 @@ def _judge(resolution: Resolution, record: NoticeRecord) -> Judgement:
     outcome because the SIU evaluation this transaction may owe has to use these
     and not a second reading of any of them."""
     view = merged_view(resolution.store, record.notice_id)
-    # The parse cannot fail here and there is no branch for it: every arrival in
-    # the sequence cleared a schema boundary that answers an unparseable loss
-    # date 400, so the merged view carries a date or states none (decision (e)).
-    candidate = rules.build_candidate(view, rules.parse_loss_date(view.loss_date).loss_date)
+    verification = coverage_verifications.latest(resolution.store, record.notice_id)
+    candidate = _candidate_of(view, verification)
     carrier_rules = rules.resolve_rules(record.carrier_code, resolution.carrier_rules_source)
     jurisdiction = rules.resolve_jurisdiction(
         view.property_state, resolution.jurisdiction_reference
@@ -120,8 +133,28 @@ def _judge(resolution: Resolution, record: NoticeRecord) -> Judgement:
         jurisdiction,
         rules.resolve_today(resolution.resolved_at, jurisdiction),
         carrier_rules,
+        _match_of(verification),
     )
     return Judgement(decision, candidate, carrier_rules, jurisdiction)
+
+
+def _candidate_of(view: NoticeFields, verification: CoverageVerification | None) -> Candidate:
+    """The merged view as a candidate, carrying the continuous-coverage date the
+    stored verification recorded where there is one. The parse cannot fail here
+    and there is no branch for it: every arrival in the sequence cleared a
+    schema boundary that answers an unparseable loss date 400, so the merged
+    view carries a date or states none (decision (e))."""
+    candidate = rules.build_candidate(view, rules.parse_loss_date(view.loss_date).loss_date)
+    if verification is None:
+        return candidate
+    return carry_onto_candidate(candidate, coverage_verifications.derivation_of(verification))
+
+
+def _match_of(verification: CoverageVerification | None) -> PolicyMatch | None:
+    """None for a notice no search has run over - one with nothing searchable
+    on it, or from before the search existed - which is not a match that found
+    nothing."""
+    return None if verification is None else coverage_verifications.match_of(verification)
 
 
 def merged_view(store: NoticeStore, notice_id: str) -> NoticeFields:

@@ -24,10 +24,12 @@ whole transaction rolls back and the notice keeps the records and the trail it
 had (ruling 1). Nothing asserts the order directly - each rule asserts its own
 answer, and reordering them would answer one case with another's status.
 
-Out of scope, deliberately: the two instants above are recorded and nothing
-whatever is computed from them, which is PHASE2_DESIGN.md's "record precisely,
-compute nothing" - what the Fla. Stat. 627.70131(8)(b) interval means is a
-downstream legal determination and no phase-2 code goes near it.
+Out of scope, deliberately: the pend instant and the instant of the resolution
+that released the notice are recorded (resolution_evaluation.py writes the
+second) and nothing whatever is computed from them, which is PHASE2_DESIGN.md's
+"record precisely, compute nothing" - what the Fla. Stat. 627.70131(8)(b)
+interval means is a downstream legal determination and no phase-2 code goes
+near it.
 Duplicate-candidate detection is untouched; and there is no
 idempotency key on this endpoint - PHASE2_DESIGN.md scopes the header to
 POST /notices, so a network retry of a resolution that already succeeded meets a

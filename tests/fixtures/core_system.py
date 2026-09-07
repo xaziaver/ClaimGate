@@ -4,9 +4,12 @@ live-query port implementations to query.
 This is the source live_query_source.py's protocols describe, answering in its
 wire shape from records a test puts in: policies with a reference, a number,
 named insureds, a risk address and a term history; claims per reference. It is
-also where a test makes the source misbehave, once, on the next call from
-either side - sleep for a while, raise, answer a shape that is not the wire
-shape - and where a source with no insured-name search is stood up. Lives
+also where a test makes the source misbehave - sleep for a while, raise, answer
+a shape that is not the wire shape - once, on the next call from either side,
+or on every call for as long as the source lives, which is what a scenario
+whose Background declares the source unavailable needs across several
+submissions (item 7f); and where a source with no insured-name search is stood
+up. Lives
 under tests/ because no deployment ships it; item 7i's acceptance runs reach it
 from tests/api/ as `tests.fixtures.core_system`, the way the shell tests do.
 
@@ -65,6 +68,7 @@ class InProcessCoreSystem:
         self._policies: dict[str, dict[str, Any]] = {}
         self._claims: dict[str, list[dict[str, Any]]] = {}
         self._next_call: tuple[str, Any] | None = None
+        self._every_call: tuple[str, Any] | None = None
         self._name_search = True
 
     # -- what a test puts in -------------------------------------------------
@@ -107,6 +111,17 @@ class InProcessCoreSystem:
     def without_name_search(self) -> None:
         self._name_search = False
 
+    # -- and on every call, for as long as it lives --------------------------
+
+    def sleep_on_every_call(self, seconds: float) -> None:
+        self._every_call = ("sleep", seconds)
+
+    def raise_on_every_call(self, error: Exception | None = None) -> None:
+        self._every_call = ("raise", error if error is not None else RuntimeError("source failure"))
+
+    def answer_malformed_on_every_call(self) -> None:
+        self._every_call = ("malformed", None)
+
     # -- the source protocols ---------------------------------------------------
 
     def search(
@@ -140,6 +155,8 @@ class InProcessCoreSystem:
 
     def _misbehave(self) -> object | None:
         pending, self._next_call = self._next_call, None
+        if pending is None:
+            pending = self._every_call
         if pending is None:
             return None
         kind, argument = pending
