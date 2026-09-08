@@ -199,6 +199,9 @@ Before any work, orient and verify. Report before acting.
    `.gauntlet/events.jsonl` and report its verdict, duration and run id. A passing
    `stop-check` prints nothing, so the previous turn's outcome is confirmed from
    that line, never from silence.
+   The stop-check is skipped when the gated tree is byte-identical to the last
+   green run's, and a skip prints a line naming that run; a documents-only turn
+   therefore ends in seconds, and that line is then the turn's outcome.
 5. For any item inside a phase, check each claim in the phase design document's
    "what the code actually does today" section against source before item work,
    and annotate stale claims in place, dated, in the documentation commit that
@@ -217,6 +220,9 @@ Before any work, orient and verify. Report before acting.
   green run (2026-09-08) and growing, under a 3600 s hook budget. Run `gauntlet check`
   in the background, never under a foreground timeout; the current pair is in
   `QUEUE.md`'s status paragraph. (Corrected 2026-09-07 from "over 300s".)
+  The hook runs `.claude/hooks/stop-check.sh`, which skips the stop-check when the
+  gated tree is byte-identical to the last green run's and prints a line naming
+  that run, so a documents-only turn ends in seconds.
 - `gauntlet check` signals pass/fail by exit status, and the piped form returns
   tail's status. Read the printed verdict, never `$?`.
 - A concurrent `gauntlet check` exits 0 having executed zero gates. Never relaunch

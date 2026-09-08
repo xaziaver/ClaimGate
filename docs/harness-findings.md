@@ -738,6 +738,39 @@ at today's count — so the wall time is rows × mutants and grows with the squa
 which is why 8 % more mutants at 7f cost 44 % more time. `QUEUE.md`'s 7g status paragraph carries
 the per-spec table.
 
+**Seventh entry, 2026-09-08: four documents-only stop-checks this phase, 42–53 minutes each, and
+a wrapper that now skips them.** Each of these turns changed nothing any gate measures, and each
+paid a full acceptance run: `4ed3afa` (7f close-out) fired run `20260907T223153-123173`, 2556.762 s;
+`da76610` (7g documents) fired `20260908T094021-295714`, 2662.549 s; `813a677` (7g documents)
+fired `20260908T133307-609373`, 3149.067 s; `a86b59d` (7g close-out) fired `20260908T211907-15573`,
+2660.227 s. The Stop hook now runs `.claude/hooks/stop-check.sh` instead of `gauntlet stop-check`
+directly. The wrapper hashes the gated tree — the sha256 over the `sha256sum` lines of every
+tracked and untracked, non-ignored file under `src`, `tests`, `features`, `mutants`,
+`gauntlet.toml`, `gauntlet.lock.json`, `pyproject.toml`, `.claude/settings.json` and
+`.claude/hooks`, sorted under `LC_ALL=C` — and compares it with the hash in
+`.gauntlet/last-green-tree`, saved beside the run id and `at` of the last green stop-check's
+acceptance `gate.finished` line. Equal means one printed line naming that run and exit 0; anything
+else means `gauntlet stop-check --max-attempts 1` with the hook payload passed through on stdin,
+and the wrapper exits with its code. Two properties keep this safe. First, any byte in a gated or
+config path is a full run: a file added, edited, renamed or deleted under those paths changes the
+hash, and a deleted tracked file goes further, making `sha256sum` fail under `pipefail` so no
+hash exists at all. Second, every failure of the wrapper is a full run, never a skip: no
+repository root, no hash, a missing record, a corrupt record, a record whose hash matches but
+whose run id or time is blank. The record is written only after a stop-check that exited 0 *and*
+whose run — the run id on the newest acceptance `gate.finished` line — has no `gate.finished`
+line with `"passed": false`, finished as many distinct gates as the previous record's run
+(eleven on the first run), and is newer than the recorded run id, because `stop-check --help`
+says it also exits 0 with a systemMessage once its retry cap is reached. The first version of
+this wrapper checked only that the newest acceptance line passed, and the very first stop-check
+under it, run `20260908T225412-163184`, protect red and the other ten gates green, was recorded
+as green; the record was pasted, deleted, and the condition widened to the whole run. Hand-tested 2026-09-08 with `GAUNTLET_STOP_DRY=1`: no record, a byte in
+`src/`, a corrupt record, and a matching hash with blank run fields each run; a matching record
+and a byte in `QUEUE.md` only each skip. In a scratch repository with a fake `gauntlet` on PATH:
+exit 2 writes nothing, exit 0 with no new acceptance line writes nothing, exit 0 with a new
+passing line writes the record, the next call skips naming that run, and deleting a tracked file
+runs. One consequence for the pair `CLAUDE.md` carries: the hook budget now bounds only turns
+that touched a gated path, and the four runs above are the ones it stops paying for.
+
 ### `scope = "changed"` in `gauntlet.toml` never reaches the mutation gate — but not because `--changed` goes unused
 
 `--changed` is passed constantly: `.claude/settings.json`'s `PostToolUse` hook
