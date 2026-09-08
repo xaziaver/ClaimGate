@@ -106,7 +106,7 @@ Feature: Notice intake
       Examples:
         | policy_number | response | state   | blockers                             | severity_and_queue |
         | HO-1234567    | 201      | TRIAGED |                                      | standard, standard |
-        | absent        | 201      | PENDED  | MISSING_REQUIRED_FIELD:policy_number | not yet assigned   |
+        | absent        | 201      | PENDED  | POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,insured_name,risk_postal_code | not yet assigned   |
 
   Rule: The notice's receipt is recorded before any rule runs, and does not depend on what those rules find
 

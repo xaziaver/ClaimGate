@@ -87,7 +87,10 @@ this list before proposing anything that would violate one.
   `main` only when its spec is locked, its implementation is complete, and `gauntlet check` is
   green. This follows directly from the commit-granularity rule above, not a separate policy.
 - **Working branches stay a superset of main.** Documentation commits land on main; item work
-  stays on its branch. After any commit to main, **push `main` first**, then merge it into the
+  stays on its branch. **Corrected 2026-09-08: documents for an item go on the item's branch, and
+  `main` moves only by the human's merge after a verified run.** `da76610`, item 7g's opening
+  paragraph, went to `main` directly and stays where it is; it is the instance, not the rule.
+  After any commit to main, **push `main` first**, then merge it into the
   open branch so the branch remains a superset. A checked-out working branch should always show
   current documentation. Pushing first is not housekeeping: the superset check below compares
   against `origin/main`, so an unpushed commit on local `main` makes that check pass while the

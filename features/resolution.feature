@@ -413,7 +413,7 @@ Feature: Resolving a pended notice
         | supplied_policy_number | supplied_notice_type | response | state   | blockers                             | outcome | actor | entry_blockers                       |
         | HO-7654321             | SUPPLEMENTAL         | 200      | TRIAGED |                                      | APPLIED | USER  |                                      |
         | HO-7654321             | SUPPLEMENT           | 422      | PENDED  | NOTICE_TYPE_UNRECOGNIZED:notice_type | REFUSED | USER  | NOTICE_TYPE_UNRECOGNIZED:notice_type |
-        | absent                 | SUPPLEMENTAL         | 422      | PENDED  | MISSING_REQUIRED_FIELD:policy_number | REFUSED | USER  | MISSING_REQUIRED_FIELD:policy_number |
+        | absent                 | SUPPLEMENTAL         | 422      | PENDED  | POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,insured_name,risk_postal_code | REFUSED | USER  | POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,insured_name,risk_postal_code |
 
   Rule: A reviewer may correct a field the notice already had, not only supply one it was missing
 
