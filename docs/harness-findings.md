@@ -757,9 +757,13 @@ hash, and a deleted tracked file goes further, making `sha256sum` fail under `pi
 hash exists at all. Second, every failure of the wrapper is a full run, never a skip: no
 repository root, no hash, a missing record, a corrupt record, a record whose hash matches but
 whose run id or time is blank. The record is written only after a stop-check that exited 0 *and*
-left a new, passing acceptance line in `events.jsonl`, because `stop-check --help` says it also
-exits 0 with a systemMessage once its retry cap is reached; exit 0 alone would let a red run be
-remembered as green. Hand-tested 2026-09-08 with `GAUNTLET_STOP_DRY=1`: no record, a byte in
+whose run — the run id on the newest acceptance `gate.finished` line — has no `gate.finished`
+line with `"passed": false`, finished as many distinct gates as the previous record's run
+(eleven on the first run), and is newer than the recorded run id, because `stop-check --help`
+says it also exits 0 with a systemMessage once its retry cap is reached. The first version of
+this wrapper checked only that the newest acceptance line passed, and the very first stop-check
+under it, run `20260908T225412-163184`, protect red and the other ten gates green, was recorded
+as green; the record was pasted, deleted, and the condition widened to the whole run. Hand-tested 2026-09-08 with `GAUNTLET_STOP_DRY=1`: no record, a byte in
 `src/`, a corrupt record, and a matching hash with blank run fields each run; a matching record
 and a byte in `QUEUE.md` only each skip. In a scratch repository with a fake `gauntlet` on PATH:
 exit 2 writes nothing, exit 0 with no new acceptance line writes nothing, exit 0 with a new

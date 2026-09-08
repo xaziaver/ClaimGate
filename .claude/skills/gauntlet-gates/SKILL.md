@@ -49,7 +49,9 @@ untracked alike: `src`, `tests`, `features`, `mutants`, `gauntlet.toml`,
 `.claude/hooks`. A byte anywhere in those is a full run; a byte anywhere else
 (`QUEUE.md`, `docs/`, `.claude/skills/`) is not. Every failure of the wrapper
 is a full run, and its record, `.gauntlet/last-green-tree`, is written only
-after a stop-check that exited 0 and left a new passing acceptance line.
+after a stop-check that exited 0 whose run has no failed `gate.finished` line,
+finished as many distinct gates as the previous green run (eleven at first),
+and is newer than the recorded run.
 
 ## Why the acceptance gate is red
 

@@ -12,11 +12,17 @@
 #      a missing or corrupt saved record — is a full run. It never skips on an
 #      error.
 #
-# The saved record, .gauntlet/last-green-tree, is three lines: the tree hash,
-# the run id and the `at` of the acceptance gate.finished line that run wrote.
-# It is written only after a stop-check that exited 0 AND left a new, passing
-# acceptance gate.finished line in .gauntlet/events.jsonl — exit 0 alone is not
-# enough, because stop-check also exits 0 when its retry cap is reached.
+# The saved record, .gauntlet/last-green-tree, is four lines: the tree hash,
+# the run id, the `at` of that run's acceptance gate.finished line, and the
+# number of distinct gates that run finished. It is written only after a
+# stop-check that exited 0 AND whose run — the run id on the newest acceptance
+# gate.finished line in .gauntlet/events.jsonl — is green: no gate.finished
+# line for that run id has "passed": false, the run finished as many distinct
+# gates as the previous record's run (at least eleven on the first run), and
+# the run id is newer than the record's. Exit 0 alone is not enough: stop-check
+# also exits 0 at its retry cap with a gate red, and exit 0 with the newest
+# acceptance line passing is not enough either — that was the first version of
+# this file, and it recorded a run with protect red and acceptance green.
 #
 # GAUNTLET_STOP_DRY=1 echoes the command a full run would issue instead of
 # running it, for testing the wrapper by hand.
@@ -76,17 +82,19 @@ if ! [[ "$hash" =~ ^[0-9a-f]{64}$ ]]; then
 fi
 
 # --- skip when the saved record names this exact tree ------------------------
+saved_hash=""; saved_run=""; saved_at=""; saved_gates=""
 if [ -f "$SAVED" ]; then
   saved_hash=$(sed -n '1p' "$SAVED")
   saved_run=$(sed -n '2p' "$SAVED")
   saved_at=$(sed -n '3p' "$SAVED")
+  saved_gates=$(sed -n '4p' "$SAVED")
   if [ "$saved_hash" = "$hash" ] && [ -n "$saved_run" ] && [ -n "$saved_at" ]; then
     echo "gauntlet stop-check skipped: gated tree unchanged since green run ${saved_run}, ${saved_at}"
     exit 0
   fi
 fi
 
-# --- full run; record the tree only on a fresh green -------------------------
+# --- full run; record the tree only on a fresh, wholly green run -------------
 before=$(last_acceptance_line)
 run_full
 code=$?
@@ -94,9 +102,20 @@ if [ "$code" -eq 0 ]; then
   after=$(last_acceptance_line)
   run_id=$(json_field "$after" run)
   at=$(json_field "$after" at)
-  passed=$(printf '%s' "$after" | grep -c '"passed": true')
-  if [ "$after" != "$before" ] && [ "$passed" -eq 1 ] && [ -n "$run_id" ] && [ -n "$at" ]; then
-    printf '%s\n%s\n%s\n' "$hash" "$run_id" "$at" > "$SAVED.tmp" && mv "$SAVED.tmp" "$SAVED"
+  if [ "$after" != "$before" ] && [ -n "$run_id" ] && [ -n "$at" ]; then
+    run_lines=$(grep "\"run\": \"${run_id}\"" "$EVENTS" 2>/dev/null | grep '"kind": "gate.finished"')
+    failed=$(printf '%s\n' "$run_lines" | grep -c '"passed": false')
+    gates=$(printf '%s\n' "$run_lines" | sed -n 's/.*"gate": *"\([^"]*\)".*/\1/p' | sort -u | grep -c .)
+    if [ -n "$saved_gates" ] && [[ "$saved_gates" =~ ^[0-9]+$ ]]; then
+      gates_ok=$([ "$gates" -eq "$saved_gates" ] && echo 1 || echo 0)
+    else
+      gates_ok=$([ "$gates" -ge 11 ] && echo 1 || echo 0)
+    fi
+    newer=1
+    if [ -n "$saved_run" ] && ! [[ "$run_id" > "$saved_run" ]]; then newer=0; fi
+    if [ "$failed" -eq 0 ] && [ "$gates_ok" -eq 1 ] && [ "$newer" -eq 1 ]; then
+      printf '%s\n%s\n%s\n%s\n' "$hash" "$run_id" "$at" "$gates" > "$SAVED.tmp" && mv "$SAVED.tmp" "$SAVED"
+    fi
   fi
 fi
 exit "$code"
