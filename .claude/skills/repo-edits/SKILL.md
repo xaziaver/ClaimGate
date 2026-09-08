@@ -51,6 +51,8 @@ independent. Run it through `.venv/bin/python`; it writes nothing.
 
 Prints, for each ref, the per-file numstat and the sha256 of every changed file,
 plus whether the ref exists on origin. **Run it after pushing, not before.**
+For a commit already on `origin/main` it prints no file lines, because the
+merge-base is the commit itself; use `git show --numstat <ref>` there.
 
 Three failure modes this catches, all of which have happened here:
 

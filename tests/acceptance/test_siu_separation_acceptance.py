@@ -18,7 +18,9 @@ keep passing after that name changed.
 test_resolution_acceptance.py does and for its reason: this spec uses "the
 notice's state is" in Given position on a notice sitting PENDED, where the last
 response is the submission's and the question is what the notice says now. The
-reading is in support.py, shared with that module.
+reading is in support.py, shared with that module. The recorded-indicator phrase
+that used to sit beside it moved to conftest.py in item 7f, when
+features/policy_match.feature became the second spec to state it word for word.
 
 The steps below never assert an event's absence by reading a field that is null.
 An evaluation that did not happen and one that happened and found nothing are
@@ -33,7 +35,6 @@ from pytest_bdd import given, parsers, scenarios, then
 
 from tests.acceptance.support import (
     assert_notice_state,
-    assert_recorded_indicator,
     parse_instant,
     recorded_indicator_event,
 )
@@ -68,21 +69,6 @@ _TWO_EVENTS = re.compile(
 @then(parsers.re(r"^the notice's state is (?P<value>.*)$"))
 def check_state_against_the_stored_notice(context: dict[str, Any], value: str) -> None:
     assert_notice_state(context, value)
-
-
-@then(
-    parsers.re(
-        r"^the (?P<indicator>late reporting|recent policy inception) indicator recorded for "
-        r"the notice is (?P<phrase>.*)$"
-    )
-)
-def check_recorded_indicator(context: dict[str, Any], indicator: str, phrase: str) -> None:
-    """The reading is in support.py since item 5g, shared with
-    features/jurisdiction_selection.feature, which states this phrase in the same
-    words. The step definition stays here because pytest-bdd binds those per
-    module and this file overrides conftest.py's "the notice's state is" - see
-    the module docstring."""
-    assert_recorded_indicator(context, indicator, phrase)
 
 
 @then("exactly two SIU indicator events are recorded for the notice")

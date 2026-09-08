@@ -719,8 +719,13 @@ Ordered by domain severity, not by effort. One line each on why that position.
     manufacturing one. `register_claim` is named in the protocol documentation as phase 6's and is
     not defined.
 
-7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).** Reopens 7c's spec
-    `features/policy_identification.feature`: the five-row outcome table in `PHASE3_DESIGN.md` —
+7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).**
+    *(Closed 2026-09-07 — spec `a20e06e`, amendment `2ad4055`, approvals `6cc3e56` and `eb794e4`,
+    implementation `69a5f45`, bindings `1e2bfc0`; green run `20260907T214626-43332`, 832 tests, 756
+    killed, 73 reviewed-equivalent; the merge to `main` is the human's after the advisor verifies
+    the run.)*
+    New spec
+    `features/policy_match.feature`, beside 7c's locked rule: the outcome table in `PHASE3_DESIGN.md` —
     matched proceeds; zero candidates pends `POLICY_NOT_MATCHED`; several pend `POLICY_AMBIGUOUS`;
     port `NOT_EVALUATED` triages with the verification attribute carrying the reason; insufficient
     identifiers pend from 7c's rule. Port calls sit between the two transactions, ordered search →
@@ -3784,3 +3789,143 @@ session was housekeeping on `main`, one commit, no item opened: `CLAUDE.md`'s st
 save-point rules, a prediction section in the `gauntlet-gates` skill, `repo-edits/scripts/radius.py`,
 `ROADMAP.md`'s clean-up stage, and the two findings above logged. 7f is still next and still
 opens in a fresh session.
+
+**2026-09-07: item 7f is open on `phase3/7f-intake-wiring`; the pre-spec split is done and green at
+`56419cf`, no spec touched.** `shell/receipt.py` (131 lines, seam `receive_or_replay`) takes the
+five receipt-transaction functions from `notice_intake.py`, now 127;
+`shell/resolution_evaluation.py` (142 lines, seam `evaluate`) takes the five evaluation functions
+from `resolution.py`, now 116. All ten moved bodies AST-identical to `main`; the only non-import
+change in kept code is the two seam calls. Three test files updated at the call site, nothing
+re-exported: `tests/api/resolution.py` and `tests/shell/test_notice_intake.py` for
+`merged_view`/`notice_records`, and `tests/shell/test_siu_evaluation.py`, whose
+both-paths-share-`siu` assertion now names `resolution_evaluation`. Gate predicted before the run
+and matched line for line at run `20260907T115727`: size worst function 25, complexity 6, boundary
+16/0, tests 763/763, coverage 100/100, duplication 0, code mutation 100% with 687 killed (flat — a
+move leaks nothing into scope), acceptance 14 specs, 73 reviewed-equivalent, digests unchanged,
+1630.582 s against the 3600 s budget. Two corrections to earlier paragraphs: the 7e merge carried
+763 tests, not 762 — 762 was `b846768`, and the judgment-6 reversal `ef751fc` added one
+`test_bindings.py` case; and the acceptance pair is now 1630.582 s at this run and 1629.698 s at run
+`20260907T095331` on `1b60af5`, both green, both under the budget by more than half. `8a08916`
+annotates `PHASE3_DESIGN.md`'s notice-content bullet (the four identifier fields since 7c at
+`e75f5dd`; the other five bullets hold at `56419cf`, with the intake and resolution functions now in
+their new modules) and adds the radius sentence to the gherkin-specs skill and the `origin/main`
+note to repo-edits. Stop-check on `8a08916`: `20260907T122622`, 1768.307 s.
+`policy_identification.feature` is unchanged at `a504421e2c3ef5ed`; the reopening's spec is drafted
+and measured in the next advisor session against the lock at the branch tip. No `tests/api` fixture
+supplies bindings yet and no scenario reaches `PORT_BINDING_UNRESOLVABLE` through HTTP — 7f's spec
+has to decide whether that is its scenario or `carrier_configuration.feature`'s. The branch is a
+superset of `main`.
+
+**2026-09-07: 7f spec committed at `a20e06e`, seven files, awaiting approval.** New
+`features/policy_match.feature` (163 lines, sha256 `1e73c8f3c1c7be15`; 49 mutants, 45 locators, 7
+literal; simulated 0 survivors, labelled a simulation), and one Background line in five locked
+intake specs — `"AAAA"'s policy source is unavailable` — because wiring the policy port makes an
+unbound carrier a `500` on every existing submission; measured against the lock: 0 locators moved, 0
+approvals touched, five file approvals to re-issue. `notice_intake.feature` gains the
+`PORT_BINDING_UNRESOLVABLE` row of its deployment-fault table (5 new locators). The advisor's
+decisions are in `ASSUMPTIONS.md` under this date; the one that changes the queue is that 7f writes
+a new spec rather than reopening `policy_identification.feature`, whose locked preamble says no
+search runs in it. Tests red on the new file's unbound steps, as a spec commit is. Next: the human
+approves seven files, then the implementation prompt.
+
+**2026-09-07: 7f implemented at `69a5f45` on `phase3/7f-intake-wiring`, red on two locked scenarios
+that await the human; cold gate run `20260907T205240-37029`.** Predicted, then measured, line for
+line: protect 3/3; static 0 findings; size worst function 25, worst module `store.py` 248;
+complexity 6; boundary 17 step files, 0 direct imports; tests 825/827, the same two failures
+predicted from the suite; coverage 100/100; CRAP 6; duplication 0; code mutation 100 %, 756 killed —
+687 plus 69 from the new domain code (`domain/policy_match.py`, the deciding-term reading in
+`domain/coverage.py`, `carry_onto_candidate`), 0 survivors once two `pytest.raises(match=)` patterns
+were anchored; acceptance `15 spec(s), scenarios failing` in 3.697 s, stopping before any mutant, so
+the run took 45 s against the 3600 s budget and carries no reviewed-equivalent figure (73 stands; no
+approval was added). Out of band, `policy_match.feature`: 49 applied, 49 killed — 42 example, 7
+literal — 0 survivors, every kill a failure beyond the baseline's; the advisor's simulation held for
+the mutants and not for the baseline. The 2026-09-07 spec paragraph's 'Tests red on the new file's
+unbound steps' was the advisor's text and wrong: the new file had no test module and produced no
+failure; the red was the five locked specs' new Background line, unbound until this commit — 83 of
+764. **The two failures are spec gaps, not retries.** (1) `idempotency.feature`'s Background
+configures `BBBB`'s rules and one row submits under `BBBB` expecting `201`; the amendment bound only
+`AAAA`, so `BBBB` is an unbound carrier and answers `500 PORT_BINDING_UNRESOLVABLE` by design. The
+fix is one Background line, `And "BBBB"'s policy source is unavailable`, after line 46; measured on
+the amended text: 46 mutants, 46 locators, 0 signatures moved, both approvals untouched, sha256
+`2c8b5c234060b523` at 262 lines — a spec commit and one file approval, the human's. (2)
+`policy_match.feature`'s term-verdict row `2025-01-15 | 2026-01-15 | NOT_IN_FORCE | 2025-01-15`
+asserts a continuous-coverage date on a loss dated after the only term expired;
+`continuous_coverage.feature`, locked, makes that `NOT_EVALUATED` with `NO_COVERAGE_ON_LOSS_DATE`,
+and the implementation follows the locked rule. The row cannot pass as written; the advisor decides
+its shape — the step `the notice has no continuous coverage date` exists for it. Both are in
+`docs/harness-findings.md` under this date. Shape as built: `shell/coverage_verifications.py` (231
+lines: table, record, view, delegators reading `NoticeStore.connection`), `shell/policy_match.py`
+(84: sufficiency, search, history, the three domain rules), `domain/policy_match.py` (91),
+`coverage.py` split into `coverage_types.py` and `term_periods.py` (158/75/125);
+`tests/api/policy_match.py` binds each carrier's `tests.fixtures.core_system` through the live-query
+registry with a `source` parameter and holds a fault for the scenario; the recorded-indicator step
+moved from `test_siu_separation_acceptance.py` to `conftest.py`; the two split-era docstring phrases
+are rewritten. **Judgments for ratification:** (1) the binding is resolved in the receipt step
+beside the rules and jurisdiction, not in `_decide`, because the spec row says the fault creates no
+notice and a fault after receipt would leave one at RECEIVED; (2) the term-in-force rule cites the
+one bounding term on a boundary day and, on an uncovered date with no standing cancellation, the
+term whose coverage most recently ended before it — `policy_match.feature`'s rows 2 and 3 require
+it, `coverage_verification.feature`'s citations are unchanged, and a date two terms share cites
+neither; (3) a notice with no loss date, or nothing searchable, is not searched and no row is
+written — the term rules have no reason code for a missing loss date and adding one is an
+escalation; such a notice pends on validation regardless, and 7g's re-search verifies it; (4)
+`POLICY_NOT_MATCHED` and `POLICY_AMBIGUOUS` carry an empty blocker field and sort after every
+blocker about what arrived; (5) the verification row also stores the continuous-coverage date and
+reason, which the design's column list omitted and the spec reads, and the view carries
+`continuous_coverage_reason` so an absent date is never shown without its reason; (6) `as_of` and
+`binding` are the search answer's; (7) `NoticeStore` exposes its connection for the table module,
+since two delegators would put `store.py` over 250; (8) the shell tests' default binding is an
+unavailable source for `AAAA` and `WXYZ`, the statement the locked Backgrounds make; (9) the fixture
+gained persistent faults because five locked specs submit more than once under an unavailable
+source. Next: the human amends `idempotency.feature`, decides row 3 and approves; the gate is then
+expected green and the item closes. The branch is a superset of `main`.
+
+**2026-09-07: 7f spec amended at `2ad4055`, three files, awaiting approval; both gate failures at
+`69a5f45` were the advisor's spec errors.** (1) The binding radius of the `"AAAA"` Background line
+was measured by grepping the literal, not the step's shape; `idempotency.feature` also submits under
+`BBBB`, so `BBBB` gains the same line. (2) The `NOT_IN_FORCE` row asserted a continuous-coverage
+date the locked `continuous_coverage.feature` denies — `NO_COVERAGE_ON_LOSS_DATE` — because the
+advisor drafted from the design's account of the rule without reading the locked file. The row is
+now a fixed-value scenario asserting no date and its reason. Judgment 2's extension of the citation
+rule is ratified on the condition that it be specified where the rule lives:
+`coverage_verification.feature` gains five citation scenarios (boundary on one term, shared boundary
+cites neither, expired cites the lapsed term, gap cites the term before it, loss before any term
+cites nothing), 20 new locators, 0 moved, 0 approvals. Digests: idempotency `2c8b5c234060b523`,
+coverage_verification `4ce741d06d7f53f7`, policy_match `59b52fa7a7c09fa5`. Next: the human approves
+three files, then the binding commit and the cold gate.
+
+**2026-09-07: the three steps the amendment introduced are bound before approval, at the human's
+request; the gate is red on the approval stage alone.** `the determination cites no term` and `the
+determination cites no cancellation` in `test_coverage_verification_acceptance.py`, `the continuous
+coverage reason is …` in `test_policy_match_acceptance.py`; no code touched, and the `BBBB` row
+already passes on the amended Background. Cold run `20260907T210809-40620`: tests 832/832, code
+mutation 100 %, 756 killed, size worst function 25, complexity 6, boundary 17 step files and 0
+direct imports, coverage 100/100, CRAP 6, duplication 0, acceptance `3 unapproved or modified
+spec(s)` in 0.004 s — idempotency, coverage_verification and policy_match at the digests in the
+paragraph above, awaiting `gauntlet spec approve`. Next: the human approves three files, then the
+cold gate is expected green and the item closes.
+
+**2026-09-07: item 7f is closed at the close-out commit on `phase3/7f-intake-wiring`; the merge to
+`main` is the human's after the advisor verifies run `20260907T214626-43332`.** Cold gate at
+`eb794e4`, `mutants/` cleared, predicted then measured: protect 3/3; static 0; size worst function
+25, worst module `store.py` 248; complexity 6; boundary 17 step files, 0 direct imports; tests
+832/832 — 827 plus the five citation scenarios plus the reshaped NOT_IN_FORCE scenario minus the
+retired row, as predicted; coverage 100/100; CRAP 6; duplication 0; code mutation 100 %, 756 killed,
+unchanged since `69a5f45` with `src/` untouched; acceptance `15 spec(s), 73 reviewed-equivalent`, 0
+diagnostics, 2427.14 s against the 3600 s Stop hook budget — the pair this close records, and the
+one miss in the prediction, which said 1800–2000 s by scaling the last green 1685 s at 1070 mutants
+to 1155: the run grew 44 % on 8 % more mutants, so the scaling is not linear and the margin under
+the budget is 1173 s. Out of band, at the locked digests and restored to them afterward:
+`policy_match.feature` 50 applied, 50 killed, 0 survivors — 38 example and 12 literal, where the
+advisor's 43/7 split counted the reshaped NOT_IN_FORCE scenario's five fixed values as table cells;
+the totals agree — and `coverage_verification.feature` 108 applied, 108 killed, 0 survivors (40
+example, 68 literal); every kill a new failure and no baseline failure in either. The item's
+commits, in order: spec `a20e06e`, documents `a9a9a14`, approval `6cc3e56`, implementation
+`69a5f45`, documents `26b818d`, amendment `2ad4055`, documents `fe50e7e`, bindings `1e2bfc0`,
+approval `eb794e4`, this close-out. Judgments 1–9 were ratified 2026-09-07 and stand in the
+implementation paragraph above; decisions 10 and 11 are in `ASSUMPTIONS.md`'s 7f entry. 7g inherits
+the debt that a notice with no loss date, or nothing searchable, receives its verification at the
+re-search on resolution, and the insured-name search; 7h the claims port and `find_duplicates`'
+caller. `ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today"
+carry dated 7f notes. Nothing is in flight in code; the branch is a superset of `main` and is not
+merged.

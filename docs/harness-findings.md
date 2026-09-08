@@ -1930,3 +1930,71 @@ their first element and no test had a tie on it. Both were equivalent, and appro
 have carried that argument into the ledger. Restructure instead: take `max` over the plain key
 values and select the pair by equality. Nothing is left to drop, and the selection's `==` becomes
 a mutant that any test with two candidates kills.
+
+### An amended Background line configures one carrier; the radius for binding is per carrier, not per file
+
+Observed 2026-09-07, item 7f. The spec commit added `And "AAAA"'s policy source is unavailable` to
+five locked Backgrounds, each found by grepping the anchor line it was spliced after. Every file
+that submits a notice was amended, and one of them still went red when the port was wired:
+`idempotency.feature`'s Background also configures carrier `BBBB`'s rules, and one Examples row
+submits under `BBBB` expecting `201`. `BBBB` was now a carrier with rules and no binding, which is
+`PORT_BINDING_UNRESOLVABLE` and `500` by design. The plain-word grep answered "which files" and the
+question was "which carriers": a line that binds a carrier is owed once per carrier the file submits
+under, not once per file. For the next amendment that adds per-carrier configuration, grep
+`submitted by carrier "` and read every `carrier_code` column in the file's Examples tables, then
+count the carriers, not the Backgrounds. Measured on the amended text with the engine: the missing
+line moves nothing - 46 mutants, 46 locators, 0 signatures changed, both approvals untouched - and
+costs one file approval; sha256 `2c8b5c234060b523` at 262 lines, inserted after line 46.
+
+### A simulated survivor count assumes every row passes at baseline, and a row that contradicts another locked spec fails before mutation
+
+Observed 2026-09-07, item 7f. `policy_match.feature`'s term-verdict outline asserts a
+continuous-coverage date of `2025-01-15` on a loss dated 2026-06-01 against a policy whose only
+term expired 2026-01-15. `continuous_coverage.feature`, locked, makes that derivation
+`NOT_EVALUATED` with `NO_COVERAGE_ON_LOSS_DATE` - a loss dated after coverage ended has no run to
+derive from - so the row fails with the implementation correct, and the acceptance gate never
+reaches mutation for that outline. The advisor's simulation said 49 applied, 0 survivors, and the
+out-of-band derivation ("The acceptance gate reports no per-spec kill count", above) measured 49
+applied, 49 killed: both true, and neither is about the baseline. A kill count is a statement about
+mutants relative to the unmutated run; it cannot see that the unmutated run is red. Two rules
+follow. Before simulating survivors for a spec whose attributes are produced by other locked rules,
+walk every asserted cell through the locked spec that owns it - here each date through
+`continuous_coverage.feature` and each verdict through `coverage_verification.feature` - because a
+new spec can approve a value another locked spec forbids, and the lock does not check specs against
+each other. And an out-of-band derivation must run the unmutated module first and print its failing
+set beside the kill count: a kill measured as "the failing set changed" is meaningless without the
+set it changed from. Measured on run `20260907T205240-37029`: the acceptance gate reported
+`15 spec(s), scenarios failing` in 3.697 s and mutated nothing, so a red baseline row makes the whole
+check a 45-second run and the Stop hook's window is not in play until the row passes.
+
+### A `pytest.raises(match=...)` pattern that is not anchored lets mutmut's string mutant survive
+
+Observed 2026-09-07. mutmut mutates a string literal by wrapping it - `"XX...XX"` - and
+`pytest.raises(ValueError, match="cannot have found a policy")` still matches the wrapped message,
+because `match` is `re.search`. Two new domain functions each bred one survivor this way; anchoring
+the pattern (`match=r"^a search that was not evaluated cannot have found a policy$"`) killed both,
+which is the form every earlier test in `tests/unit/test_coverage.py` already used. The killed count
+went 687 to 756 on the same commit with 0 survivors once anchored.
+
+### Test module basenames are global across `tests/`, because its directories have no `__init__.py`
+
+Observed 2026-09-07. `tests/unit/test_policy_match.py` beside `tests/shell/test_policy_match.py`
+collected as `import file mismatch ... imported module 'test_policy_match' has this __file__`,
+the same rootless-import behaviour "Two locked specs sharing a Background..." (above) records for
+`conftest.py`. A shell test for a domain module of the same name needs a different basename;
+`tests/shell/test_policy_search.py` is the one this session chose.
+
+### The binding radius grep is over the step's shape, not the literal the amendment used; and the advisor reads every locked spec its draft cites
+
+Recorded 2026-09-07 as the method lessons of the two 7f spec errors above, ratified as such by the
+human. First: an amendment that adds a per-carrier step was radiused by grepping the literal it
+happened to use, `"AAAA"'s policy source`, which found every file and missed the second carrier one
+of them submits under. The radius grep for a step is over the step's *shape* - every carrier code the
+file names and every value the step could take, read from its Backgrounds and from every Examples
+column that feeds the step - so the count is of carriers, or of values, and never of files.
+Second: `policy_match.feature`'s red row was drafted from `PHASE3_DESIGN.md`'s account of the
+continuous-coverage rule, not from the locked `continuous_coverage.feature`, whose
+`NO_COVERAGE_ON_LOSS_DATE` scenarios forbid the value the row asserted. A draft whose attributes are
+produced by other locked rules is written after reading each of those locked files in full, the
+reading table notwithstanding: the table budgets a session's context, and a locked spec the draft
+cites is part of what the item needs, not a document it can skip.

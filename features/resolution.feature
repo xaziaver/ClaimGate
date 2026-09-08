@@ -86,6 +86,7 @@ Feature: Resolving a pended notice
     Given the carrier "AAAA" requires the claimant name
     And "AAAA" does not require the claimant contact
     And "AAAA" configures a duplicate match window of 60 days
+    And "AAAA"'s policy source is unavailable
     And the notice is submitted by carrier "AAAA"
     And the insured property is in "FL"
     And the notice is submitted at "2026-08-24T16:00Z"

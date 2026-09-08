@@ -31,7 +31,10 @@ checkout's `src/`; without it the import fails and the script says so.
 Needs no approval and no gate run. Report counts **as measured**. Predicting a
 survivor count is a different act from measuring one; both are useful, and a
 guess reported as a measurement destroys the signal. Survivors cannot be known
-until the spec is approved and step definitions exist.
+until the spec is approved and step definitions exist. The radius is
+`repo-edits/scripts/radius.py` at the ref for approvals plus a plain-word grep
+across `features/` for binding, never the engine alone (`docs/harness-findings.md`,
+2026-09-06).
 
 ## The four shape constraints
 

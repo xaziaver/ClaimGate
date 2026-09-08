@@ -21,6 +21,9 @@ from claimgate.domain.models import (
     Jurisdiction,
     ValidationBlocker,
 )
+from claimgate.shell.bindings import BindingsSource, ImplementationRegistry
+from claimgate.shell.coverage_verifications import CoverageVerificationView
+from claimgate.shell.ports import PolicyPort
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.store import NoticeStore
 
@@ -46,9 +49,9 @@ class NoticeFields:
     address's only state component - are item 7c's, the identifiers the policy
     search will take once item 7g wires it (PHASE3_DESIGN.md, "Identifiers").
     They join the hashed field set on the same terms as `property_state`, with
-    the same accepted consequence, and the domain reads none of them until 7g:
-    the sufficiency rule exists (domain/policy_identification.py) and has no
-    caller."""
+    the same accepted consequence. Since item 7f the sufficiency rule reads all
+    three to decide whether the search runs (shell/policy_match.py); the
+    insured-name arm stays unreachable until 7g retires the number requirement."""
 
     policy_number: str = ""
     loss_date: str | None = None
@@ -100,9 +103,16 @@ class NoticeView:
     # reads a notice from in phase 2. The future-dated-loss determination beside
     # it on the record deliberately is not - see serialization.py.
     jurisdiction_marking: str | None
+    # Item 7f: what the policy search and the coverage rules concluded, as the
+    # latest verification row says it (coverage_verifications.py). None where
+    # nothing has been searched - a notice at RECEIVED, or one with nothing to
+    # search on - which is not the same fact as a search that found nothing.
+    coverage_verification: CoverageVerificationView | None
 
     @classmethod
-    def of(cls, record: NoticeRecord) -> "NoticeView":
+    def of(
+        cls, record: NoticeRecord, verification: CoverageVerificationView | None
+    ) -> "NoticeView":
         """The stored notice as GET /notices/{id} shows it: everything the
         record carries except the receipt timestamp and the carrier, which are
         envelope and attribution rather than the notice, and the pend and
@@ -110,7 +120,7 @@ class NoticeView:
         the notice rather than part of what this view shows."""
         return cls(
             record.notice_id, record.state, record.blockers, record.severity, record.queue,
-            record.jurisdiction_marking,
+            record.jurisdiction_marking, verification,
         )
 
 
@@ -125,6 +135,11 @@ class Submission:
     carrier_identity_reference: Mapping[str, CarrierIdentity]
     jurisdiction_reference: Mapping[str, Mapping[str, str]]
     carrier_rules_source: Mapping[str, Mapping[str, Any]]
+    # The fourth configuration source (item 7f): which port implementation
+    # serves this carrier, resolved by lookup beside the rules and the
+    # jurisdiction, and the registry the deployment built for it to select from.
+    bindings_source: BindingsSource
+    implementation_registry: ImplementationRegistry
     fields: NoticeFields
     idempotency_key: str | None
 
@@ -223,3 +238,6 @@ class AcceptedNotice:
     jurisdiction: Jurisdiction | None
     today: date | None
     rules: CarrierRules
+    # The carrier's policy port, resolved with the other configuration before
+    # the receipt (item 7f) and called between the two transactions.
+    policy_port: PolicyPort

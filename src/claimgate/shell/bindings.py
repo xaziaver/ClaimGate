@@ -22,8 +22,9 @@ module's concern, exactly as for the rules source.
 implementation name the registry does not hold, a missing or non-positive
 timeout, a policy binding without a history horizon: each raises
 DeploymentFaultError(PORT_BINDING_UNRESOLVABLE) - item 5i's pattern, our own
-configuration's defect and never a 4xx (faults.py). Nothing on either endpoint
-path resolves a binding until item 7f.
+configuration's defect and never a 4xx (faults.py). The intake path resolves
+the policy binding since item 7f (receipt.py); nothing resolves the claims
+binding until item 7h.
 
 **The history horizon is required on the policy binding**: an ISO date or the
 literal `complete`, carried by the implementation into every

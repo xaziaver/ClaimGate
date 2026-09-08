@@ -25,6 +25,7 @@ from claimgate.shell.messages import NoticeFields, ResolutionResponse, SubmitNot
 from claimgate.shell.notice_intake import submit_notice
 from claimgate.shell.resolution import resolve_notice
 from claimgate.shell.store import NoticeStore
+from tests.api.policy_match import PolicySources
 from tests.shell.support import (
     DEFAULT_FIELDS,
     DEFAULT_RESOLVED_AT,
@@ -36,6 +37,7 @@ from tests.shell.support import (
     Resolver,
     RuleEvaluationBugError,
     Submitter,
+    unavailable_sources,
 )
 
 
@@ -55,10 +57,12 @@ def submit(store: NoticeStore) -> Submitter:
         carrier_identity_reference: Mapping[str, Any] = IDENTITY_REFERENCE,
         jurisdiction_reference: Mapping[str, Mapping[str, str]] = JURISDICTIONS,
         carrier_rules_source: dict[str, object] | None = None,
+        policy_sources: PolicySources | None = None,
         fields: NoticeFields = DEFAULT_FIELDS,
         idempotency_key: str | None = None,
     ) -> SubmitNoticeResponse:
         source = carrier_rules_source if carrier_rules_source is not None else {"AAAA": VALID_RULES}
+        sources = policy_sources if policy_sources is not None else unavailable_sources()
         return submit_notice(
             store,
             carrier_code=carrier_code,
@@ -66,6 +70,8 @@ def submit(store: NoticeStore) -> Submitter:
             carrier_identity_reference=carrier_identity_reference,
             jurisdiction_reference=jurisdiction_reference,
             carrier_rules_source=source,
+            bindings_source=sources.bindings_source(),
+            implementation_registry=sources.registry(),
             fields=fields,
             idempotency_key=idempotency_key,
         )

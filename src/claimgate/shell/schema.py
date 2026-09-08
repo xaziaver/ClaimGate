@@ -1,5 +1,5 @@
-"""The SQLite schema phase 2 writes into: five tables and the triggers that
-make PHASE2_DESIGN.md's append-only rules enforceable.
+"""The SQLite schema phase 2 writes into - five tables and the triggers that
+make PHASE2_DESIGN.md's append-only rules enforceable - and phase 3's sixth.
 
 STRICT tables and schema-declared constraints, per ASSUMPTIONS.md's
 "Persistence engine" - the point of choosing an engine at all was that
@@ -84,6 +84,21 @@ Adding it does not upgrade an existing database, for the same reason
 `pended_at` and `resolved_at` did not: `CREATE TABLE IF NOT EXISTS` leaves an
 older file as it found it, and item 5e decision (b) accepts that a schema change
 recreates the database.
+
+`coverage_verifications` is item 7f's (PHASE3_DESIGN.md, "Persistence"), on
+`siu_indicator_events`' pattern: `(notice_id, ordinal)`, `ruleset_version`,
+`evaluated_at`, the same `BEFORE UPDATE` / `BEFORE DELETE` refusal. It holds
+what the policy search and the two coverage rules concluded - the identification
+and its reason, the matched reference, the term-in-force value and reason with
+the deciding term's dates and the cancellation that decided it, the
+continuous-coverage value, date and reason, the port's `as_of` and the binding
+that answered - and never the history the port returned, which is another
+system's data held for no purpose ClaimGate has. Every reason column is null
+unless its value is `NOT_EVALUATED`, every reference and date column null unless
+its value calls for one. It is an ordinary attribute and reaches GET
+/notices/{id} through coverage_verifications.py's view; it is a table and not
+columns on `notices` because each row is a dated fact about what was verified
+when, and the notice row records only what the notice says now.
 """
 
 SCHEMA_STATEMENTS: tuple[str, ...] = (
@@ -157,6 +172,29 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     ) STRICT
     """,
     """
+    CREATE TABLE IF NOT EXISTS coverage_verifications (
+        verification_id INTEGER PRIMARY KEY,
+        notice_id TEXT NOT NULL REFERENCES notices (notice_id),
+        ordinal INTEGER NOT NULL,
+        policy_match TEXT NOT NULL,
+        policy_match_reason TEXT,
+        policy_reference TEXT,
+        term_in_force TEXT NOT NULL,
+        term_reason TEXT,
+        term_effective TEXT,
+        term_expiration TEXT,
+        cancellation_effective TEXT,
+        continuous_coverage TEXT NOT NULL,
+        continuous_coverage_reason TEXT,
+        continuous_coverage_date TEXT,
+        as_of TEXT NOT NULL,
+        binding TEXT NOT NULL,
+        ruleset_version TEXT NOT NULL,
+        evaluated_at TEXT NOT NULL,
+        UNIQUE (notice_id, ordinal)
+    ) STRICT
+    """,
+    """
     CREATE TRIGGER IF NOT EXISTS audit_entries_are_append_only_no_update
     BEFORE UPDATE ON audit_entries
     BEGIN SELECT RAISE(ABORT, 'audit entries are append-only'); END
@@ -185,5 +223,15 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     CREATE TRIGGER IF NOT EXISTS siu_indicator_events_are_append_only_no_delete
     BEFORE DELETE ON siu_indicator_events
     BEGIN SELECT RAISE(ABORT, 'SIU indicator events are append-only'); END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS coverage_verifications_are_append_only_no_update
+    BEFORE UPDATE ON coverage_verifications
+    BEGIN SELECT RAISE(ABORT, 'coverage verifications are append-only'); END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS coverage_verifications_are_append_only_no_delete
+    BEFORE DELETE ON coverage_verifications
+    BEGIN SELECT RAISE(ABORT, 'coverage verifications are append-only'); END
     """,
 )

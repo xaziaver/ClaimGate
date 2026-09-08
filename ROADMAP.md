@@ -51,6 +51,17 @@ phase, ratified before that phase's first queue item, on phase 2's precedent.
 The central design claim — a policy administration system is a replaceable adapter behind one
 interface — is unproven today because no adapter exists. Phase 3 proves it.
 
+*(Item 7f closed 2026-09-07 — spec `a20e06e` and amendment `2ad4055`, approvals `6cc3e56` and
+`eb794e4`, implementation `69a5f45`, bindings `1e2bfc0`; green run `20260907T214626-43332`; the
+merge to `main` is the human's after the advisor verifies the run.)* Delivered at 7f: the policy
+search by number at intake with its outcomes on the notice (matched proceeds, none or several pend),
+the term in force at the loss date with the deciding term and the as-of instant, the
+continuous-coverage date's producer feeding the recent-inception indicator, coverage verification as
+an intake outcome exactly as the split below describes, and adapter faults resolving `NOT_EVALUATED`
+with a reason while the notice proceeds. Still open in this phase: the insured-name search (7g),
+existing claims on the policy and duplicate detection's caller (7h), the extract implementation and
+the swappability proof (7i), and the persistence revisit.
+
 - **The adapter interface**, designed against three named exemplar system shapes: Duck Creek,
   Guidewire, and a legacy system integrated by periodic flat-file extract with no API at all.
 - **Two conforming implementations**, not one. Argued below.

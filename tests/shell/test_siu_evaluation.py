@@ -14,7 +14,12 @@ from typing import Any
 import pytest
 
 from claimgate.domain.ruleset import RULESET_VERSION
-from claimgate.shell import notice_intake, resolution, siu
+from claimgate.shell import (
+    coverage_verifications,
+    notice_intake,
+    resolution_evaluation,
+    siu,
+)
 from claimgate.shell.messages import NoticeFields
 from claimgate.shell.store import NoticeStore
 from tests.shell.support import (
@@ -127,9 +132,11 @@ def test_an_intake_evaluation_that_fails_takes_the_triage_down_with_it(
         submit(carrier_rules_source=_SOURCE)
 
     # The receipt survives - it is its own transaction - but the decision that
-    # would have triaged the notice is gone, and so are the events it wrote.
+    # would have triaged the notice is gone, and so are the events it wrote and
+    # the coverage verification written beside them (item 7f).
     assert store.count_notices() == 1
     assert store.list_siu_events() == ()
+    assert coverage_verifications.for_notice(store, _only_notice(store)) == ()
     assert [entry.to_state for entry in store.get_audit_trail(_only_notice(store))] == ["RECEIVED"]
 
 
@@ -166,7 +173,7 @@ def siu_write_fails(monkeypatch: pytest.MonkeyPatch) -> None:
         raise SiuWriteError("the SIU trail was written and the transaction then failed")
 
     monkeypatch.setattr(siu, "record_evaluation", _write_then_raise)
-    assert notice_intake.siu is siu and resolution.siu is siu
+    assert notice_intake.siu is siu and resolution_evaluation.siu is siu
 
 
 def _only_notice(store: NoticeStore) -> str:

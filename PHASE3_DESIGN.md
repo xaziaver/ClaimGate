@@ -20,17 +20,40 @@ Established from `src/claimgate/shell/` at `4a42d2f`, 2026-09-01. Treat as measu
 - **Resolution path.** `resolution.resolve_notice` opens one transaction and `_judge` runs
   `apply_domain_rules` inside it. The two paths have different transaction shapes.
 - **`Candidate.continuous_coverage_date` has no producer in the shell.** The recent-inception
-  indicator is `NOT_EVALUATED` on every real notice.
+  indicator is `NOT_EVALUATED` on every real notice. **Annotation 2026-09-07 (item 7f): no longer
+  true. `domain/continuous_coverage.py`'s `carry_onto_candidate` is the producer, called on the
+  intake path from `shell/notice_intake.py` with the derivation the policy port's history yields
+  and on the resolution path from `shell/resolution_evaluation.py` with the stored verification's
+  date; the indicator reads it. The intake-path bullet above still holds in shape - two
+  transactions, evaluation between them - with the policy search now running before the rules
+  in that gap (`shell/policy_match.py`).**
 - **`find_duplicates` has no caller in the shell.** Its callers are `tests/api/duplicates.py` and
   `tests/unit/test_duplicates.py`. `window_days` is already carrier configuration
   (`carrier_configuration.py`) and is loaded on every call and used by nothing.
 - **Notice content** (`shell/messages.py`, `NoticeFields`): `policy_number`, `loss_date`,
   `loss_type`, `notice_type`, `property_state`, `claimant_name`, `claimant_contact`,
   `incident_description`. No insured name and no risk address beyond the state.
+  **Annotation 2026-09-07 (item 7f): `NoticeFields` has carried `insured_name`, `risk_address`,
+  `risk_city` and `risk_postal_code` since item 7c (`e75f5dd`, 2026-09-05), with `property_state`
+  serving as the address's state component, so the last sentence no longer holds. The other five
+  bullets were checked against source at `56419cf` and hold; since that commit the receipt
+  transaction lives in `shell/receipt.py` and `_judge` in `shell/resolution_evaluation.py`, a
+  split with no behaviour change.**
 - **Attribute storage pattern.** `siu_indicator_events` is an append-only table keyed
   `(notice_id, ordinal)`, one row per indicator per evaluation, with `ruleset_version` and
   `evaluated_at`, and `BEFORE UPDATE`/`BEFORE DELETE` triggers. `jurisdiction_marking` is a
   nullable column on `notices`.
+
+**Annotation 2026-09-07 (item 7f closed, green run `20260907T214626-43332`):** the policy port is
+wired at intake — `shell/receipt.py` resolves the carrier's binding beside its rules and
+jurisdiction, and `shell/policy_match.py` runs sufficiency, search and term history between the two
+transactions — and `coverage_verifications` exists (`shell/coverage_verifications.py`, on
+`siu_indicator_events`' pattern, shown on `GET /notices/{id}` through an allow-list of its own).
+`Candidate.continuous_coverage_date` has its producer, `carry_onto_candidate`. Still as measured
+above: the claims port is resolved by nothing and `find_duplicates` has no shell caller (7h); the
+insured-name search and `POLICY_IDENTIFIERS_INSUFFICIENT` are unreachable at intake while validation
+requires a policy number, and the resolution path searches nothing and re-asserts the stored match
+(7g).
 
 ## Two ports, not one adapter
 

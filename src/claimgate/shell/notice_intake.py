@@ -25,28 +25,20 @@ two-write receipt exists so that "a bug in rule evaluation must never be able to
 erase or delay the fact that a notice was received." A refusal, a conflict and a
 replay each stay one transaction.
 
-**Order on the way in** (ASSUMPTIONS.md, "Idempotency: what a repeated key is
-compared against"): carrier identity, the idempotency lookup, the loss-date
-schema check, then the configuration this deployment needs, then receipt. The
-key is envelope, answered before the content it accompanies is judged, so a
-conflicting resubmission whose loss date does not parse is a 409, not a 400.
+**The policy search sits between the two, since item 7f** (PHASE3_DESIGN.md,
+"Where the calls sit"; shell/policy_match.py): the carrier's policy port,
+resolved with the rest of the configuration before the receipt, is asked for the
+policy and then its term history, holding no lock, and the domain reads the
+answers - the continuous-coverage date onto the candidate, the match beside
+validation's blockers. A source fault is a value and not an exception (ports.py),
+so it never leaves a notice at RECEIVED; the decision transaction then writes the
+decision, the verification row and the SIU events together, so a notice never
+rests TRIAGED with half its attributes.
 
-Refusals before the receipt persist differently. An unrecognized carrier_code
-persists nothing at all; the two that keep what arrived share one shape, in
-`_receipt_only`; a repeat carrying different content is a 409, in idempotency.py.
-
-The rules this module runs moved to rules.py in item 5e, because decision 2(a)
-wants one definition of "no blocker" rather than one per endpoint; the
-deployment faults are raised there and answered here (item 5i, faults.py).
-**Both are answered before any notice exists**, which is a measured fact about
-this order rather than a choice - the carrier's rules and the jurisdiction
-resolve above `_create_notice`, so neither fault leaves a notice at RECEIVED nor
-remembers the idempotency key, and a reporter's identical retry creates a notice
-rather than replaying one no rule ever ran over (idempotency.feature, Rule 6).
-
-**Three configuration sources cross this boundary and none of them is a
-default** (item 5g): the carrier identity reference, the jurisdiction map and
-the per-carrier rules source, all named explicitly by production and tests
+**Four configuration sources cross this boundary and none of them is a
+default** (item 5g; the fourth is item 7f's): the carrier identity reference,
+the jurisdiction map, the per-carrier rules source and the port bindings with
+the registry they select from, all named explicitly by production and tests
 alike. A shipped value read from the domain would make the swappability proofs
 a test of monkeypatching rather than of the seam.
 
@@ -57,37 +49,29 @@ intake record and evaluates nothing, and a replay or a refusal never reaches
 here. Duplicate-candidate detection stays out of scope, unsettled not assumed.
 """
 
-import uuid
 from collections.abc import Mapping
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any
 
-from claimgate.domain.carrier_identity import resolve_carrier_identity
-from claimgate.domain.models import Candidate, CarrierIdentity, CarrierRules, Jurisdiction
-from claimgate.shell import siu
-from claimgate.shell.faults import DeploymentFaultError
-from claimgate.shell.idempotency import (
-    answer_repeated_key,
-    find_remembered_notice,
-    is_within_key_lifetime,
-    replay_after_losing_the_race,
-)
+from claimgate.domain.continuous_coverage import carry_onto_candidate
+from claimgate.domain.models import Candidate, CarrierIdentity
+from claimgate.domain.policy_match import PolicyMatch
+from claimgate.domain.ruleset import RULESET_VERSION
+from claimgate.shell import coverage_verifications, siu
+from claimgate.shell.bindings import BindingsSource, ImplementationRegistry
+from claimgate.shell.coverage_verifications import Verification
 from claimgate.shell.messages import (
     AcceptedNotice,
+    Decision,
     NoticeFields,
     NoticeView,
     Submission,
     SubmitNoticeResponse,
 )
-from claimgate.shell.rules import (
-    apply_domain_rules,
-    build_candidate,
-    parse_loss_date,
-    resolve_jurisdiction,
-    resolve_rules,
-    resolve_today,
-)
-from claimgate.shell.store import IdempotencyKeyAlreadyRememberedError, NoticeStore
+from claimgate.shell.policy_match import verify_policy
+from claimgate.shell.receipt import receive_or_replay
+from claimgate.shell.rules import apply_domain_rules
+from claimgate.shell.store import NoticeStore
 
 
 def submit_notice(
@@ -98,6 +82,8 @@ def submit_notice(
     carrier_identity_reference: Mapping[str, CarrierIdentity],
     jurisdiction_reference: Mapping[str, Mapping[str, str]],
     carrier_rules_source: Mapping[str, Mapping[str, Any]],
+    bindings_source: BindingsSource,
+    implementation_registry: ImplementationRegistry,
     fields: NoticeFields,
     idempotency_key: str | None = None,
 ) -> SubmitNoticeResponse:
@@ -106,120 +92,30 @@ def submit_notice(
         carrier_identity_reference=carrier_identity_reference,
         jurisdiction_reference=jurisdiction_reference,
         carrier_rules_source=carrier_rules_source,
+        bindings_source=bindings_source, implementation_registry=implementation_registry,
         fields=fields, idempotency_key=idempotency_key,
     )
-    received = _receive_or_replay(submission)
+    received = receive_or_replay(submission)
     if isinstance(received, SubmitNoticeResponse):
         return received
     return _decide(submission, received)
 
 
-def _receive_or_replay(submission: Submission) -> SubmitNoticeResponse | AcceptedNotice:
-    """The receipt transaction. IMMEDIATE takes the write lock before the
-    idempotency lookup, so nothing can insert the key between that lookup and
-    the insert that follows it. Losing to the constraint anyway rolls this
-    transaction back whole and answers as a replay in a fresh one."""
-    try:
-        with submission.store.submission():
-            return _receive(submission)
-    except IdempotencyKeyAlreadyRememberedError:
-        with submission.store.submission():
-            return replay_after_losing_the_race(submission)
-
-
-def _receive(submission: Submission) -> SubmitNoticeResponse | AcceptedNotice:
-    identity = resolve_carrier_identity(
-        submission.carrier_code, submission.carrier_identity_reference
-    )
-    if identity.value == "REFUSED":
-        return SubmitNoticeResponse(status=400)
-    remembered = find_remembered_notice(submission)
-    if remembered is not None and is_within_key_lifetime(submission, remembered):
-        return answer_repeated_key(submission, remembered)
-    return _first_submission(submission, expired_key=remembered is not None)
-
-
-def _first_submission(
-    submission: Submission, *, expired_key: bool
-) -> SubmitNoticeResponse | AcceptedNotice:
-    """Whatever the key situation was, this submission is now judged the way a
-    first-ever one is: past its window there is no idempotency record left to
-    find, and a key with no notice behind it never named anything."""
-    parsed = parse_loss_date(submission.fields.loss_date)
-    if parsed.value == "UNPARSEABLE":
-        return _receipt_only(submission, status=400)
-    try:
-        rules = resolve_rules(submission.carrier_code, submission.carrier_rules_source)
-        jurisdiction = resolve_jurisdiction(
-            submission.fields.property_state, submission.jurisdiction_reference
-        )
-        today = resolve_today(submission.submitted_at, jurisdiction)
-    except DeploymentFaultError as fault:
-        return _receipt_only(submission, status=500, error=fault.code)
-    # ABSENT is deliberately not refused here: it flows through as None and the
-    # domain pends the notice on MISSING_REQUIRED_FIELD:loss_date (item 5h).
-    candidate = build_candidate(submission.fields, parsed.loss_date)
-    return _create_notice(
-        submission, candidate, jurisdiction, today, rules, expired_key=expired_key
-    )
-
-
-def _receipt_only(
-    submission: Submission, *, status: int, error: str | None = None
-) -> SubmitNoticeResponse:
-    """What a submission that creates no notice still leaves behind: its payload,
-    referenced by its own hash, and nothing else - no key row, because a key
-    names a notice from the moment the notice exists, and no audit entry,
-    because one cannot exist without a notice at all (item 5i, ruling 4). The
-    two refusals that reach here keep it for reasons of their own, in
-    notice_intake.feature's Rules 3 and 5."""
-    reference = submission.store.refuse_payload(
-        submission.carrier_code, submission.raw_payload, submission.submitted_at, error
-    )
-    return SubmitNoticeResponse(status=status, reference=reference, error=error)
-
-
-def _create_notice(
-    submission: Submission, candidate: Candidate, jurisdiction: Jurisdiction | None,
-    today: date | None, rules: CarrierRules, *, expired_key: bool,
-) -> AcceptedNotice:
-    """Everything the receipt transaction writes: the payload record and the
-    notice at RECEIVED with its audit entry, and the key row, which belongs
-    here because a key names a notice from the moment the notice exists."""
-    store = submission.store
-    notice_id = str(uuid.uuid4())
-    store.receive_notice(
-        notice_id, submission.carrier_code, submission.raw_payload, submission.submitted_at
-    )
-    if submission.idempotency_key is not None:
-        store.remember_key(
-            submission.carrier_code, submission.idempotency_key, notice_id,
-            replacing_expired=expired_key,
-        )
-    return AcceptedNotice(
-        notice_id=notice_id, candidate=candidate, jurisdiction=jurisdiction,
-        today=today, rules=rules,
-    )
-
-
 def _decide(submission: Submission, accepted: AcceptedNotice) -> SubmitNoticeResponse:
-    """Rule evaluation runs outside every transaction, deliberately. If it
-    raises, the exception propagates and the notice rests at RECEIVED with its
-    receipt, its one audit entry and its key - so the client's retry replays
-    that notice rather than creating a duplicate of it."""
+    """The search, then rule evaluation, both outside every transaction,
+    deliberately. If evaluation raises, the exception propagates and the notice
+    rests at RECEIVED with its receipt, its one audit entry and its key - so the
+    client's retry replays that notice rather than creating a duplicate of it.
+    The search cannot raise: a fault is a value on the verification."""
+    verification = verify_policy(
+        accepted.policy_port, submission.fields, accepted.candidate.loss_date
+    )
+    candidate, match = _verified(accepted.candidate, verification)
     decision = apply_domain_rules(
-        accepted.candidate, accepted.jurisdiction, accepted.today, accepted.rules
+        candidate, accepted.jurisdiction, accepted.today, accepted.rules, match
     )
     with submission.store.submission():
-        submission.store.record_decision(
-            accepted.notice_id, state=decision.state, blockers=decision.blockers,
-            severity=decision.severity, queue=decision.queue,
-            jurisdiction_marking=decision.jurisdiction_marking,
-            future_dated_loss=decision.future_dated_loss,
-            occurred_at=submission.submitted_at,
-        )
-        if decision.state == "TRIAGED":
-            _record_indicators(submission, accepted)
+        _record(submission, accepted, decision, verification, candidate)
     return SubmitNoticeResponse(
         status=201, notice_id=accepted.notice_id, state=decision.state,
         blockers=decision.blockers, severity=decision.severity, queue=decision.queue,
@@ -227,16 +123,55 @@ def _decide(submission: Submission, accepted: AcceptedNotice) -> SubmitNoticeRes
     )
 
 
-def _record_indicators(submission: Submission, accepted: AcceptedNotice) -> None:
+def _record(
+    submission: Submission, accepted: AcceptedNotice, decision: Decision,
+    verification: Verification | None, candidate: Candidate,
+) -> None:
+    """The decision transaction: the decision, the verification row and the
+    SIU events together (PHASE3_DESIGN.md, "Where the calls sit"), so a notice
+    never rests TRIAGED with half its attributes."""
+    submission.store.record_decision(
+        accepted.notice_id, state=decision.state, blockers=decision.blockers,
+        severity=decision.severity, queue=decision.queue,
+        jurisdiction_marking=decision.jurisdiction_marking,
+        future_dated_loss=decision.future_dated_loss,
+        occurred_at=submission.submitted_at,
+    )
+    if verification is not None:
+        coverage_verifications.append(
+            submission.store, accepted.notice_id, verification,
+            ruleset_version=RULESET_VERSION, evaluated_at=submission.submitted_at,
+        )
+    if decision.state == "TRIAGED":
+        _record_indicators(submission, accepted, candidate)
+
+
+def _verified(
+    candidate: Candidate, verification: Verification | None
+) -> tuple[Candidate, PolicyMatch | None]:
+    """What the rules are given once the search has answered: the candidate
+    carrying the continuous-coverage date the history yielded, and the match.
+    A notice nothing could be searched on keeps its candidate as received and
+    hands the rules no match - not a match that found nothing."""
+    if verification is None:
+        return candidate, None
+    return carry_onto_candidate(candidate, verification.coverage), verification.match
+
+
+def _record_indicators(
+    submission: Submission, accepted: AcceptedNotice, candidate: Candidate
+) -> None:
     """The intake path's half of item 5f decision 1, inside the decision
     transaction so the events and the transition commit together. Both instants
     are the submission's: on this path the notice was received and triaged in
     one request, so the day the interval is counted from and the instant the
-    evaluation happened are the same event rather than a coincidence."""
+    evaluation happened are the same event rather than a coincidence. The
+    candidate is the verified one, so the recent-inception indicator reads the
+    date the term history yielded (item 7f)."""
     siu.record_evaluation(
         submission.store,
         accepted.notice_id,
-        candidate=accepted.candidate,
+        candidate=candidate,
         rules=accepted.rules,
         received_at=submission.submitted_at,
         jurisdiction=accepted.jurisdiction,
@@ -246,5 +181,7 @@ def _record_indicators(submission: Submission, accepted: AcceptedNotice) -> None
 
 def get_notice(store: NoticeStore, notice_id: str) -> NoticeView | None:
     record = store.get_notice(notice_id)
-    return None if record is None else NoticeView.of(record)
-
+    if record is None:
+        return None
+    verification = coverage_verifications.view_of(coverage_verifications.latest(store, notice_id))
+    return NoticeView.of(record, verification)

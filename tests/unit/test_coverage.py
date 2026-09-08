@@ -134,10 +134,22 @@ def test_determination_value(terms: list[PolicyTerm], loss_date: str, expected: 
         ([CANCELLED_TWICE], "2026-07-01", CANCELLED_TWICE, "2026-06-10"),
         ([CANCELLED_TWICE], "2026-10-01", CANCELLED_TWICE, "2026-09-01"),
         (REWRITE_THEN_CANCELLED, "2026-09-01", REWRITE_THEN_CANCELLED[1], "2026-08-01"),
-        # No term decided: nothing is cited.
-        (GAP, "2026-02-01", None, None),
+        # Item 7f: a boundary day cites the one term whose boundary it is; an
+        # uncovered date with no standing cancellation cites the term whose
+        # coverage most recently ended before it, with no status change.
+        ([SINGLE], "2026-01-15", SINGLE, None),
+        ([SINGLE], "2027-01-15", SINGLE, None),
+        ([SINGLE], "2027-01-16", SINGLE, None),
+        ([CANCELLED], "2027-01-16", CANCELLED, None),
+        ([CANCELLED_TWICE], "2026-09-01", CANCELLED_TWICE, None),
+        (GAP, "2026-02-01", GAP[0], None),
+        (GAP, "2027-04-01", GAP[1], None),
+        # No single term decided: nothing is cited - a date two terms share,
+        # or a loss before any term ran.
+        (GAP, "2024-12-31", None, None),
         ([SINGLE], "2026-01-14", None, None),
         (RENEWAL, "2026-06-01", None, None),
+        (REWRITE, "2026-05-15", None, None),
     ],
 )
 def test_determination_cites_the_deciding_term_and_cancellation(
@@ -326,7 +338,7 @@ def test_prior_carrier_coverage_and_the_horizon_never_decide_the_determination(
 
     assert determination.value == expected
     assert determination == determine_term_in_force(bare, date.fromisoformat(loss_date))
-    assert determination.term == (TAKEOUT if expected == IN_FORCE else None)
+    assert determination.term == (TAKEOUT if expected in (IN_FORCE, BOUNDARY_DAY) else None)
 
 
 @pytest.mark.parametrize(

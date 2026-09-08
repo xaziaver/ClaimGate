@@ -7,14 +7,16 @@ the run. Ratified semantics: ASSUMPTIONS.md, "Data we do not have at intake",
 the 2026-08-14 entry and the continuous-coverage decisions of 2026-09-04. The
 rule reads the term history the term-in-force rule reads and, unlike it, the
 history's horizon and prior-carrier coverage. No configuration, no clock, and
-no caller until item 7f wires the policy port.
+called from the intake path since item 7f wired the policy port, through
+carry_onto_candidate below - the first producer of Candidate.continuous_coverage_date.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Final, Literal
 
 from claimgate.domain.coverage import NOT_EVALUATED, TermHistory, in_force_periods
+from claimgate.domain.models import Candidate
 
 DERIVED: Final = "DERIVED"
 ContinuousCoverageValue = Literal["DERIVED", "NOT_EVALUATED"]
@@ -124,3 +126,15 @@ def _source_reason(history: TermHistory) -> str:
 
 def _not_evaluated(reason: str) -> ContinuousCoverageDerivation:
     return ContinuousCoverageDerivation(value=NOT_EVALUATED, reason=reason)
+
+
+def carry_onto_candidate(
+    candidate: Candidate, derivation: ContinuousCoverageDerivation
+) -> Candidate:
+    """The first producer of Candidate.continuous_coverage_date (item 7f). A
+    derivation that was not evaluated leaves it None, so the recent policy
+    inception indicator reads NOT_EVALUATED with its own reason,
+    NO_CONTINUOUS_COVERAGE_DATE (domain/siu.py): the derivation's reason stays
+    on the coverage verification and the indicator does not learn it
+    (ASSUMPTIONS.md, 7f decision 5)."""
+    return replace(candidate, continuous_coverage_date=derivation.continuous_since)
