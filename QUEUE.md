@@ -3929,3 +3929,126 @@ re-search on resolution, and the insured-name search; 7h the claims port and `fi
 caller. `ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today"
 carry dated 7f notes. Nothing is in flight in code; the branch is a superset of `main` and is not
 merged.
+
+**2026-09-08: item 7g is open on `phase3/7g-resolution-research` from `main` at `850fe04`; the
+structural commit is done and green at `ce62f3d`, no spec touched, nothing drafted.**
+`shell/resolution_evaluation.py` (249 lines) is now read → judge → write: `read` takes the notice,
+its arrival sequence and its latest verification in one `BEGIN IMMEDIATE` transaction and answers
+the 404 and the early 409 there; `judge` runs the full validation over the merged view holding no
+lock, which is where 7g's port calls go, none added; `write` opens the second transaction, re-reads
+the notice and answers 409 if it is no longer `PENDED`, otherwise appends the reviewer's payload
+record and writes the decision, the audit entry and the SIU events together. `shell/resolution.py`
+(98) keeps the 400 and catches the 500, which the judgement now raises between the transactions
+with nothing to roll back. The race guard's specification is `tests/shell/test_resolution.py::
+test_a_notice_that_moved_between_the_read_and_the_write_is_answered_409_with_nothing_written`: a
+second reviewer's resolution runs through the endpoint from inside the first's judgement, and the
+first is answered 409 carrying `TRIAGED` with two payload records, three audit entries, the
+winner's `resolved_at` and the winner's SIU events, nothing of its own. `resolution.feature`'s 27
+rows re-ran unmodified and green. Cold gate at `ce62f3d`, `mutants/` and `.mutmut-cache` cleared,
+predicted then measured, run `20260908T085655-217436`: protect 3/3; static 0; size worst function 25, worst
+module `resolution_evaluation.py` 249 beside `store.py` 248, `messages.py` 243, `records.py` 242
+and `schema.py` 237; complexity 6; boundary 17 step files, 0 direct imports; tests 833/833;
+coverage 100/100; CRAP 6; duplication 0; code mutation 100 %, 756 killed — the guard adds 0,
+confirmed by a standalone cold `mutmut run` whose sandbox holds `src/claimgate/domain/` only,
+756/756 killed; acceptance `15 spec(s), 73 reviewed-equivalent`, 0 diagnostics, 2458.573 s
+against the 3600 s Stop hook budget — the pair this opening records — every digest unchanged. The
+one figure the prediction could only model was the duration, 2553 s (below).
+
+**Measurements at `ce62f3d` against the lock, read-only, for the advisor before any draft.**
+(a) The retirement radius. The requirement's forms — `policy_number`, `policy number`,
+`MISSING_REQUIRED_FIELD:policy_number` — occur in eleven specs, and the rows whose *subject*
+changes when an absent number with no insured name and postal code becomes
+`POLICY_IDENTIFIERS_INSUFFICIENT` are three: `validation.feature`'s two plain scenarios under "A
+policy number must be stated" (lines 136 and 143; one literal mutant each, `""` and `"   "` to
+the marker; 0 approved), whose assertion table is `MISSING_REQUIRED_FIELD | policy_number` and
+which the rule's own comment says 7g replaces; `notice_intake.feature`'s Rule 1 row `absent | 201
+| PENDED | MISSING_REQUIRED_FIELD:policy_number | not yet assigned` (line 109; 5 mutants, 5
+locators, 0 approved; all five move because each embeds the row, the TRIAGED row's five do not);
+and `resolution.feature`'s "clears every blocker" row `absent | SUPPLEMENTAL | 422 | PENDED |
+MISSING_REQUIRED_FIELD:policy_number | REFUSED | USER | MISSING_REQUIRED_FIELD:policy_number`
+(line 416; 8 mutants, 8 locators, 0 approved; two cells change, its eight locators move, the other
+two rows' sixteen hold and their swap targets stay row 1). Fifteen mutants, fifteen locators,
+zero approvals — the subject-changing floor — and the state on every one stays `PENDED`. Rows that
+merely mention the field, every one using `the notice reports a policy number of "absent"` in a
+fixed Given as the pending device and asserting state, records, audit or SIU events but never the
+blocker text: `notice_intake.feature`'s audit-entry outline (10 mutants, a relational blockers
+column), `idempotency.feature`'s replay row `absent | PENDED` (4), `resolution.feature`'s other
+nine policy-number scenarios (101 mutants; the file's 2 approvals sit on the "read at all"
+outline's `reviewer` and `supplied_loss_date` columns and embed no policy number) and the two
+`HO-7654321` rows beside the changing one (16), `jurisdiction_selection.feature`'s two resolution
+outlines (8; the comment at 291–292 names the old code), `siu_separation.feature`'s four (29,
+including two `"absent"` literal mutants that die on state before and after). None of these
+changes outcome: the notice still pends, the reviewer's number still clears it. Comment-only
+mentions in `carrier_configuration.feature` (12, 50), `policy_match.feature` (23–27, "carries a
+policy number because validation still requires one until item 7g"), `validation.feature`'s
+interplay rule (343–357) and `resolution.feature` (71, 367 — stale since 7d, it still says
+"malformed") move no locator; each edited comment costs that file's approval and nothing else.
+Approvals to re-issue if only the three subject files are edited: three file approvals, zero
+mutant approvals. `policy_identification.feature` (54 mutants, 0 approved) needs no edit for the
+wiring. (b) `resolution.feature` after the re-search: ten of its eleven scenarios supply
+`HO-7654321` — the future-loss-date outline supplies nothing and the Background's `HO-1234567` is
+what its re-search would take — and every one expects `TRIAGED` where the number was supplied;
+under the Background's unavailable source the re-search yields `NOT_EVALUATED`, which the design's
+table makes an attribute and not a blocker, so no expectation moves. The `records` column counts
+payload records and `audit_effect` counts audit entries; a verification row is neither. The row
+that supplies `absent` is the subject-changing row in (a), pending either way. One question the
+file does not ask: the resolution path will now resolve a binding, and an unbound carrier on that
+path has no row anywhere — `notice_intake.feature`'s fault row covers intake only. (c)
+Serialization today: a blocker is `ValidationBlocker(code, field)`, one code and one field,
+rendered `{"code", "field"}` on every surface; the search's two carry an empty field. The compact
+spelling three notice-level specs use is `CODE:field;CODE:field`, parsed by
+`tests/acceptance/support.py::parse_compact_blockers` (partition on the first colon, so a bare
+`CODE` is an empty field) and, for validation.feature's own step, by
+`test_validation_acceptance.py::_parse_compact_blockers` (a split, so a bare code raises);
+validation.feature otherwise uses the `| code | field |` table. `policy_identification.feature`
+spells its blocker `POLICY_IDENTIFIERS_INSUFFICIENT:policy_number;insured_name;risk_postal_code`,
+read by its own step as the code, a colon, and the fields joined by `;` — on a notice row that
+same string parses as two blockers, `(POLICY_IDENTIFIERS_INSUFFICIENT, policy_number)` and
+`(insured_name, "")`. The pure rule's spelling and the notice-level spelling collide on `;`, and
+the advisor chooses between one blocker per absent field (the existing shape, the same code on up
+to three rows), one blocker whose field is the tuple under another separator (a model and
+serializer change), and a bare code (the fields lost). (d) Intake at the tip:
+`shell/policy_match.py::verify_policy` runs `evaluate_identifier_sufficiency` first, between the
+transactions, and on `INSUFFICIENT` returns `None` — the blocker is dropped, nothing is searched,
+no row is written; `apply_domain_rules` then runs `validate`, whose `_check_policy_number` raises
+`MISSING_REQUIRED_FIELD:policy_number`. Sufficiency first, validation second, and only validation's
+answer reaches the notice. The resolution path evaluates no sufficiency at all.
+
+**Duration model, from source and a measured baseline.** `gates/acceptance.py::_survivors` runs
+`adapters/python.py::run_acceptance`, `pytest <steps directory>`, once per mutant — the whole
+`tests/acceptance`, never the one spec's module. Measured at `ce62f3d` with the engine's flags on
+a quiet machine: 2.210 s per whole-directory run (2.222, 2.164, 2.244); 291 rows, 1.316 s of
+testcase time, the rest interpreter start and collection. Per spec, standalone module wall time ×
+mutants at the lock: carrier_configuration 0.437 × 73 = 31.9; continuous_coverage 0.445 × 156 =
+69.4; coverage_verification 0.442 × 108 = 47.7; duplicates 0.422 × 57 = 24.1; idempotency 0.518 ×
+46 = 23.8; jurisdiction_date 0.395 × 20 = 7.9; jurisdiction_selection 0.493 × 55 = 27.1;
+notice_intake 0.460 × 56 = 25.8; policy_identification 0.400 × 54 = 21.6; policy_match 1.447 × 50
+= 72.4; resolution 0.598 × 133 = 79.5; siu_indicators 0.536 × 39 = 20.9; siu_separation 0.673 × 53
+= 35.7; triage 0.421 × 90 = 37.9; validation 0.523 × 165 = 86.3 — sum 612.0 s, ratio 3.97 to
+2427.14 s: the per-module model undercounts four times over because that is not what runs. The
+whole-directory model, 2.210 × 1155 = 2552.6 s, is what the observed runs are read against: observed over
+modelled is 0.951 for 2427.14 s, 1.002 for the 2556.762 s of run `20260907T223153-123173` on the
+same lock, and 0.963 for this run's 2458.573 s. Pricing
+a scenario of `resolution.feature`'s shape (27 rows, 0.197 s of testcase time, 7.3 ms a row):
+each mutant it adds costs one whole-directory run, 2.21 s; each row it adds costs 7.3 ms on every
+mutant's run, 8.4 s at 1155 mutants; a three-row outline with 18 mutants costs 39.8 + 25.7 ≈ 65
+s, with 24 mutants ≈ 79 s. The growth is rows × mutants, which is why 8 % more mutants cost 44 %
+more time at 7f.
+
+**Judgments for ratification, structural commit:** (1) the reviewer's payload record is appended in
+the write transaction, not the read, and the judgement sees it through an in-memory overlay of
+the supplied fields, so a 409 from the re-check persists nothing — decision 3's "the 409 persists
+nothing at all", extended to the late 409; (2) the read transaction is the same `BEGIN IMMEDIATE`
+as every write: `store.py` has two lines of headroom under the module ceiling, a deferred-read
+context manager does not fit, and the read holds the lock for three reads and no I/O; (3) the 404
+and the early 409 moved into the read, so `conflict` lives in `resolution_evaluation.py` and
+answers both 409s, and `resolution.py` keeps only what precedes the notice, the 400, and what
+follows the judgement, the 500; (4) the re-read's `None` arm is carried by `or record` for the
+type — nothing in the package deletes a notice row, and a vanished one would fail the write on
+the payload's foreign key rather than be answered; (5) `judge` is public so the race test can
+interpose a competing resolution at the one moment between the read and the write, and the
+overtaking resolution is a real one through the endpoint, not a direct row write; (6) the
+deployment-fault test's docstring now says what it proves — the read wrote nothing and the write
+was never opened. One debt: `resolution_evaluation.py` has one line of headroom, so 7g's port
+calls split it. Next: the advisor prices and drafts 7g's scenarios from the measurements above;
+nothing is drafted here. The branch is a superset of `main` and is not merged.

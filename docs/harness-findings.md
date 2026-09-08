@@ -722,6 +722,22 @@ against, not a trend reversal. The 3600s hook clears a green run by about 1600s 
 `CLAUDE.md`'s start-up step 3 carries the pair and `QUEUE.md`'s status paragraph records it at
 every close, so the next raise is planned rather than discovered from a strand.
 
+**Sixth measurement, 2026-09-08: 2458.573 s at 15 specs and 1155 mutants, and a model that
+calibrates at 1.0.** Run `20260908T085655-217436`, item 7g's structural commit `ce62f3d`, no spec changed; the two
+runs before it on the same lock measured 2427.14 s and 2556.762 s. The per-mutant unit is one run
+of `pytest tests/acceptance` — `_survivors` in `gates/acceptance.py` calls `run_acceptance` with
+the steps *directory*, never the one spec's module — and that run measured 2.210 s at `ce62f3d` on
+a quiet machine (2.222, 2.164, 2.244 with the engine's own flags; 291 rows, 1.316 s of testcase
+time, the rest interpreter start and collection). 2.210 × 1155 = 2552.6 s, and observed over modelled is 0.951
+for the first run, 1.002 for the second and 0.963 for this one. The model a per-module timing suggests — each spec's
+standalone module wall time times its mutant count — sums to 612.0 s on the same numbers, a
+quarter of the observed, because it prices a scoping the gate does not do. What follows for
+pricing a draft: every mutant costs a whole-directory run, and every scenario row costs its
+testcase time on every mutant's run — 7.3 ms a row for `resolution.feature`'s shape, 8.4 s a row
+at today's count — so the wall time is rows × mutants and grows with the square of the suite,
+which is why 8 % more mutants at 7f cost 44 % more time. `QUEUE.md`'s 7g status paragraph carries
+the per-spec table.
+
 ### `scope = "changed"` in `gauntlet.toml` never reaches the mutation gate — but not because `--changed` goes unused
 
 `--changed` is passed constantly: `.claude/settings.json`'s `PostToolUse` hook

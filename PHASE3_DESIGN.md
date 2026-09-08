@@ -19,6 +19,13 @@ Established from `src/claimgate/shell/` at `4a42d2f`, 2026-09-01. Treat as measu
   `RECEIVED` for the client's retry to replay.
 - **Resolution path.** `resolution.resolve_notice` opens one transaction and `_judge` runs
   `apply_domain_rules` inside it. The two paths have different transaction shapes.
+  **Annotation 2026-09-08 (item 7g, structural commit `ce62f3d`): no longer true.
+  `shell/resolution_evaluation.py` reads the notice, its arrival sequence and its latest
+  verification in one transaction, judges holding no lock, and writes in a second transaction that
+  re-reads the notice and answers 409 if it is no longer `PENDED`; `resolution.py` keeps the 400
+  and the 500. The two paths now have the same shape, evaluation between two transactions. The 7f
+  annotation's "the resolution path searches nothing and re-asserts the stored match" still holds
+  until 7g's port calls land.**
 - **`Candidate.continuous_coverage_date` has no producer in the shell.** The recent-inception
   indicator is `NOT_EVALUATED` on every real notice. **Annotation 2026-09-07 (item 7f): no longer
   true. `domain/continuous_coverage.py`'s `carry_onto_candidate` is the producer, called on the
