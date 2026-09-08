@@ -1014,6 +1014,30 @@ or data. Nothing below was confirmed against a live book.
   is not searched at 7f and no verification row is written; it pends on validation regardless, and
   the re-search on resolution at 7g verifies it. Both advisor-recommended, human-ratified
   2026-09-07.
+- **Item 7g spec decisions — advisor-recommended, human-ratified 2026-09-08.** (1)
+  `POLICY_IDENTIFIERS_INSUFFICIENT` serializes on a notice as one blocker whose field is the absent
+  identifier fields in the rule's order, comma-joined —
+  `POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,insured_name,risk_postal_code`; `;` remains the
+  separator between blockers, and `policy_identification.feature` is not reopened, its `;` being its
+  own domain-level step's spelling. (2) It sorts after `MISSING_REQUIRED_FIELD` and before
+  `POLICY_NOT_MATCHED` and `POLICY_AMBIGUOUS`: it is about what arrived, and it is the search's
+  precondition, so it never co-occurs with the search's blockers. (3) Validation says nothing about
+  the policy number; its two scenarios now assert no blocker. (4) An insufficient set is not
+  searched and carries no verification (7f decision 11 stands); a source that cannot search on the
+  identifiers given — the port's `IDENTIFIERS_INSUFFICIENT` — is `NOT_EVALUATED` with that reason
+  and the notice proceeds, as for a fault. (5) The notice records which identifiers found the
+  policy, `POLICY_NUMBER` or `INSURED_NAME_AND_POSTAL_CODE`, from the port's basis: a mistyped
+  number beside a correct pair is the case the search exists for, and a reviewer should see that
+  the number did not match. One column on the verification row, one attribute on the view. (6)
+  Resolution re-searches on the merged identifiers; a search that answers decides afresh, and one
+  that could not answer leaves the last answer's blocker in place, so an outage cannot turn a
+  correction into a triage; the latest verification is what the notice shows. (7) A reviewer may
+  supply an insured name and a risk postal code, not only a policy number. (8) The retirement moves
+  three rows in three locked files — fifteen locators, none approved — and the 168 fixed-`Given`
+  rows that use an absent number as the pending device keep `PENDED` because an absent number with
+  no pair is now insufficient rather than missing. (9) Where a re-search cannot answer, the last
+  computed continuous-coverage date stands beside the carried blocker, so a release's SIU
+  evaluation reads a date that was computed. Agent judgment 11, human-ratified 2026-09-08.
 
 ## Undocumented phase-1 thresholds
 

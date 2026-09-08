@@ -48,7 +48,8 @@ catch, and the pressure would then be on the negatives to get looser.
 **Item 7f put the coverage verification on the notice view, through an
 allow-list of its own.** PHASE3_DESIGN.md's "Persistence" makes both phase-3
 tables ordinary attributes, and the view names what features/policy_match.feature
-reads: the match and the matched reference, the identification's reason, the
+reads: the match, the matched reference and the identifiers it was found on
+(item 7g), the identification's reason, the
 term verdict with the deciding term's dates, the continuous-coverage date with
 its reason, and the instant the answer reflects. It is a nested surface with a
 list of its own rather than nine more names on the notice's list, so the
@@ -78,8 +79,9 @@ NOTICE_VIEW_FIELDS = (
     "coverage_verification",
 )
 COVERAGE_VERIFICATION_FIELDS = (
-    "policy_match", "matched_policy", "reason", "term_in_force", "deciding_term_effective",
-    "deciding_term_expiration", "continuous_coverage_date", "continuous_coverage_reason", "as_of",
+    "policy_match", "matched_policy", "identified_on", "reason", "term_in_force",
+    "deciding_term_effective", "deciding_term_expiration", "continuous_coverage_date",
+    "continuous_coverage_reason", "as_of",
 )
 AUDIT_ENTRY_FIELDS = (
     "notice_id", "carrier_code", "from_state", "to_state", "actor_id", "actor_type",

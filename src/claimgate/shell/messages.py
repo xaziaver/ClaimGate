@@ -22,7 +22,7 @@ from claimgate.domain.models import (
     ValidationBlocker,
 )
 from claimgate.shell.bindings import BindingsSource, ImplementationRegistry
-from claimgate.shell.coverage_verifications import CoverageVerificationView
+from claimgate.shell.coverage_verifications import CoverageVerificationView, Verification
 from claimgate.shell.ports import PolicyPort
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.store import NoticeStore
@@ -167,6 +167,9 @@ class Resolution:
     jurisdiction_reference: Mapping[str, Mapping[str, str]]
     carrier_rules_source: Mapping[str, Mapping[str, Any]]
     supplied: Mapping[str, Any]
+    # The re-search reaches the policy port through a submission's two sources (item 7g).
+    bindings_source: BindingsSource
+    implementation_registry: ImplementationRegistry
     note: str | None = None
 
 
@@ -222,6 +225,8 @@ class Judgement:
     candidate: Candidate
     rules: CarrierRules
     jurisdiction: Jurisdiction | None
+    # What the re-search verified, for the write to record; None where nothing was searched.
+    verification: Verification | None
 
 
 @dataclass(frozen=True)

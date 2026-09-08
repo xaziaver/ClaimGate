@@ -22,6 +22,7 @@ from tests.api.policy_match import PolicySources, bound_sources
 from tests.fixtures.core_system import FixtureAddress
 from tests.shell.support import (
     DEFAULT_FIELDS,
+    DEFAULT_RESOLVED_AT,
     DEFAULT_SUBMITTED_AT,
     PENDING_FIELDS,
     Resolver,
@@ -61,6 +62,7 @@ def test_a_matched_policy_in_force_triages_and_records_the_verification_with_the
     assert (row.policy_match, row.policy_reference, row.policy_match_reason) == (
         "MATCHED", REFERENCE, None,
     )
+    assert row.identified_on == "POLICY_NUMBER"
     assert (row.term_in_force, row.term_effective, row.term_expiration) == (
         "IN_FORCE", OLD_INCEPTION, EXPIRATION,
     )
@@ -93,7 +95,9 @@ def test_a_number_the_source_does_not_hold_pends_on_policy_not_matched(
     assert (response.status, response.state) == (201, "PENDED")
     assert [(b.code, b.field) for b in response.blockers] == [("POLICY_NOT_MATCHED", "")]
     row = _only_verification(store, response.notice_id)
-    assert (row.policy_match, row.policy_reference) == ("NOT_MATCHED", None)
+    assert (row.policy_match, row.policy_reference, row.identified_on) == (
+        "NOT_MATCHED", None, None,
+    )
     # Nothing about the term or the date is derived from a policy nobody found;
     # both say why instead.
     assert (row.term_in_force, row.term_reason) == ("NOT_EVALUATED", "POLICY_NOT_MATCHED")
@@ -177,19 +181,26 @@ def test_the_search_runs_on_a_notice_that_pends_for_another_reason(
 
 @pytest.mark.parametrize(
     ("fields", "blocker"),
-    [(PENDING_FIELDS, "policy_number"), (_NO_LOSS_DATE, "loss_date")],
-    ids=["no policy number", "no loss date"],
+    [
+        (
+            PENDING_FIELDS,
+            ("POLICY_IDENTIFIERS_INSUFFICIENT", "policy_number,insured_name,risk_postal_code"),
+        ),
+        (_NO_LOSS_DATE, ("MISSING_REQUIRED_FIELD", "loss_date")),
+    ],
+    ids=["nothing to search on", "no loss date"],
 )
-def test_a_notice_that_cannot_be_verified_is_not_searched_and_pends_on_validation_alone(
-    store: NoticeStore, submit: Submitter, fields: object, blocker: str
+def test_a_notice_that_cannot_be_verified_is_not_searched_and_pends_on_its_own_blocker_alone(
+    store: NoticeStore, submit: Submitter, fields: object, blocker: tuple[str, str]
 ) -> None:
     # An empty, available source: had the search run, the notice would carry
-    # POLICY_NOT_MATCHED beside the missing field and a row saying so. It
-    # carries neither (shell/policy_match.py's module docstring).
+    # POLICY_NOT_MATCHED beside its own blocker and a row saying so. It carries
+    # neither (shell/policy_match.py's module docstring); the first case is the
+    # identification's blocker, validation's no longer (item 7g).
     response = submit(policy_sources=bound_sources(["AAAA"]), fields=fields)  # type: ignore[arg-type]
 
     assert response.state == "PENDED"
-    assert [(b.code, b.field) for b in response.blockers] == [("MISSING_REQUIRED_FIELD", blocker)]
+    assert [(b.code, b.field) for b in response.blockers] == [blocker]
     assert coverage_verifications.for_notice(store, _id(response.notice_id)) == ()
     view = get_notice(store, _id(response.notice_id))
     assert view is not None and view.coverage_verification is None
@@ -248,31 +259,183 @@ def test_the_view_names_the_verification_as_the_spec_reads_it(
 def test_correcting_an_unrelated_field_does_not_clear_an_unmatched_policy(
     store: NoticeStore, submit: Submitter, resolve: Resolver
 ) -> None:
-    # 7f decision 6: the resolution path re-asserts the stored match and
-    # searches nothing, so only 7g's re-search on the corrected identifiers can
-    # clear this pend. No new row: nothing new was verified.
-    notice_id = _id(submit(policy_sources=holding(number="HO-7654321")).notice_id)
+    # 7g decision 6: the re-search runs on the merged identifiers, the same
+    # wrong number finds nothing again, and the second answer is recorded
+    # beside the first - a trail of two rows, both NOT_MATCHED.
+    sources = holding(number="HO-7654321")
+    notice_id = _id(submit(policy_sources=sources).notice_id)
 
-    response = resolve(notice_id, supplied={"claimant_name": "Ruth Alvarez"})
+    response = resolve(
+        notice_id, policy_sources=sources, supplied={"claimant_name": "Ruth Alvarez"}
+    )
 
     assert (response.status, response.state) == (422, "PENDED")
     assert [(b.code, b.field) for b in response.blockers] == [("POLICY_NOT_MATCHED", "")]
-    assert len(coverage_verifications.for_notice(store, notice_id)) == 1
+    rows = coverage_verifications.for_notice(store, notice_id)
+    assert [row.policy_match for row in rows] == ["NOT_MATCHED", "NOT_MATCHED"]
 
 
-def test_a_release_reads_the_stored_coverage_date_for_its_siu_evaluation(
+def test_a_release_reads_the_date_the_re_search_yielded_for_its_siu_evaluation(
     store: NoticeStore, submit: Submitter, resolve: Resolver
 ) -> None:
-    # The date the intake search yielded travels onto the resolution's
-    # candidate through the same producer, so the indicator a release owes is
-    # evaluated rather than NOT_EVALUATED for want of a date it already has.
-    notice_id = _id(submit(policy_sources=holding(RECENT_INCEPTION), fields=_INJURY).notice_id)
+    # The re-search answers, so the date the resolution's own search yielded
+    # travels onto its candidate, and the indicator a release owes is
+    # evaluated rather than NOT_EVALUATED for want of a date.
+    sources = holding(RECENT_INCEPTION)
+    notice_id = _id(submit(policy_sources=sources, fields=_INJURY).notice_id)
 
-    response = resolve(notice_id, supplied={"incident_description": "Fall on the front steps"})
+    response = resolve(
+        notice_id, policy_sources=sources, supplied={"incident_description": "Fall on the steps"}
+    )
 
     assert (response.status, response.state) == (200, "TRIAGED")
     assert _recent_inception(store, notice_id) == ("TRUE", None)
-    assert len(coverage_verifications.for_notice(store, notice_id)) == 1
+    assert [row.policy_match for row in coverage_verifications.for_notice(store, notice_id)] == [
+        "MATCHED", "MATCHED",
+    ]
+
+
+def test_a_release_under_an_outage_reads_the_last_answers_date_for_its_siu_evaluation(
+    store: NoticeStore, submit: Submitter, resolve: Resolver
+) -> None:
+    # The other half of decision 6 for the date: the re-search could not
+    # answer, so the derivation the intake search yielded stands - a date that
+    # was computed - and the newest row says why the re-search could not.
+    notice_id = _id(submit(policy_sources=holding(RECENT_INCEPTION), fields=_INJURY).notice_id)
+
+    response = resolve(notice_id, supplied={"incident_description": "Fall on the steps"})
+
+    assert (response.status, response.state) == (200, "TRIAGED")
+    assert _recent_inception(store, notice_id) == ("TRUE", None)
+    rows = coverage_verifications.for_notice(store, notice_id)
+    assert [(row.policy_match, row.policy_match_reason) for row in rows] == [
+        ("MATCHED", None), ("NOT_EVALUATED", "SOURCE_UNAVAILABLE"),
+    ]
+
+
+def test_the_pair_finds_the_policy_without_a_number_and_the_row_says_which_identifiers_did(
+    store: NoticeStore, submit: Submitter
+) -> None:
+    # Item 7g: the second arm reaches intake once validation stops requiring
+    # a number, and the basis the port reported is stored and shown.
+    fields = replace(PENDING_FIELDS, insured_name=INSURED, risk_postal_code=POSTAL_CODE)
+
+    response = submit(policy_sources=holding(), fields=fields)
+
+    assert (response.status, response.state, response.blockers) == (201, "TRIAGED", ())
+    row = _only_verification(store, response.notice_id)
+    assert (row.policy_match, row.policy_reference, row.identified_on) == (
+        "MATCHED", REFERENCE, "INSURED_NAME_AND_POSTAL_CODE",
+    )
+    view = get_notice(store, _id(response.notice_id))
+    assert view is not None and view.coverage_verification is not None
+    assert view.coverage_verification.identified_on == "INSURED_NAME_AND_POSTAL_CODE"
+
+
+def test_a_source_that_searches_by_number_only_answers_a_pair_not_evaluated_with_its_reason(
+    store: NoticeStore, submit: Submitter
+) -> None:
+    # 7g decision 4: a source limitation is not the reporter's problem, so the
+    # notice proceeds exactly as under a fault, and the row says why.
+    sources = holding()
+    sources.search_by_number_only("AAAA")
+    fields = replace(PENDING_FIELDS, insured_name=INSURED, risk_postal_code=POSTAL_CODE)
+
+    response = submit(policy_sources=sources, fields=fields)
+
+    assert (response.status, response.state, response.blockers) == (201, "TRIAGED", ())
+    row = _only_verification(store, response.notice_id)
+    assert (row.policy_match, row.policy_match_reason, row.identified_on) == (
+        "NOT_EVALUATED", "IDENTIFIERS_INSUFFICIENT", None,
+    )
+
+
+def test_a_re_search_that_answers_replaces_the_stored_match_and_adds_a_row(
+    store: NoticeStore, submit: Submitter, resolve: Resolver
+) -> None:
+    # 7g decision 6, the answering half: the right number clears the miss the
+    # wrong one left, and the trail keeps both answers with their instants.
+    sources = holding()
+    wrong = replace(DEFAULT_FIELDS, policy_number="HO-7654321")
+    notice_id = _id(submit(policy_sources=sources, fields=wrong).notice_id)
+
+    response = resolve(
+        notice_id, policy_sources=sources, supplied={"policy_number": DEFAULT_FIELDS.policy_number}
+    )
+
+    assert (response.status, response.state, response.blockers) == (200, "TRIAGED", ())
+    rows = coverage_verifications.for_notice(store, notice_id)
+    assert [(row.ordinal, row.policy_match, row.identified_on) for row in rows] == [
+        (0, "NOT_MATCHED", None), (1, "MATCHED", "POLICY_NUMBER"),
+    ]
+    assert (rows[1].as_of, rows[1].evaluated_at) == (DEFAULT_RESOLVED_AT, DEFAULT_RESOLVED_AT)
+
+
+def test_a_re_search_that_cannot_answer_carries_the_last_answers_blocker_and_shows_the_latest_row(
+    store: NoticeStore, submit: Submitter, resolve: Resolver
+) -> None:
+    # 7g decision 6, the carry-over: an outage between the intake search and
+    # the reviewer's correction must not turn the correction into a triage.
+    # The blocker is the last answer's; the row the notice shows is the
+    # newest, and says why it could not answer.
+    sources = holding()
+    wrong = replace(DEFAULT_FIELDS, policy_number="HO-7654321")
+    notice_id = _id(submit(policy_sources=sources, fields=wrong).notice_id)
+    sources.system("AAAA").raise_on_every_call()
+
+    response = resolve(
+        notice_id, policy_sources=sources, supplied={"policy_number": DEFAULT_FIELDS.policy_number}
+    )
+
+    assert (response.status, response.state) == (422, "PENDED")
+    assert [(b.code, b.field) for b in response.blockers] == [("POLICY_NOT_MATCHED", "")]
+    rows = coverage_verifications.for_notice(store, notice_id)
+    assert [(row.policy_match, row.policy_match_reason) for row in rows] == [
+        ("NOT_MATCHED", None), ("NOT_EVALUATED", "SOURCE_UNAVAILABLE"),
+    ]
+    view = get_notice(store, notice_id)
+    assert view is not None and view.coverage_verification is not None
+    assert (view.coverage_verification.policy_match, view.coverage_verification.reason) == (
+        "NOT_EVALUATED", "SOURCE_UNAVAILABLE",
+    )
+
+
+def test_a_reviewer_supplying_the_pair_a_notice_lacked_is_searched_on_it(
+    store: NoticeStore, submit: Submitter, resolve: Resolver
+) -> None:
+    # 7g decision 7 through the overlay: no new message field, the two fields
+    # join the merged view like any other, and the re-search finds the policy.
+    sources = holding()
+    notice_id = _id(submit(policy_sources=sources, fields=PENDING_FIELDS).notice_id)
+    assert coverage_verifications.for_notice(store, notice_id) == ()
+
+    response = resolve(
+        notice_id, policy_sources=sources,
+        supplied={"insured_name": INSURED, "risk_postal_code": POSTAL_CODE},
+    )
+
+    assert (response.status, response.state, response.blockers) == (200, "TRIAGED", ())
+    row = _only_verification(store, notice_id)
+    assert (row.policy_match, row.identified_on, row.evaluated_at) == (
+        "MATCHED", "INSURED_NAME_AND_POSTAL_CODE", DEFAULT_RESOLVED_AT,
+    )
+
+
+def test_a_resolution_that_leaves_the_notice_unsearchable_pends_it_and_searches_nothing(
+    store: NoticeStore, submit: Submitter, resolve: Resolver
+) -> None:
+    # A name without its postal code is not a searchable pair, so the blocker
+    # names what is still absent and no row is written: nothing was asked.
+    sources = bound_sources(["AAAA"])
+    notice_id = _id(submit(policy_sources=sources, fields=PENDING_FIELDS).notice_id)
+
+    response = resolve(notice_id, policy_sources=sources, supplied={"insured_name": INSURED})
+
+    assert (response.status, response.state) == (422, "PENDED")
+    assert [(b.code, b.field) for b in response.blockers] == [
+        ("POLICY_IDENTIFIERS_INSUFFICIENT", "policy_number,risk_postal_code"),
+    ]
+    assert coverage_verifications.for_notice(store, notice_id) == ()
 
 
 def _only_verification(

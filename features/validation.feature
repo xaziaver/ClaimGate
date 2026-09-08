@@ -121,31 +121,27 @@ Feature: FNOL validation
       When the candidate FNOL record is validated
       Then there are no blockers
 
-  Rule: A policy number must be stated
+  Rule: A policy number need not be stated; whether the notice can be searched is the identification rule's question
 
     # Item 7d (PHASE3_DESIGN.md, "Identifiers"): the line-of-business prefix
     # check and the two-letters-hyphen-seven-digits shape check are retired,
-    # and POLICY_NUMBER_MALFORMED with them. A policy number is accepted as
-    # given; whether it finds a policy is the policy search's answer (item 7f),
-    # and a mistyped number beside a correct insured name and postal code is a
-    # search, not a pend. What remains here is presence. That too is on notice:
-    # item 7g replaces these two scenarios with the identification blocker from
-    # features/policy_identification.feature, because a notice carrying an
-    # insured name and risk postal code can be searched without a number.
+    # and POLICY_NUMBER_MALFORMED with them. Item 7g retires presence too: a
+    # notice carrying an insured name and risk postal code can be searched
+    # without a number, so an absent number is not a missing field. Whether
+    # the identifiers on the notice suffice is decided by
+    # features/policy_identification.feature, and the intake outcome of an
+    # insufficient set is features/policy_match.feature's. Validation says
+    # nothing about the policy number at all.
 
-    Scenario: An absent policy number is a missing field
+    Scenario: An absent policy number is not a validation blocker
       Given the policy number is ""
       When the candidate FNOL record is validated
-      Then the blockers are:
-        | code                   | field         |
-        | MISSING_REQUIRED_FIELD | policy_number |
+      Then there are no blockers
 
-    Scenario: A whitespace-only policy number is a missing field
+    Scenario: A whitespace-only policy number is not a validation blocker
       Given the policy number is "   "
       When the candidate FNOL record is validated
-      Then the blockers are:
-        | code                   | field         |
-        | MISSING_REQUIRED_FIELD | policy_number |
+      Then there are no blockers
 
   Rule: The loss type must be stated and recognized
 

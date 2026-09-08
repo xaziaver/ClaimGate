@@ -47,7 +47,7 @@ from claimgate.domain.jurisdiction import (
     resolve_jurisdiction_date,
     select_jurisdiction,
 )
-from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction
+from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction, ValidationBlocker
 from claimgate.domain.policy_match import PolicyMatch, match_blockers
 from claimgate.domain.triage import triage_and_route
 from claimgate.domain.validation import canonical_order, validate
@@ -148,20 +148,23 @@ def resolve_today(instant: datetime, jurisdiction: Jurisdiction | None) -> date 
 def apply_domain_rules(
     candidate: Candidate, jurisdiction: Jurisdiction | None, today: date | None,
     rules: CarrierRules, policy_match: PolicyMatch | None,
+    identification: tuple[ValidationBlocker, ...],
 ) -> Decision:
-    """One notice's whole decision. The resolution path calls this over a merged
-    current view and intake calls it over a submission; both get the same answer
-    to "is anything missing" by construction. The policy match is the search's
-    answer as the domain reads it (item 7f): intake hands in what its search
-    found, a resolution what the stored verification says, and None means no
-    search has run over this notice at all."""
+    """One notice's whole decision, the same on both paths by construction. The
+    policy match is the search's answer as the domain reads it - the path's own,
+    or the last answer standing where a re-search could not answer (item 7g),
+    None where none has ever answered; the identification blockers are the
+    sufficiency rule's, what a notice that could not be searched carries instead
+    (item 7g). All three families sort into validation's one canonical order."""
     result = validate(
         candidate,
         today,
         claimant_name_required=rules.claimant_name_required,
         claimant_contact_required=rules.claimant_contact_required,
     )
-    blockers = canonical_order([*result.blockers, *match_blockers(policy_match)])
+    blockers = canonical_order(
+        [*result.blockers, *identification, *match_blockers(policy_match)]
+    )
     marking, determination = marking_for(jurisdiction), result.future_dated_loss
     if blockers:
         return Decision("PENDED", blockers, None, None, marking, determination)

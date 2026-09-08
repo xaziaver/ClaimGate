@@ -177,3 +177,125 @@ Feature: Policy match at intake - what the search finds, and what the notice car
         | loss_type | state   | blockers                                                                         | match   | term     |
         | wind_hail | TRIAGED |                                                                                  | MATCHED | IN_FORCE |
         | injury    | PENDED  | MISSING_REQUIRED_FIELD:claimant_name;MISSING_REQUIRED_FIELD:incident_description | MATCHED | IN_FORCE |
+
+  Rule: Without a policy number, an insured name and risk postal code find the policy; less than that pair pends, and the blocker names what is absent
+
+    # Item 7g. The sufficiency rule is policy_identification.feature's; these
+    # rows are its intake surface now that validation no longer requires a
+    # number. An insufficient set is not searched, so the notice carries no
+    # verification: there was nothing to ask. The blocker lists every absent
+    # identifier field in the rule's order, comma-joined on the notice. The
+    # policy number is fixed absent here because, where the pair finds the
+    # policy, the number is inert, and a column mutation cannot see it; the
+    # name-absent row is left to the domain spec for the same reason, a
+    # postal code beside no name being inert too.
+    Scenario Outline: With no policy number, the pair decides whether the notice is searched
+      Given the notice reports a policy number of "absent"
+      And the notice reports an insured name of "<insured_name>"
+      And the notice reports a risk postal code of "<risk_postal_code>"
+      When the notice is submitted for intake
+      Then the response is 201
+      And the notice's state is <state>
+      And the notice's blockers are <blockers>
+      And the notice's policy match is <match>
+
+      Examples:
+        | insured_name     | risk_postal_code | state   | blockers                                                                    | match   |
+        | Marisol Quintero | 34287            | TRIAGED |                                                                             | MATCHED |
+        | Marisol Quintero | absent           | PENDED  | POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,risk_postal_code              | none    |
+        | absent           | absent           | PENDED  | POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,insured_name,risk_postal_code | none    |
+
+    # The case the search exists for: a contractor's mistyped number beside
+    # the correct insured name and postal code is a match, on the pair, and
+    # the notice says which identifiers found it. The same mistyped number
+    # with the name alone is a search that misses: a name without a postal
+    # code is not a searchable pair, and the number found nothing.
+    Scenario Outline: A wrong policy number is a search miss the pair can rescue
+      Given the notice reports a policy number of "HO-4471290"
+      And the notice reports an insured name of "Marisol Quintero"
+      And the notice reports a risk postal code of "<risk_postal_code>"
+      When the notice is submitted for intake
+      Then the notice's state is <state>
+      And the notice's blockers are <blockers>
+      And the notice's policy match is <match>
+      And the policy was identified on <identified_on>
+
+      Examples:
+        | risk_postal_code | state   | blockers           | match       | identified_on                |
+        | 34287            | TRIAGED |                    | MATCHED     | INSURED_NAME_AND_POSTAL_CODE |
+        | absent           | PENDED  | POLICY_NOT_MATCHED | NOT_MATCHED | none                         |
+
+    # The identification blocker is about what arrived, so it sorts with the
+    # arrival blockers, after them, and before the search's own - which
+    # cannot co-occur with it, since an unsearchable notice is not searched.
+    Scenario: An insufficient set beside missing claimant fields lists all three, arrival first
+      Given the notice reports a policy number of "absent"
+      And the notice reports a loss type of "injury"
+      When the notice is submitted for intake
+      Then the notice's state is PENDED
+      And the notice's blockers are MISSING_REQUIRED_FIELD:claimant_name;MISSING_REQUIRED_FIELD:incident_description;POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,insured_name,risk_postal_code
+
+    # A source that cannot search on the identifiers it was given is a
+    # source limitation, not the reporter's: the notice proceeds with the
+    # verification marked not evaluated and the port's reason, like a fault.
+    Scenario: A source that searches by number only cannot answer a name-and-postal-code notice
+      Given "AAAA"'s policy source searches by policy number only
+      And the notice reports a policy number of "absent"
+      And the notice reports an insured name of "Marisol Quintero"
+      And the notice reports a risk postal code of "34287"
+      When the notice is submitted for intake
+      Then the notice's state is TRIAGED
+      And the notice's policy match is NOT_EVALUATED
+      And the verification's reason is IDENTIFIERS_INSUFFICIENT
+
+  Rule: Correcting identifiers through resolution searches again on the merged notice, and only an answer clears the search's blocker
+
+    # Item 7g. Resolution re-searches with the identifiers the notice has
+    # after the reviewer's corrections are merged, and the answer decides
+    # afresh: a right number clears the miss, a second wrong one keeps it.
+    Scenario Outline: A corrected policy number is searched, and the answer decides
+      Given the notice reports a policy number of "HO-4471290"
+      And the notice is submitted for intake
+      When the reviewer supplies a policy number of "<supplied_policy_number>"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is <response>
+      And the notice's state is <state>
+      And the notice's blockers are <blockers>
+      And the notice's policy match is <match>
+
+      Examples:
+        | supplied_policy_number | response | state   | blockers           | match       |
+        | HO-4471209             | 200      | TRIAGED |                    | MATCHED     |
+        | HO-4471299             | 422      | PENDED  | POLICY_NOT_MATCHED | NOT_MATCHED |
+
+    # A search that could not answer leaves the blocker the last answer set:
+    # a result not computed is neither a match nor a miss, and an outage
+    # must not turn a reviewer's correction into a triage. The verification
+    # shown is the latest, and says why it could not answer.
+    Scenario Outline: Only a search that answers can clear the search's blocker
+      Given the notice reports a policy number of "HO-4471290"
+      And the notice is submitted for intake
+      And "AAAA"'s policy source <source>
+      When the reviewer supplies a policy number of "HO-4471209"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is <response>
+      And the notice's state is <state>
+      And the notice's blockers are <blockers>
+      And the notice's policy match is <match>
+
+      Examples:
+        | source           | response | state   | blockers           | match         |
+        | answers as before | 200      | TRIAGED |                    | MATCHED       |
+        | is unavailable    | 422      | PENDED  | POLICY_NOT_MATCHED | NOT_EVALUATED |
+
+    Scenario: A reviewer supplies the insured name and postal code the notice lacked, and the policy is found
+      Given the notice reports a policy number of "absent"
+      And the notice is submitted for intake
+      And the notice's blockers are POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,insured_name,risk_postal_code
+      When the reviewer supplies an insured name of "Marisol Quintero"
+      And the reviewer supplies a risk postal code of "34287"
+      And the reviewer's resolution is submitted at "2026-08-25T09:00Z"
+      Then the response is 200
+      And the notice's state is TRIAGED
+      And the notice's policy match is MATCHED
+      And the policy was identified on INSURED_NAME_AND_POSTAL_CODE

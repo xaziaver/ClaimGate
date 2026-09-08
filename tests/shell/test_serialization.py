@@ -30,6 +30,7 @@ _BLOCKER = ValidationBlocker(code="MISSING_REQUIRED_FIELD", field="policy_number
 _RECEIVED_AT = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
 _VERIFICATION = CoverageVerificationView(
     policy_match="MATCHED", matched_policy="POL-88213", reason=None, term_in_force="IN_FORCE",
+    identified_on="POLICY_NUMBER",
     deciding_term_effective=date(2026, 1, 15), deciding_term_expiration=date(2027, 1, 15),
     continuous_coverage_date=date(2026, 1, 15), continuous_coverage_reason=None,
     as_of=_RECEIVED_AT,

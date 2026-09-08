@@ -40,8 +40,10 @@ DEFAULT_FIELDS = NoticeFields(
     policy_number="HO-1234567", loss_date="2026-06-01", loss_type="wind_hail",
     notice_type="INITIAL", property_state="FL",
 )
-# Lands PENDED on MISSING_REQUIRED_FIELD:policy_number and nothing else, so a
-# resolution against it has exactly one thing to clear.
+# Lands PENDED on POLICY_IDENTIFIERS_INSUFFICIENT and nothing else - item 7g
+# retired the policy number from validation, so a notice with no number and
+# no insured-name-and-postal-code pair pends on the identification's blocker
+# - and a resolution against it has exactly one thing to clear.
 PENDING_FIELDS = NoticeFields(
     policy_number="", loss_date="2026-06-01", loss_type="wind_hail",
     notice_type="INITIAL", property_state="FL",

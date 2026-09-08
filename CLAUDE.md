@@ -87,7 +87,10 @@ this list before proposing anything that would violate one.
   `main` only when its spec is locked, its implementation is complete, and `gauntlet check` is
   green. This follows directly from the commit-granularity rule above, not a separate policy.
 - **Working branches stay a superset of main.** Documentation commits land on main; item work
-  stays on its branch. After any commit to main, **push `main` first**, then merge it into the
+  stays on its branch. **Corrected 2026-09-08: documents for an item go on the item's branch, and
+  `main` moves only by the human's merge after a verified run.** `da76610`, item 7g's opening
+  paragraph, went to `main` directly and stays where it is; it is the instance, not the rule.
+  After any commit to main, **push `main` first**, then merge it into the
   open branch so the branch remains a superset. A checked-out working branch should always show
   current documentation. Pushing first is not housekeeping: the superset check below compares
   against `origin/main`, so an unpushed commit on local `main` makes that check pass while the
@@ -176,7 +179,7 @@ Before any work, orient and verify. Report before acting.
    run was likely killed mid-flight — this is routine, not exceptional: a
    stop-check runs the full gauntlet after every turn, and any human reply inside
    its window kills it. The window is the acceptance gate's wall time, last measured at
-   1993.92 s on fourteen specs (run `20260907T064859`, 2026-09-07), against a Stop hook budget
+   2937.262 s on fifteen specs (run `20260908T124244-462219`, 2026-09-08), against a Stop hook budget
    of 3600 s in `.claude/settings.json`. Both figures move — the duration is recorded in
    `QUEUE.md`'s status paragraph at each close — and when the run outgrows the budget the hook
    kills its own run at every turn end without any human reply (events eleven to thirteen in
@@ -210,8 +213,8 @@ Before any work, orient and verify. Report before acting.
 
 ### Environment notes
 
-- The acceptance gate's wall time is the Stop hook's window: 1993.92 s at the last
-  green run (2026-09-07) and growing, under a 3600 s hook budget. Run `gauntlet check`
+- The acceptance gate's wall time is the Stop hook's window: 2937.262 s at the last
+  green run (2026-09-08) and growing, under a 3600 s hook budget. Run `gauntlet check`
   in the background, never under a foreground timeout; the current pair is in
   `QUEUE.md`'s status paragraph. (Corrected 2026-09-07 from "over 300s".)
 - `gauntlet check` signals pass/fail by exit status, and the piped form returns

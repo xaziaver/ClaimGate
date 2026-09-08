@@ -735,7 +735,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
     the full history. `RULESET_VERSION` bumps here. Scenarios describe outcomes and attributes; none
     names a port, table, or column.
 
-7g. **Resolution path restructured (shell).** Evaluation moves outside the write transaction: read
+7g. **Resolution path restructured (shell).**
+    *(Closed 2026-09-08 — structural `ce62f3d`, spec `acb06eb`, approval `1a24146`, split
+    `17de43c`, implementation `828ded3`; green run `20260908T124244-462219`, 858 tests, 757
+    killed, 73 reviewed-equivalent; the merge to `main` is the human's after the advisor verifies
+    the run. Five debts carried, listed in the closing status paragraph.)*
+    Evaluation moves outside the write transaction: read
     the merged view, evaluate (ports included), write in a second transaction that re-checks
     `PENDED` and answers `409` if the notice moved. `resolution.feature`'s surface is unchanged — a
     re-run of its unmodified scenarios is the evidence; the race guard is unit-tested, and the unit
@@ -4052,3 +4057,163 @@ deployment-fault test's docstring now says what it proves — the read wrote not
 was never opened. One debt: `resolution_evaluation.py` has one line of headroom, so 7g's port
 calls split it. Next: the advisor prices and drafts 7g's scenarios from the measurements above;
 nothing is drafted here. The branch is a superset of `main` and is not merged.
+
+**2026-09-08: 7g spec committed on `phase3/7g-resolution-research`, four files, awaiting four
+approvals; judgments 1–6 on the structural commit are ratified.** The four files at the advisor's
+digests, byte for byte: `validation.feature` 437 lines `dba16d9635813218` — the policy-number rule
+is replaced, its two scenarios now assert no blocker (165 locators, 2 moved, 0 of 28 approvals
+touched); `notice_intake.feature` 353 `a0619c90ffa2ada7` — the `absent` row's blockers cell is
+`POLICY_IDENTIFIERS_INSUFFICIENT:policy_number,insured_name,risk_postal_code` (56 locators, 5
+moved, 0 approvals); `resolution.feature` 728 `96dccb0629163d5d` — both cells of the "clears every
+blocker" `absent` row (133 locators, 8 moved, 0 of 2 touched); `policy_match.feature` 301
+`f7f118b9f5d7c7be` — two new Rules appended, the pair search at intake and the re-search on
+resolution (106 mutants, 100 locators, 23 literal, 0 moved, 56 new: 15, 10, 2, 4, 10, 10 and 5 by
+scenario in file order). Fifteen locators move, none approved; the suite goes from 1155 to 1211
+mutants. Duration estimate from the whole-directory model: about 2,730 s — 2.210 × 1211 = 2676 s
+before the twelve new rows' own testcase time, 2,780 s with it at `resolution.feature`'s 7.3 ms a
+row, and 3,040 s if the new rows cost what `policy_match.feature`'s existing rows do (25 ms) — under
+the 3600 s hook, whose last green run was the stop-check on `6768a16`, run
+`20260908T094021-295714`, 2662.549 s, the maximum on the pre-7g lock. Gate on this tree, run
+`20260908T114754-375575`: every gate green through code mutation (756 killed) and acceptance red on
+the approval stage alone, `4 unapproved or modified spec(s)` in 0.004 s; the remedy names `gauntlet
+lock` and the command is `gauntlet spec approve`, the human's. Decisions 1–8 are in `ASSUMPTIONS.md`
+under the 7f entry, verbatim. `CLAUDE.md`'s branch rule carries the correction that documents for
+an item go on the item's branch and `main` moves only by the human's merge after a verified run;
+`da76610` stays where it is as the instance.
+
+**Item 5, read-only.** The resolution endpoint accepts an insured name and risk postal code today:
+`supplied` is overlaid field by field onto `NoticeFields`, which has carried both since 7c, so no
+message field is new; only the acceptance glue's `_SUPPLIED_FIELDS` map (five names) and the
+article in `the reviewer supplies an insured name of` — the regex requires `supplies a ` — stand
+between the spec and the shell. Unbound in the appended block: `the notice reports an insured
+name of`, `the notice reports a risk postal code of`, `the policy was identified on`, `"AAAA"'s
+policy source searches by policy number only` (the fault regex admits three phrases; the fixture
+already has `without_name_search`, raising `UnsupportedSearchError`, which the port answers
+`IDENTIFIERS_INSUFFICIENT`), `"AAAA"'s policy source answers as before` (the outline's other row,
+`is unavailable`, binds), and `the reviewer supplies an insured name of`. Bound but failing as
+written: `the reviewer supplies a risk postal code of` raises `unrecognized supplied field`;
+`the notice's blockers are` in Given position (the last scenario) has only a `@then` in
+`conftest.py`; and `the notice's policy match is none` — three rows for an unsearched notice —
+reads the verification through a helper that asserts one exists, unlike the matched-policy step,
+which knows `none`. Nine bindings, none touched here. The basis already crosses the port:
+`PolicyCandidate.match_basis` is the domain's two arms, the fixture's `matched_by` maps onto it in
+the live-query source, and `shell/policy_match.py::verify_policy` drops it when it hands
+`match_policy` the references alone; `coverage_verifications` has no column for it and the view no
+field. Decision 5 is therefore a field on the match or the verification, one column, one view
+field and one allow-list entry, not a port concept. Line counts against 250:
+`resolution_evaluation.py` 249, `store.py` 248, `coverage_verifications.py` 231,
+`notice_intake.py` 187, `policy_match.py` 84, `messages.py` 243 — the first two split on any
+addition, and a column on the verification touches the record, `_columns`, `_from_row`, `view_of`
+and `schema.py` (237), so the third likely splits too.
+
+**Judgments beyond the ratified text:** (7) the corrective sentence sits in the "superset" bullet
+beside the sentence it corrects, in bold with the date, and names `da76610` as the instance so the
+two sentences read as a rule and its exception rather than a contradiction; (8) the ASSUMPTIONS
+entry is a sibling bullet after the 7f entry, wrapped to the file's width, words unchanged; (9)
+the duration is recorded as the human's "about 2,730 s" beside the arithmetic that brackets it.
+Next: the human approves the four files; then the binding commit for the nine steps above and the
+implementation — the sufficiency blocker joined to validation's through `canonical_order`, the
+re-search in `judge`, the basis column, and the two module splits. The branch is a superset of
+`main` and is not merged.
+
+**2026-09-08: 7g implemented at `828ded3` on `phase3/7g-resolution-research`, after the split at
+`17de43c`; green run `20260908T124244-462219`, 858 tests, 757 killed, 73 reviewed-equivalent; the merge to
+`main` is the human's after the advisor verifies the run.** Cold gate at `828ded3`, `mutants/` and
+`.mutmut-cache` cleared, predicted then measured, line by line: protect 3/3; static 0; size worst
+function 25, no module at 250 — `messages.py` 248, `store.py` 248, `records.py` 242, `schema.py`
+239, `coverage_verifications.py` 237, `validation.py` 209, `resolution_evaluation.py` 207;
+complexity 6; boundary 17 step files, 0 direct imports; tests 858/858 — 833 at
+`ce62f3d`, the twelve new scenario rows, thirteen unit and shell tests; coverage 100/100; CRAP 6;
+duplication 0; code mutation 100 %, 757 killed — net one on 756, the presence check's mutants gone
+and the comma-join's and the basis's arrived, from a standalone cold run of 757/757 at 69.35
+mutations a second; acceptance `15 spec(s), 73 reviewed-equivalent`, 0 diagnostics, every digest at
+the lock of `1a24146`, 2937.262 s against the 3600 s Stop hook budget — the pair this close
+records — inside the predicted bracket of 2676 to 3040 s (2.210 s × 1211, plus the twelve new rows
+at 7.3 to 25 ms a row) and nearer its top; the margin under the hook is 663 s, the smallest yet,
+and 7h's rows will spend more of it. Out of band, at the locked digests and restored to them after, baseline
+module green first: `policy_match.feature` 106 applied, 106 killed, 0 survived (83 example, 23
+literal); `notice_intake.feature` 56/56 (56 example); `validation.feature` 165 applied, 137 killed,
+28 survived (121 example, 44 literal) — the 28 are its 28 approved equivalents, none new;
+`resolution.feature` 133 applied, 131 killed, 2 survived (133 example) — its 2 approved equivalents.
+**The split.** One, `17de43c`: `resolution_reading.py` (105 lines: the read transaction, the 409
+answer, the merged view, the last answer standing) out of `resolution_evaluation.py` (207 after
+the judgement grew), because the judgement is where the re-search lands and the module had one
+line of headroom. `store.py` was not split: the re-search writes its row through
+`coverage_verifications.append`, which reads the connection (7f judgment 7), so no line landed
+there. `schema.py` was not split: the column is one line, 239. `messages.py` took three lines and
+sits at 248. **What was built.** Domain: `_check_policy_number` is gone;
+`POLICY_IDENTIFIERS_INSUFFICIENT` sits in `_CANONICAL_CODE_ORDER` after `MISSING_REQUIRED_FIELD`
+and before the search's two, asserted across all three families by
+`tests/unit/test_policy_match.py::test_the_three_families_sort_arrival_then_identification_then_search`;
+`identification_blockers` joins the absent fields with commas in the rule's order; `match_policy`
+takes `FoundPolicy` (reference, basis) and a MATCHED result carries `identified_on`;
+`RULESET_VERSION` is `2026-09-08`. Shell: `check_policy` runs sufficiency first on both paths and
+searches only what can be searched with a loss date, returning the identification's blockers or
+the verification, never both; `apply_domain_rules` composes the three families; the verification
+row, record, view and allow-list carry `identified_on`; the port's `IDENTIFIERS_INSUFFICIENT` is
+`NOT_EVALUATED` with that reason and the notice proceeds; `judge` resolves the carrier's policy
+port with the resolution instant as its clock, re-searches, and where the re-search answers its
+match and derivation replace the stored ones, else the last answering row's stand; `write` records
+every search that ran beside the decision, applied or refused. The carry-over is proved by
+`tests/shell/test_policy_search.py::test_a_re_search_that_cannot_answer_carries_the_last_answers_blocker_and_shows_the_latest_row`.
+Glue: the nine bindings — two notice-content steps and a Given form of the blockers step in
+`conftest.py`, the supplied-field map with `insured name` and `risk postal code` and its article
+`an?`, and in the policy-match module the source's number-only shape, the source unchanged, the
+match reader's `none` and the identified-on step — plus one binding the measurement did not list:
+`policy_match.feature`'s resolution rows name no reviewer, and `submit_resolution` attributes them
+to `adjuster-4471` where a scenario identified none. **Judgments for ratification, beyond the
+decided shape:** (10) the re-search's port clock is the resolution instant, so the new row's
+`as_of` is the instant the correction was searched on, 7f decision 9's analogue; (11) where the
+re-search cannot answer, the last answer's continuous-coverage derivation stands with its
+blocker — the decision spoke of blockers, and the date a release's SIU evaluation reads should be
+one that was computed, proved by
+`test_a_release_under_an_outage_reads_the_last_answers_date_for_its_siu_evaluation`; (12) a
+verification row is written on every resolution whose search ran, refused or applied, so the
+notice shows the newest row and its reason; (13) `Resolution` carries the two binding sources a
+submission names and `Judgement` carries the verification for the write — no new endpoint
+concept; (14) the glue's default reviewer for `policy_match.feature`'s resolution rows, a spec gap
+to close at that file's next reopening with one Background line, recorded for the close-out beside
+`resolution.feature` line 367's stale "malformed"; (15) the comma-join lives in the domain, so the
+serialization rule is mutation-gated, and sufficiency runs in the shell's `check_policy` because
+the identifiers are notice fields the candidate does not carry (7f judgment 4); (16) `FoundPolicy`
+is the domain's shape for what the search found, the port's `PolicyCandidate` mapped onto it in the
+shell, and `identified_on` is set only for MATCHED; (17) `answered` is a type guard in
+`shell/policy_match.py` and the last answer standing is found in the reading from the trail, not
+by a new query in `coverage_verifications.py`, which had room for the column and not a query; (18)
+the resolution path's binding fault joined `test_resolution.py`'s fault parametrize as its fourth
+row, the same 500 with nothing written. Next: the human verifies the run and merges; the close-out
+records the two spec gaps; 7h takes the claims port. The branch is a superset of `main` and is not
+merged.
+
+**2026-09-08: item 7g is closed at the close-out commit on `phase3/7g-resolution-research`; the
+merge to `main` is the human's after the advisor verifies run `20260908T124244-462219`.** The
+pair this close records: acceptance 2937.262 s against the 3600 s Stop hook budget, on 858 tests,
+757 killed, 73 reviewed-equivalent, 0 diagnostics, every digest at the lock of `1a24146`. The
+stop-check that fired on the documents commit `813a677`, run `20260908T133307-609373`, measured
+3149.067 s on the same lock — the largest green figure yet, 451 s under the budget. Out of band
+at the locked digests, restored and re-matched: `policy_match.feature` 106/106, `notice_intake.feature`
+56/56, `validation.feature` 137 of 165 with its 28 approved equivalents surviving,
+`resolution.feature` 131 of 133 with its 2. The item's commits, in order: structural `ce62f3d`,
+documents `da76610` (on `main`, the instance the corrected branch rule names), spec `acb06eb`,
+approval `1a24146`, split `17de43c`, implementation `828ded3`, documents `813a677`, this
+close-out. Judgments 1–18 are ratified and stand in the paragraphs above; decisions 1–9 are in
+`ASSUMPTIONS.md`'s 7g entry, decision 9 being judgment 11 as the extension of decision 6 to the
+coverage date. The debts:
+
+- POLICY_AMBIGUOUS cannot clear: the re-search takes identifiers, and two references sharing a
+  number both match on any re-search. A reviewer needs to choose a reference, which is a new staff
+  action with its own audit shape. Proposed queue item, not phase 3's: "Reviewer selects among
+  ambiguous candidates", to be placed by the human beside phase 6.
+- policy_match.feature's three resolution scenarios name no reviewer; the glue attributes them to
+  the locked Backgrounds' identity. One Background line at the file's next reopening.
+- resolution.feature line 367 still says "malformed", stale since 7d; a comment-only fix at that
+  file's next reopening.
+- The acceptance margin is 663 s. Before 7h's spec: raise the hook or land the per-spec scoping
+  change in Gauntlet (docs/harness-findings.md wall-time entry; the advisor's O4).
+- 7f decision 11 and 7g decision 4 stand: an unsearchable notice or one with no loss date carries
+  no verification until its identifiers or date arrive.
+
+The margin in the fourth debt is the verified run's; the stop-check since measured it at 451 s.
+`ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today" carry
+dated 7g close notes; `CLAUDE.md`'s start-up step 3 carries the new pair. Nothing is in flight in
+code; the branch is a superset of `main` and is not merged. 7h is next.
