@@ -1035,7 +1035,9 @@ or data. Nothing below was confirmed against a live book.
   supply an insured name and a risk postal code, not only a policy number. (8) The retirement moves
   three rows in three locked files — fifteen locators, none approved — and the 168 fixed-`Given`
   rows that use an absent number as the pending device keep `PENDED` because an absent number with
-  no pair is now insufficient rather than missing.
+  no pair is now insufficient rather than missing. (9) Where a re-search cannot answer, the last
+  computed continuous-coverage date stands beside the carried blocker, so a release's SIU
+  evaluation reads a date that was computed. Agent judgment 11, human-ratified 2026-09-08.
 
 ## Undocumented phase-1 thresholds
 

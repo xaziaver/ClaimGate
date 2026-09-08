@@ -71,6 +71,14 @@ where the re-search cannot answer, and records every search that ran. The verifi
 the view carry `identified_on`, the port's match basis. Still as measured above: the claims port
 is resolved by nothing and `find_duplicates` has no shell caller (7h).
 
+**Annotation 2026-09-08 (item 7g closed at the close-out on `phase3/7g-resolution-research`):**
+the paragraph above is the state at close, confirmed by run `20260908T124244-462219` and the
+stop-check `20260908T133307-609373` after it. Two bullets of the measured list are now stale in
+full — the resolution-path bullet, since `ce62f3d`, and the intake-path bullet's "no policy number
+pends on validation" reading — and the claims-port bullet holds until 7h. One consequence the
+identification table above does not state: `POLICY_AMBIGUOUS` cannot clear through the re-search,
+which takes identifiers, so a reviewer's choice among candidates is a proposed item beside phase 6.
+
 ## Two ports, not one adapter
 
 **Decision.** Phase 3 defines two independent port protocols: a **policy port** and a **claims

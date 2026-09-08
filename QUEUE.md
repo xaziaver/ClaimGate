@@ -735,7 +735,12 @@ Ordered by domain severity, not by effort. One line each on why that position.
     the full history. `RULESET_VERSION` bumps here. Scenarios describe outcomes and attributes; none
     names a port, table, or column.
 
-7g. **Resolution path restructured (shell).** Evaluation moves outside the write transaction: read
+7g. **Resolution path restructured (shell).**
+    *(Closed 2026-09-08 — structural `ce62f3d`, spec `acb06eb`, approval `1a24146`, split
+    `17de43c`, implementation `828ded3`; green run `20260908T124244-462219`, 858 tests, 757
+    killed, 73 reviewed-equivalent; the merge to `main` is the human's after the advisor verifies
+    the run. Five debts carried, listed in the closing status paragraph.)*
+    Evaluation moves outside the write transaction: read
     the merged view, evaluate (ports included), write in a second transaction that re-checks
     `PENDED` and answers `409` if the notice moved. `resolution.feature`'s surface is unchanged — a
     re-run of its unmodified scenarios is the evidence; the race guard is unit-tested, and the unit
@@ -4179,3 +4184,36 @@ the resolution path's binding fault joined `test_resolution.py`'s fault parametr
 row, the same 500 with nothing written. Next: the human verifies the run and merges; the close-out
 records the two spec gaps; 7h takes the claims port. The branch is a superset of `main` and is not
 merged.
+
+**2026-09-08: item 7g is closed at the close-out commit on `phase3/7g-resolution-research`; the
+merge to `main` is the human's after the advisor verifies run `20260908T124244-462219`.** The
+pair this close records: acceptance 2937.262 s against the 3600 s Stop hook budget, on 858 tests,
+757 killed, 73 reviewed-equivalent, 0 diagnostics, every digest at the lock of `1a24146`. The
+stop-check that fired on the documents commit `813a677`, run `20260908T133307-609373`, measured
+3149.067 s on the same lock — the largest green figure yet, 451 s under the budget. Out of band
+at the locked digests, restored and re-matched: `policy_match.feature` 106/106, `notice_intake.feature`
+56/56, `validation.feature` 137 of 165 with its 28 approved equivalents surviving,
+`resolution.feature` 131 of 133 with its 2. The item's commits, in order: structural `ce62f3d`,
+documents `da76610` (on `main`, the instance the corrected branch rule names), spec `acb06eb`,
+approval `1a24146`, split `17de43c`, implementation `828ded3`, documents `813a677`, this
+close-out. Judgments 1–18 are ratified and stand in the paragraphs above; decisions 1–9 are in
+`ASSUMPTIONS.md`'s 7g entry, decision 9 being judgment 11 as the extension of decision 6 to the
+coverage date. The debts:
+
+- POLICY_AMBIGUOUS cannot clear: the re-search takes identifiers, and two references sharing a
+  number both match on any re-search. A reviewer needs to choose a reference, which is a new staff
+  action with its own audit shape. Proposed queue item, not phase 3's: "Reviewer selects among
+  ambiguous candidates", to be placed by the human beside phase 6.
+- policy_match.feature's three resolution scenarios name no reviewer; the glue attributes them to
+  the locked Backgrounds' identity. One Background line at the file's next reopening.
+- resolution.feature line 367 still says "malformed", stale since 7d; a comment-only fix at that
+  file's next reopening.
+- The acceptance margin is 663 s. Before 7h's spec: raise the hook or land the per-spec scoping
+  change in Gauntlet (docs/harness-findings.md wall-time entry; the advisor's O4).
+- 7f decision 11 and 7g decision 4 stand: an unsearchable notice or one with no loss date carries
+  no verification until its identifiers or date arrive.
+
+The margin in the fourth debt is the verified run's; the stop-check since measured it at 451 s.
+`ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today" carry
+dated 7g close notes; `CLAUDE.md`'s start-up step 3 carries the new pair. Nothing is in flight in
+code; the branch is a superset of `main` and is not merged. 7h is next.

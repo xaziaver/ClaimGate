@@ -179,7 +179,7 @@ Before any work, orient and verify. Report before acting.
    run was likely killed mid-flight — this is routine, not exceptional: a
    stop-check runs the full gauntlet after every turn, and any human reply inside
    its window kills it. The window is the acceptance gate's wall time, last measured at
-   1993.92 s on fourteen specs (run `20260907T064859`, 2026-09-07), against a Stop hook budget
+   2937.262 s on fifteen specs (run `20260908T124244-462219`, 2026-09-08), against a Stop hook budget
    of 3600 s in `.claude/settings.json`. Both figures move — the duration is recorded in
    `QUEUE.md`'s status paragraph at each close — and when the run outgrows the budget the hook
    kills its own run at every turn end without any human reply (events eleven to thirteen in
@@ -213,8 +213,8 @@ Before any work, orient and verify. Report before acting.
 
 ### Environment notes
 
-- The acceptance gate's wall time is the Stop hook's window: 1993.92 s at the last
-  green run (2026-09-07) and growing, under a 3600 s hook budget. Run `gauntlet check`
+- The acceptance gate's wall time is the Stop hook's window: 2937.262 s at the last
+  green run (2026-09-08) and growing, under a 3600 s hook budget. Run `gauntlet check`
   in the background, never under a foreground timeout; the current pair is in
   `QUEUE.md`'s status paragraph. (Corrected 2026-09-07 from "over 300s".)
 - `gauntlet check` signals pass/fail by exit status, and the piped form returns

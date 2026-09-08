@@ -51,6 +51,18 @@ phase, ratified before that phase's first queue item, on phase 2's precedent.
 The central design claim — a policy administration system is a replaceable adapter behind one
 interface — is unproven today because no adapter exists. Phase 3 proves it.
 
+*(Item 7g closed 2026-09-08 — structural `ce62f3d`, spec `acb06eb`, approval `1a24146`, split
+`17de43c`, implementation `828ded3`; green run `20260908T124244-462219`; the merge to `main` is
+the human's after the advisor verifies the run.)* Delivered at 7g: validation no longer requires a
+policy number, so an insured name and risk postal code find the policy at intake and the
+identification blocker names what is absent; the notice records which identifiers found the
+policy; the resolution path reads, judges holding no lock, and writes with a re-check, re-searching
+on the merged identifiers so a corrected number or a supplied pair clears the miss, with the last
+answer standing where the source cannot answer. Still owed: 7h wires the claims port and
+`find_duplicates`; 7i writes the extract-shape implementations and the swappability proof.
+Proposed, not phase 3's: a reviewer choosing among ambiguous candidates, since `POLICY_AMBIGUOUS`
+cannot clear through a re-search on identifiers alone — to be placed by the human beside phase 6.
+
 *(Item 7f closed 2026-09-07 — spec `a20e06e` and amendment `2ad4055`, approvals `6cc3e56` and
 `eb794e4`, implementation `69a5f45`, bindings `1e2bfc0`; green run `20260907T214626-43332`; the
 merge to `main` is the human's after the advisor verifies the run.)* Delivered at 7f: the policy
