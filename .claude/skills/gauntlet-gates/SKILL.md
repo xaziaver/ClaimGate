@@ -38,6 +38,19 @@ against threshold tampering — and would not approve a spec. The correct comman
 is `gauntlet spec approve`, and it is the human's. Acting on the message
 literally re-baselines the protection and approves nothing. Report and stop.
 
+## The Stop hook skips an unchanged gated tree
+
+The Stop hook runs `.claude/hooks/stop-check.sh`, not `gauntlet stop-check`
+directly. The stop-check is skipped when the gated tree is byte-identical to
+the last green run's, and a skip prints a line naming that run; a
+documents-only turn therefore ends in seconds. The hashed paths, tracked and
+untracked alike: `src`, `tests`, `features`, `mutants`, `gauntlet.toml`,
+`gauntlet.lock.json`, `pyproject.toml`, `.claude/settings.json`,
+`.claude/hooks`. A byte anywhere in those is a full run; a byte anywhere else
+(`QUEUE.md`, `docs/`, `.claude/skills/`) is not. Every failure of the wrapper
+is a full run, and its record, `.gauntlet/last-green-tree`, is written only
+after a stop-check that exited 0 and left a new passing acceptance line.
+
 ## Why the acceptance gate is red
 
 It runs three stages in order and returns on the first failure:

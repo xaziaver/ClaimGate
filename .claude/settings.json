@@ -39,14 +39,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "gauntlet",
-            "args": [
-                "stop-check",
-                "--max-attempts",
-                "1"
-            ],
+            "command": ".claude/hooks/stop-check.sh",
             "timeout": 3600,
-            "statusMessage": "Gauntlet: full run"
+            "statusMessage": "Gauntlet: full run, or skip if the gated tree is unchanged since the last green"
           }
         ]
       }
