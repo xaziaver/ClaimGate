@@ -62,6 +62,15 @@ insured-name search and `POLICY_IDENTIFIERS_INSUFFICIENT` are unreachable at int
 requires a policy number, and the resolution path searches nothing and re-asserts the stored match
 (7g).
 
+**Annotation 2026-09-08 (item 7g implemented, `828ded3`, green run `20260908T124244-462219`):** validation no
+longer requires a policy number, so the insured-name search and `POLICY_IDENTIFIERS_INSUFFICIENT`
+are reachable at intake — `shell/policy_match.py::check_policy` runs the sufficiency rule first on
+both paths — and the resolution path re-searches on the merged identifiers in
+`resolution_evaluation.py::judge`, with the last answering row's match and derivation standing
+where the re-search cannot answer, and records every search that ran. The verification row and
+the view carry `identified_on`, the port's match basis. Still as measured above: the claims port
+is resolved by nothing and `find_duplicates` has no shell caller (7h).
+
 ## Two ports, not one adapter
 
 **Decision.** Phase 3 defines two independent port protocols: a **policy port** and a **claims

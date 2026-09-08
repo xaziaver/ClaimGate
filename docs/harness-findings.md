@@ -2014,3 +2014,31 @@ continuous-coverage rule, not from the locked `continuous_coverage.feature`, who
 produced by other locked rules is written after reading each of those locked files in full, the
 reading table notwithstanding: the table budgets a session's context, and a locked spec the draft
 cites is part of what the item needs, not a document it can skip.
+
+### A resolution scenario binds only if its Background identifies a reviewer, and a locked spec can omit that
+
+Observed 2026-09-08, item 7g. `policy_match.feature`'s three resolution scenarios were locked
+without `the reviewer is identified as` in their Background - the file's Background is the intake
+one, and the spec's subject is the re-search - so the first run of the bound glue failed all five
+rows with `KeyError: 'reviewer'` in `submit_resolution`, not with any answer from the endpoint.
+Two things follow. The measurement that listed nine unbound or failing steps missed this one,
+because it read the appended block's steps and not the Background steps the endpoint the block
+exercises needs: the radius of a new scenario includes every step the endpoint's other locked spec
+puts in its Background. And the fix was in glue, not in the spec: `submit_resolution` attributes a
+resolution to `adjuster-4471` where the scenario identified none, the identity every locked
+Background gives, with "absent" still None from its own step - a default the spec does not state,
+recorded as a judgment and as a gap to close with one Background line at the file's next reopening.
+
+### A file written through the shell never meets the PostToolUse size hook, so count function lines before predicting
+
+Observed 2026-09-08, item 7g. The PostToolUse hook runs `gauntlet check --gates
+static,size,complexity --changed` after the agent's Write and Edit tools and after nothing else;
+every module the implementation wrote through a shell heredoc or a Python edit script skipped it.
+The prediction said "worst function 25" from the previous run's figure, and the cold gate's size
+gate failed on `apply_domain_rules` at 28 lines and `resolve_notice` at 26 - two docstring and
+signature lines each - with the acceptance stage still to run for forty minutes on a verdict
+already red. Killed at `features/notice_intake.feature` (one-line strand, restored from the
+backup), fixed, amended before any push, and re-run cold. Technique: before writing a prediction,
+walk `src/` with `ast` and print every function over the ceiling - twelve lines of Python, under a
+second - or run `gauntlet check --gates size` by hand; the hook's coverage is a property of which
+tool wrote the file, not of the file.

@@ -4110,3 +4110,72 @@ Next: the human approves the four files; then the binding commit for the nine st
 implementation — the sufficiency blocker joined to validation's through `canonical_order`, the
 re-search in `judge`, the basis column, and the two module splits. The branch is a superset of
 `main` and is not merged.
+
+**2026-09-08: 7g implemented at `828ded3` on `phase3/7g-resolution-research`, after the split at
+`17de43c`; green run `20260908T124244-462219`, 858 tests, 757 killed, 73 reviewed-equivalent; the merge to
+`main` is the human's after the advisor verifies the run.** Cold gate at `828ded3`, `mutants/` and
+`.mutmut-cache` cleared, predicted then measured, line by line: protect 3/3; static 0; size worst
+function 25, no module at 250 — `messages.py` 248, `store.py` 248, `records.py` 242, `schema.py`
+239, `coverage_verifications.py` 237, `validation.py` 209, `resolution_evaluation.py` 207;
+complexity 6; boundary 17 step files, 0 direct imports; tests 858/858 — 833 at
+`ce62f3d`, the twelve new scenario rows, thirteen unit and shell tests; coverage 100/100; CRAP 6;
+duplication 0; code mutation 100 %, 757 killed — net one on 756, the presence check's mutants gone
+and the comma-join's and the basis's arrived, from a standalone cold run of 757/757 at 69.35
+mutations a second; acceptance `15 spec(s), 73 reviewed-equivalent`, 0 diagnostics, every digest at
+the lock of `1a24146`, 2937.262 s against the 3600 s Stop hook budget — the pair this close
+records — inside the predicted bracket of 2676 to 3040 s (2.210 s × 1211, plus the twelve new rows
+at 7.3 to 25 ms a row) and nearer its top; the margin under the hook is 663 s, the smallest yet,
+and 7h's rows will spend more of it. Out of band, at the locked digests and restored to them after, baseline
+module green first: `policy_match.feature` 106 applied, 106 killed, 0 survived (83 example, 23
+literal); `notice_intake.feature` 56/56 (56 example); `validation.feature` 165 applied, 137 killed,
+28 survived (121 example, 44 literal) — the 28 are its 28 approved equivalents, none new;
+`resolution.feature` 133 applied, 131 killed, 2 survived (133 example) — its 2 approved equivalents.
+**The split.** One, `17de43c`: `resolution_reading.py` (105 lines: the read transaction, the 409
+answer, the merged view, the last answer standing) out of `resolution_evaluation.py` (207 after
+the judgement grew), because the judgement is where the re-search lands and the module had one
+line of headroom. `store.py` was not split: the re-search writes its row through
+`coverage_verifications.append`, which reads the connection (7f judgment 7), so no line landed
+there. `schema.py` was not split: the column is one line, 239. `messages.py` took three lines and
+sits at 248. **What was built.** Domain: `_check_policy_number` is gone;
+`POLICY_IDENTIFIERS_INSUFFICIENT` sits in `_CANONICAL_CODE_ORDER` after `MISSING_REQUIRED_FIELD`
+and before the search's two, asserted across all three families by
+`tests/unit/test_policy_match.py::test_the_three_families_sort_arrival_then_identification_then_search`;
+`identification_blockers` joins the absent fields with commas in the rule's order; `match_policy`
+takes `FoundPolicy` (reference, basis) and a MATCHED result carries `identified_on`;
+`RULESET_VERSION` is `2026-09-08`. Shell: `check_policy` runs sufficiency first on both paths and
+searches only what can be searched with a loss date, returning the identification's blockers or
+the verification, never both; `apply_domain_rules` composes the three families; the verification
+row, record, view and allow-list carry `identified_on`; the port's `IDENTIFIERS_INSUFFICIENT` is
+`NOT_EVALUATED` with that reason and the notice proceeds; `judge` resolves the carrier's policy
+port with the resolution instant as its clock, re-searches, and where the re-search answers its
+match and derivation replace the stored ones, else the last answering row's stand; `write` records
+every search that ran beside the decision, applied or refused. The carry-over is proved by
+`tests/shell/test_policy_search.py::test_a_re_search_that_cannot_answer_carries_the_last_answers_blocker_and_shows_the_latest_row`.
+Glue: the nine bindings — two notice-content steps and a Given form of the blockers step in
+`conftest.py`, the supplied-field map with `insured name` and `risk postal code` and its article
+`an?`, and in the policy-match module the source's number-only shape, the source unchanged, the
+match reader's `none` and the identified-on step — plus one binding the measurement did not list:
+`policy_match.feature`'s resolution rows name no reviewer, and `submit_resolution` attributes them
+to `adjuster-4471` where a scenario identified none. **Judgments for ratification, beyond the
+decided shape:** (10) the re-search's port clock is the resolution instant, so the new row's
+`as_of` is the instant the correction was searched on, 7f decision 9's analogue; (11) where the
+re-search cannot answer, the last answer's continuous-coverage derivation stands with its
+blocker — the decision spoke of blockers, and the date a release's SIU evaluation reads should be
+one that was computed, proved by
+`test_a_release_under_an_outage_reads_the_last_answers_date_for_its_siu_evaluation`; (12) a
+verification row is written on every resolution whose search ran, refused or applied, so the
+notice shows the newest row and its reason; (13) `Resolution` carries the two binding sources a
+submission names and `Judgement` carries the verification for the write — no new endpoint
+concept; (14) the glue's default reviewer for `policy_match.feature`'s resolution rows, a spec gap
+to close at that file's next reopening with one Background line, recorded for the close-out beside
+`resolution.feature` line 367's stale "malformed"; (15) the comma-join lives in the domain, so the
+serialization rule is mutation-gated, and sufficiency runs in the shell's `check_policy` because
+the identifiers are notice fields the candidate does not carry (7f judgment 4); (16) `FoundPolicy`
+is the domain's shape for what the search found, the port's `PolicyCandidate` mapped onto it in the
+shell, and `identified_on` is set only for MATCHED; (17) `answered` is a type guard in
+`shell/policy_match.py` and the last answer standing is found in the reading from the trail, not
+by a new query in `coverage_verifications.py`, which had room for the column and not a query; (18)
+the resolution path's binding fault joined `test_resolution.py`'s fault parametrize as its fourth
+row, the same 500 with nothing written. Next: the human verifies the run and merges; the close-out
+records the two spec gaps; 7h takes the claims port. The branch is a superset of `main` and is not
+merged.
