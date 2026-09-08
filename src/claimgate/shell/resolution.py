@@ -11,18 +11,25 @@ actually arrived. There is still no rejected, invalid, or discarded state
 (CLAUDE.md) - a resolution that does not clear the pend leaves the notice
 exactly where it was, and is answered rather than discarded.
 
-**The order the four refusals run in, and why.** A body this endpoint cannot
-read is refused first, before the notice is read at all - an identity nobody
+**The order the refusals run in, and why.** A body this endpoint cannot read
+is refused first, before the notice is read at all - an identity nobody
 supplied or a loss date that is not a date, both 400 with nothing persisted
 (decisions 4 and (e)); a caller who has not said who they are does not get to
-learn a notice's state. An id nobody has is 404, refused before any state is
-examined (decision (d)): there is no pend to release and nothing for the content
-to be the answer to. A notice that exists and is not pended is the 409, which
-decision 3 says persists nothing. Last is item 5i's 500, no refusal of anything
-the reviewer sent: this deployment could not read its own configuration, so the
-whole transaction rolls back and the notice keeps the records and the trail it
-had (ruling 1). Nothing asserts the order directly - each rule asserts its own
-answer, and reordering them would answer one case with another's status.
+learn a notice's state. The rest is resolution_evaluation.py's, in two
+transactions with the judgement between them (item 7g; PHASE3_DESIGN.md,
+"Where the calls sit"). In the read transaction: an id nobody has is 404,
+refused before any state is examined (decision (d)) - there is no pend to
+release and nothing for the content to be the answer to - and a notice that
+exists and is not pended is the 409, which decision 3 says persists nothing.
+Item 5i's 500 is raised by the judgement, between the transactions, so it
+refuses nothing the reviewer sent and writes nothing: this deployment could
+not read its own configuration, and the notice keeps the records and the
+trail it had (ruling 1). Last, in the write transaction, a notice that was
+pended when it was read and has moved since is the same 409 - a second
+reviewer's resolution committed first, and this one's decision was made about
+a notice that no longer exists in that state. Nothing asserts the order
+directly - each rule asserts its own answer, and reordering them would answer
+one case with another's status.
 
 Out of scope, deliberately: the pend instant and the instant of the resolution
 that released the notice are recorded (resolution_evaluation.py writes the
@@ -33,7 +40,7 @@ near it.
 Duplicate-candidate detection is untouched; and there is no
 idempotency key on this endpoint - PHASE2_DESIGN.md scopes the header to
 POST /notices, so a network retry of a resolution that already succeeded meets a
-TRIAGED notice and is answered by the 409 below. No NotImplementedError remains
+TRIAGED notice and is answered by the 409 above. No NotImplementedError remains
 anywhere in this module: item 5i ratified the answer to every state that had
 one.
 """
@@ -45,7 +52,6 @@ from typing import Any
 from claimgate.shell import rules
 from claimgate.shell.faults import DeploymentFaultError
 from claimgate.shell.messages import Resolution, ResolutionResponse
-from claimgate.shell.records import NoticeRecord
 from claimgate.shell.resolution_evaluation import evaluate
 from claimgate.shell.store import NoticeStore
 
@@ -70,8 +76,7 @@ def resolve_notice(
         supplied=supplied, note=note,
     )
     try:
-        with store.submission():
-            return _answer(resolution)
+        return evaluate(resolution)
     except DeploymentFaultError as fault:
         return ResolutionResponse(status=500, error=fault.code)
 
@@ -91,28 +96,3 @@ def _reviewer_of(actor_id: str | None, supplied: Mapping[str, Any]) -> str | Non
     if rules.parse_loss_date(supplied.get("loss_date")).value == "UNPARSEABLE":
         return None
     return actor_id
-
-
-def _answer(resolution: Resolution) -> ResolutionResponse:
-    """The three answers a notice-shaped question has, in the order their own
-    reasons force: an id nobody has is refused before any state is examined, and
-    only a notice that exists and is not pended reaches the 409."""
-    record = resolution.store.get_notice(resolution.notice_id)
-    if record is None:
-        return ResolutionResponse(status=404)
-    if record.state != "PENDED":
-        return _conflict(record)
-    return evaluate(resolution, record)
-
-
-def _conflict(record: NoticeRecord) -> ResolutionResponse:
-    """409 with the notice's current state in the body. A notice at rest in
-    RECEIVED would get this same answer and no row of its own (decision 5), but
-    nothing in phase 2 produces that state: both of item 5i's deployment faults
-    are answered before a notice exists, so the premise that deferred a scenario
-    here was false and no scenario is owed (ASSUMPTIONS.md, item 5i, ruling
-    5)."""
-    return ResolutionResponse(
-        status=409, notice_id=record.notice_id, state=record.state,
-        blockers=record.blockers, severity=record.severity, queue=record.queue,
-    )

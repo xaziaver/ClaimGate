@@ -7,21 +7,27 @@ at all (docs/harness-findings.md, mutmut's source_paths), so what is here and in
 the acceptance suite is the whole of the protection for this module.
 
 What only these can assert: that a refusal's three writes commit or fail
-together, that a deployment fault rolls the reviewer's payload record back with
-everything else, that the refusals before the transaction write nothing at all,
-that a resolution never moves the pend instant, and that resolved_at is set by
-an application and by nothing else. That last one was checked against the
-acceptance suite before it was written here - stamping resolved_at on refusals
-too passes all 21 scenarios, because no scenario can see it.
+together, that a deployment fault raised between the two transactions leaves
+nothing written, that the refusals before the read write nothing at all, that
+a resolution never moves the pend instant, that resolved_at is set by an
+application and by nothing else, and - item 7g - that a notice which moved
+between the read and the write is answered 409 with nothing written, the race
+PHASE3_DESIGN.md's "Where the calls sit" says Gherkin cannot express. The
+resolved_at one was checked against the acceptance suite before it was written
+here - stamping resolved_at on refusals too passes all 21 scenarios, because no
+scenario can see it.
 """
 
 from datetime import UTC, datetime
 
 import pytest
 
+from claimgate.shell import resolution_evaluation
 from claimgate.shell.faults import CARRIER_RULES_UNRESOLVABLE, JURISDICTION_MAP_UNUSABLE
+from claimgate.shell.messages import Judgement, Resolution
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.resolution import resolve_notice
+from claimgate.shell.resolution_evaluation import Reading
 from claimgate.shell.store import NoticeStore
 from tests.shell.support import (
     DEFAULT_RESOLVED_AT,
@@ -91,6 +97,46 @@ def test_a_resolution_against_a_notice_that_is_not_pended_persists_nothing(
     assert len(store.get_notice_payloads(triaged.notice_id)) == 1
     assert len(store.get_audit_trail(triaged.notice_id)) == 2
     assert _stored(store, triaged.notice_id).resolved_at is None
+
+
+def test_a_notice_that_moved_between_the_read_and_the_write_is_answered_409_with_nothing_written(
+    store: NoticeStore, submit: Submitter, resolve: Resolver, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The race guard (item 7g). The judgement runs outside any transaction,
+    so a second reviewer's resolution can commit while the first is being
+    judged; the write transaction re-reads the notice and refuses a decision
+    made about a state the notice is no longer in. The overtaking resolution
+    is a real one through the same endpoint, run from inside the first's
+    judgement - the one moment that is between its read and its write - and
+    the first is then judged as it would have been. What it must leave behind
+    is nothing: the winner's record, entry, instant and evaluation are all
+    there is."""
+    notice_id = _pend(submit)
+    overtaken_at = datetime(2026, 6, 2, 8, 30, tzinfo=UTC)
+    judge = resolution_evaluation.judge
+
+    def _overtaken_then_judged(resolution: Resolution, reading: Reading) -> Judgement:
+        monkeypatch.setattr(resolution_evaluation, "judge", judge)
+        winner = resolve(
+            notice_id, actor_id="adjuster-9020", resolved_at=overtaken_at,
+            supplied=_CLEARS_THE_PEND,
+        )
+        assert winner.status == 200
+        return judge(resolution, reading)
+
+    monkeypatch.setattr(resolution_evaluation, "judge", _overtaken_then_judged)
+
+    response = resolve(notice_id, supplied=_CLEARS_THE_PEND)
+
+    assert response.status == 409
+    # The body carries the state the notice is in now, not the one it was read in.
+    assert response.state == "TRIAGED"
+    assert len(store.get_notice_payloads(notice_id)) == 2
+    trail = store.get_audit_trail(notice_id)
+    assert [entry.to_state for entry in trail] == ["RECEIVED", "PENDED", "TRIAGED"]
+    assert (trail[-1].actor_id, trail[-1].occurred_at) == ("adjuster-9020", overtaken_at)
+    assert _stored(store, notice_id).resolved_at == overtaken_at
+    assert {event.evaluated_at for event in store.get_siu_events(notice_id)} == {overtaken_at}
 
 
 @pytest.mark.parametrize("actor_id", [None, "", "   "])
@@ -204,13 +250,14 @@ def test_a_deployment_fault_rolls_back_the_whole_attempt(
     store: NoticeStore, submit: Submitter, resolve: Resolver,
     fault: dict[str, object], expected_code: str,
 ) -> None:
-    """Item 5i, ruling 1: 500 and nothing recorded. The rollback is the claim
-    that matters and it is not visible from the response - the reviewer's
-    payload record is appended before _judge resolves any configuration, so an
-    implementation that answered the fault outside the transaction would leave
-    that record behind and the next resolution would be judged over data no rule
-    ever ran on. Three faults, one answer: the third reaches resolve_today
-    rather than the selection and no scenario row can carry it."""
+    """Item 5i, ruling 1: 500 and nothing recorded. Since item 7g the fault is
+    raised by the judgement, between the read transaction and the write, so
+    what is not visible from the response and is asserted here is that the
+    read wrote nothing and the write was never opened: an implementation that
+    appended the reviewer's record in the read would leave it behind, and the
+    next resolution would be judged over data no rule ever ran on. Three
+    faults, one answer: the third reaches resolve_today rather than the
+    selection and no scenario row can carry it."""
     notice_id = _pend(submit)
 
     response = resolve(notice_id, supplied=_CLEARS_THE_PEND, **fault)
