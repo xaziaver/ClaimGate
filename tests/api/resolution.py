@@ -15,7 +15,7 @@ checks the record references it.
 from claimgate.shell.messages import NoticeFields, ResolutionResponse
 from claimgate.shell.records import NoticeRecord, PayloadRecord, payload_reference
 from claimgate.shell.resolution import resolve_notice
-from claimgate.shell.resolution_evaluation import merged_view, notice_records
+from claimgate.shell.resolution_reading import merged_view, notice_records
 from claimgate.shell.store import NoticeStore
 
 

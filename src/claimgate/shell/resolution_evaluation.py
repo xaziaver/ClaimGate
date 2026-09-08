@@ -1,31 +1,25 @@
-"""The resolution's three steps: read, judge, write (split out of resolution.py
-in item 7f; restructured into two transactions in item 7g).
+"""The resolution's judgement and its write transaction (split out of
+resolution.py in item 7f; restructured into two transactions in item 7g, with
+the read transaction in resolution_reading.py).
 
 **Read, judge, write - two transactions with the evaluation between them**
-(PHASE3_DESIGN.md, "Where the calls sit", the resolution path). The read
-transaction takes the notice as it stands, every record in its arrival
-sequence and its latest coverage verification, under one lock and with no I/O.
-The judgement runs outside any transaction: the full validation over the
-merged view and, from item 7g, the port calls the re-search needs - none is
-made yet, and this is where they go. The write transaction re-reads the notice
-and answers 409 if it is no longer PENDED - a second reviewer's resolution can
-now commit while the first is being judged, a path the single transaction used
-to exclude by holding the lock - and otherwise appends the reviewer's payload
-record and writes the decision, the audit entry and the SIU events together.
-Gherkin cannot express the race; tests/shell/test_resolution.py's overtaken
-test is the guard's specification.
+(PHASE3_DESIGN.md, "Where the calls sit", the resolution path). The read is
+resolution_reading.py's. The judgement runs outside any transaction: the full
+validation over the merged view and, from item 7g, the port calls the
+re-search needs - none is made yet, and this is where they go. The write
+transaction re-reads the notice and answers 409 if it is no longer PENDED - a
+second reviewer's resolution can now commit while the first is being judged, a
+path the single transaction used to exclude by holding the lock - and
+otherwise appends the reviewer's payload record and writes the decision, the
+audit entry and the SIU events together. Gherkin cannot express the race;
+tests/shell/test_resolution.py's overtaken test is the guard's specification.
 
-**The view is the arrival sequence overlaid with what this reviewer supplied,
-field by field**, an absent field keeping its prior value (decision 1). The
-reviewer's record is appended in the write transaction and not before, so a
-resolution answered 409 leaves nothing behind, and the view it is judged
-against includes what was just supplied exactly as it did when the record was
-appended first. The full validation re-runs over that view - the same one
-intake runs, through rules.py: decision 2(a)'s one definition of "no blocker" -
-on the jurisdiction date of the resolution's own instant (decision 2(b)),
-under the jurisdiction the merged view selects, not the one known at receipt
-(item 5g; ASSUMPTIONS.md 2026-08-26), and the late-reporting interval counts
-from the notice's own receipt (item 5f decision 2). The notice's blockers are
+**The full validation re-runs over the merged view** - the same one intake
+runs, through rules.py: decision 2(a)'s one definition of "no blocker" - on
+the jurisdiction date of the resolution's own instant (decision 2(b)), under
+the jurisdiction the merged view selects, not the one known at receipt (item
+5g; ASSUMPTIONS.md 2026-08-26), and the late-reporting interval counts from
+the notice's own receipt (item 5f decision 2). The notice's blockers are
 replaced by the whole result, so the 422 body and the record cannot disagree;
 one audit entry is written either way, APPLIED or REFUSED, and every instant
 written is the one the caller supplied for this call - resolved_at only by
@@ -44,10 +38,6 @@ identifiers, which is what will clear such a pend once a reviewer has
 corrected the policy number.
 """
 
-from collections.abc import Mapping
-from dataclasses import dataclass
-from typing import Any
-
 from claimgate.domain.continuous_coverage import carry_onto_candidate
 from claimgate.domain.models import Candidate
 from claimgate.domain.policy_match import PolicyMatch
@@ -60,18 +50,8 @@ from claimgate.shell.messages import (
     Resolution,
     ResolutionResponse,
 )
-from claimgate.shell.records import NoticeRecord, PayloadRecord
-from claimgate.shell.store import NoticeStore
-
-
-@dataclass(frozen=True)
-class Reading:
-    """What the read transaction found - the notice as it stood, its view with
-    this resolution's fields overlaid, its latest verification - so the judgement reads nothing."""
-
-    record: NoticeRecord
-    view: NoticeFields
-    verification: CoverageVerification | None
+from claimgate.shell.records import NoticeRecord
+from claimgate.shell.resolution_reading import Reading, conflict, read
 
 
 def evaluate(resolution: Resolution) -> ResolutionResponse:
@@ -84,22 +64,6 @@ def evaluate(resolution: Resolution) -> ResolutionResponse:
         return reading
     judged = judge(resolution, reading)
     return write(resolution, reading, judged)
-
-
-def read(resolution: Resolution) -> Reading | ResolutionResponse:
-    """The first transaction: three reads under one lock and no I/O, so the
-    view, the verification and the state the judgement assumes are one
-    consistent picture of the notice."""
-    store = resolution.store
-    with store.submission():
-        record = store.get_notice(resolution.notice_id)
-        if record is None:
-            return ResolutionResponse(status=404)
-        if record.state != "PENDED":
-            return conflict(record)
-        view = _overlaid(notice_records(store, record.notice_id), resolution.supplied)
-        verification = coverage_verifications.latest(store, record.notice_id)
-    return Reading(record, view, verification)
 
 
 def judge(resolution: Resolution, reading: Reading) -> Judgement:
@@ -147,19 +111,6 @@ def write(resolution: Resolution, reading: Reading, judged: Judgement) -> Resolu
     return ResolutionResponse(
         status=200 if applied else 422, notice_id=record.notice_id, state=decision.state,
         blockers=decision.blockers, severity=decision.severity, queue=decision.queue,
-    )
-
-
-def conflict(record: NoticeRecord) -> ResolutionResponse:
-    """409 with the notice's current state in the body. A notice at rest in
-    RECEIVED would get this same answer and no row of its own (decision 5), but
-    nothing in phase 2 produces that state: both of item 5i's deployment faults
-    are answered before a notice exists, so the premise that deferred a scenario
-    here was false and no scenario is owed (ASSUMPTIONS.md, item 5i, ruling
-    5)."""
-    return ResolutionResponse(
-        status=409, notice_id=record.notice_id, state=record.state,
-        blockers=record.blockers, severity=record.severity, queue=record.queue,
     )
 
 
@@ -222,28 +173,3 @@ def _match_of(verification: CoverageVerification | None) -> PolicyMatch | None:
     on it, or from before the search existed - which is not a match that found
     nothing."""
     return None if verification is None else coverage_verifications.match_of(verification)
-
-
-def merged_view(store: NoticeStore, notice_id: str) -> NoticeFields:
-    """What the notice says now: every record for it overlaid in arrival order,
-    field by field. Position 0 is the submission it was created from and carries
-    every field; each later record carries only what its reviewer supplied, so
-    an omitted field keeps whatever an earlier arrival gave it. A refused
-    resolution's record is one of them - the release was refused, not the data
-    (decision 3), and "422 with the current blockers" only means something if
-    the current view includes what was just supplied."""
-    return _overlaid(notice_records(store, notice_id), {})
-
-
-def _overlaid(records: tuple[PayloadRecord, ...], supplied: Mapping[str, Any]) -> NoticeFields:
-    """The stored sequence, then what this call supplied on top of it - the
-    view a resolution is judged against before its own record exists."""
-    fields: dict[str, Any] = {}
-    for record in records:
-        fields.update(record.content)
-    fields.update(supplied)
-    return NoticeFields(**fields)
-
-
-def notice_records(store: NoticeStore, notice_id: str) -> tuple[PayloadRecord, ...]:
-    return store.get_notice_payloads(notice_id)

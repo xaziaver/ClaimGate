@@ -27,7 +27,7 @@ from claimgate.shell.faults import CARRIER_RULES_UNRESOLVABLE, JURISDICTION_MAP_
 from claimgate.shell.messages import Judgement, Resolution
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.resolution import resolve_notice
-from claimgate.shell.resolution_evaluation import Reading
+from claimgate.shell.resolution_reading import Reading
 from claimgate.shell.store import NoticeStore
 from tests.shell.support import (
     DEFAULT_RESOLVED_AT,
