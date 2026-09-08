@@ -66,6 +66,12 @@ from tests.api.policy_match import PolicySources
 from tests.api.resolution import resolve_notice
 
 DEFAULT_TODAY = date(2026, 8, 2)
+# The reviewer a resolution is attributed to where the scenario identified none
+# (item 7g): policy_match.feature's resolution rows are about the re-search and
+# name no reviewer, and the endpoint answers a body without one 400, which is
+# resolution.feature's own subject and not theirs. The same identity every
+# locked Background gives; "absent" there is still None, set by its step.
+_DEFAULT_REVIEWER = "adjuster-4471"
 _SUPPLIED_FIELDS = {
     "policy number": "policy_number",
     "notice type": "notice_type",
@@ -75,6 +81,10 @@ _SUPPLIED_FIELDS = {
     # (item 5e decision 1). It joined this map at item 5i, whose third row in
     # resolution.feature Rule 2 supplies one that is not a date at all.
     "loss date": "loss_date",
+    # A reviewer may supply the insured name and risk postal code the notice
+    # lacked (item 7g decision 7): the pair is the other route to the policy.
+    "insured name": "insured_name",
+    "risk postal code": "risk_postal_code",
 }
 
 
@@ -210,6 +220,18 @@ def set_submitted_at(context: dict[str, Any], submitted_at: str) -> None:
 @given(parsers.parse('the notice reports a policy number of "{value}"'))
 def set_policy_number(context: dict[str, Any], value: str) -> None:
     context["fields"]["policy_number"] = "" if value == "absent" else value
+
+
+@given(parsers.parse('the notice reports an insured name of "{value}"'))
+def set_insured_name(context: dict[str, Any], value: str) -> None:
+    # "absent" is None: the field is not on the notice at all, which is also
+    # how a notice from before item 7c reads (item 7g).
+    context["fields"]["insured_name"] = None if value == "absent" else value
+
+
+@given(parsers.parse('the notice reports a risk postal code of "{value}"'))
+def set_risk_postal_code(context: dict[str, Any], value: str) -> None:
+    context["fields"]["risk_postal_code"] = None if value == "absent" else value
 
 
 @given(parsers.parse('the notice reports a loss date of "{value}"'))
@@ -357,8 +379,8 @@ def set_reviewer(context: dict[str, Any], value: str) -> None:
     context["reviewer"] = None if value == "absent" else value
 
 
-@when(parsers.re(r'^the reviewer supplies a (?P<name>[a-z ]+) of "(?P<value>[^"]*)"$'))
-@given(parsers.re(r'^the reviewer supplies a (?P<name>[a-z ]+) of "(?P<value>[^"]*)"$'))
+@when(parsers.re(r'^the reviewer supplies an? (?P<name>[a-z ]+) of "(?P<value>[^"]*)"$'))
+@given(parsers.re(r'^the reviewer supplies an? (?P<name>[a-z ]+) of "(?P<value>[^"]*)"$'))
 def supply_field(context: dict[str, Any], name: str, value: str) -> None:
     # "absent" means the field is not in the resolution payload. There is no way
     # to blank a field in phase 2, only to replace one, so it never means
@@ -377,10 +399,12 @@ def submit_resolution(context: dict[str, Any], instant: str) -> None:
     context["response"] = resolve_notice(
         context["store"],
         context.get("named_notice", context["notice_id"]),
-        actor_id=context["reviewer"],
+        actor_id=context.get("reviewer", _DEFAULT_REVIEWER),
         resolved_at=parse_instant(instant),
         jurisdiction_reference=jurisdiction_map(context),
         carrier_rules_source=rules_source(context),
+        bindings_source=policy_bindings(context),
+        implementation_registry=context["policy_sources"].registry(),
         supplied=supplied,
     )
 
@@ -412,8 +436,11 @@ def check_state(context: dict[str, Any], value: str) -> None:
     assert context["response"].state == value
 
 
+@given(parsers.re(r"^the notice's blockers are (?P<value>.*)$"))
 @then(parsers.re(r"^the notice's blockers are (?P<value>.*)$"))
 def check_blockers(context: dict[str, Any], value: str) -> None:
+    # A Given too since item 7g: policy_match.feature states what a notice
+    # pends on before its reviewer supplies what it lacked.
     actual = [(b.code, b.field) for b in context["response"].blockers]
     assert actual == parse_compact_blockers(value)
 

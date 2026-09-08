@@ -4,15 +4,16 @@ the read transaction in resolution_reading.py).
 
 **Read, judge, write - two transactions with the evaluation between them**
 (PHASE3_DESIGN.md, "Where the calls sit", the resolution path). The read is
-resolution_reading.py's. The judgement runs outside any transaction: the full
-validation over the merged view and, from item 7g, the port calls the
-re-search needs - none is made yet, and this is where they go. The write
-transaction re-reads the notice and answers 409 if it is no longer PENDED - a
-second reviewer's resolution can now commit while the first is being judged, a
-path the single transaction used to exclude by holding the lock - and
-otherwise appends the reviewer's payload record and writes the decision, the
-audit entry and the SIU events together. Gherkin cannot express the race;
-tests/shell/test_resolution.py's overtaken test is the guard's specification.
+resolution_reading.py's. The judgement runs outside any transaction: the
+policy check over the merged identifiers - the carrier's port, resolved for
+this call, is asked again (item 7g) - and the full validation over the merged
+view. The write transaction re-reads the notice and answers 409 if it is no
+longer PENDED - a second reviewer's resolution can commit while the first is
+being judged, a path the single transaction used to exclude by holding the
+lock - and otherwise appends the reviewer's payload record and writes the
+decision, the verification row, the audit entry and the SIU events together.
+Gherkin cannot express the race; tests/shell/test_resolution.py's overtaken
+test is the guard's specification.
 
 **The full validation re-runs over the merged view** - the same one intake
 runs, through rules.py: decision 2(a)'s one definition of "no blocker" - on
@@ -27,22 +28,30 @@ the resolution that moves the notice (ASSUMPTIONS.md, "One receipt clock, not
 two"). A release owes an SIU evaluation (item 5f decision 1), written inside
 the write transaction from the rules the judgement resolved (decision 6).
 
-**The policy match is re-asserted from the stored verification, not searched
-again** (item 7f; ASSUMPTIONS.md, 7f decision 6): the judgement hands the rules
-the match the latest verification recorded, so POLICY_NOT_MATCHED and
-POLICY_AMBIGUOUS persist through a resolution that corrects an unrelated
-field, and its continuous-coverage date travels onto the candidate through
-the producer intake uses. No port is called and no verification row is
-written: nothing new was verified. Item 7g re-searches on the merged
-identifiers, which is what will clear such a pend once a reviewer has
-corrected the policy number.
+**The re-search decides afresh only when it answers** (ASSUMPTIONS.md, 7g
+decision 6). Correcting a policy number, or supplying the insured name and
+risk postal code the notice lacked, is searched through the same check intake
+uses (shell/policy_match.py), and an answer - matched, not matched, ambiguous
+- replaces the stored match and its blockers. A search that could not answer,
+or did not run, leaves the last answer standing: its blocker and its
+continuous-coverage date both, so an outage cannot turn a correction into a
+triage and the date a release's SIU evaluation reads is one that was
+computed. Every search that ran is recorded, so the notice shows the newest
+row and says why it could not answer where it could not.
 """
 
-from claimgate.domain.continuous_coverage import carry_onto_candidate
+from datetime import date
+
+from claimgate.domain.continuous_coverage import (
+    ContinuousCoverageDerivation,
+    carry_onto_candidate,
+)
 from claimgate.domain.models import Candidate
 from claimgate.domain.policy_match import PolicyMatch
+from claimgate.domain.ruleset import RULESET_VERSION
 from claimgate.shell import coverage_verifications, rules, siu
-from claimgate.shell.coverage_verifications import CoverageVerification
+from claimgate.shell.bindings import resolve_policy_port
+from claimgate.shell.coverage_verifications import CoverageVerification, Verification
 from claimgate.shell.messages import (
     Decision,
     Judgement,
@@ -50,6 +59,8 @@ from claimgate.shell.messages import (
     Resolution,
     ResolutionResponse,
 )
+from claimgate.shell.policy_match import answered, check_policy
+from claimgate.shell.ports import PolicyPort
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.resolution_reading import Reading, conflict, read
 
@@ -67,28 +78,26 @@ def evaluate(resolution: Resolution) -> ResolutionResponse:
 
 
 def judge(resolution: Resolution, reading: Reading) -> Judgement:
-    """The whole validation, over the merged view, on the jurisdiction date of
-    this resolution's own instant - outside any transaction, so nothing here
-    holds the write lock against intake. A blocker the resolution introduces is
-    not a new outcome - it is simply among the current blockers the 422
-    reports. The candidate, the carrier's rules and the jurisdiction come back
-    with the outcome because the SIU evaluation the write may owe has to use
-    these and not a second reading of any of them."""
-    candidate = _candidate_of(reading.view, reading.verification)
-    carrier_rules = rules.resolve_rules(
-        reading.record.carrier_code, resolution.carrier_rules_source
-    )
+    """The policy check and the whole validation, over the merged view, on the
+    jurisdiction date of this resolution's own instant - outside any
+    transaction, so no port round trip holds the write lock against intake.
+    The candidate, the carrier's rules and the jurisdiction come back with the
+    outcome because the SIU evaluation the write may owe has to use these and
+    not a second reading of any of them."""
+    view, record = reading.view, reading.record
+    loss_date = rules.parse_loss_date(view.loss_date).loss_date
+    check = check_policy(_port_of(resolution, record), view, loss_date)
+    match, derivation = _answer_standing(check.verification, reading.answered)
+    candidate = _candidate_of(view, loss_date, derivation)
+    carrier_rules = rules.resolve_rules(record.carrier_code, resolution.carrier_rules_source)
     jurisdiction = rules.resolve_jurisdiction(
-        reading.view.property_state, resolution.jurisdiction_reference
+        view.property_state, resolution.jurisdiction_reference
     )
     decision: Decision = rules.apply_domain_rules(
-        candidate,
-        jurisdiction,
-        rules.resolve_today(resolution.resolved_at, jurisdiction),
-        carrier_rules,
-        _match_of(reading.verification),
+        candidate, jurisdiction, rules.resolve_today(resolution.resolved_at, jurisdiction),
+        carrier_rules, match, check.blockers,
     )
-    return Judgement(decision, candidate, carrier_rules, jurisdiction)
+    return Judgement(decision, candidate, carrier_rules, jurisdiction, check.verification)
 
 
 def write(resolution: Resolution, reading: Reading, judged: Judgement) -> ResolutionResponse:
@@ -114,9 +123,46 @@ def write(resolution: Resolution, reading: Reading, judged: Judgement) -> Resolu
     )
 
 
+def _port_of(resolution: Resolution, record: NoticeRecord) -> PolicyPort:
+    """The carrier's policy port, resolved for this call with the resolution's
+    own instant as its clock, so the verification's as_of is the instant the
+    reviewer's correction was searched on. An unbound carrier is item 5i's
+    deployment fault, answered 500 with nothing written, as the rules and the
+    jurisdiction map are."""
+    return resolve_policy_port(
+        record.carrier_code, resolution.bindings_source, resolution.implementation_registry,
+        lambda: resolution.resolved_at,
+    )
+
+
+def _answer_standing(
+    fresh: Verification | None, stored: CoverageVerification | None
+) -> tuple[PolicyMatch | None, ContinuousCoverageDerivation | None]:
+    """7g decision 6 (module docstring): the re-search's own answer where it
+    answered, else the last answer standing - match and derivation together -
+    and nothing where no search has ever answered over this notice."""
+    if answered(fresh):
+        return fresh.match, fresh.coverage
+    if stored is None:
+        return None, None
+    return coverage_verifications.match_of(stored), coverage_verifications.derivation_of(stored)
+
+
+def _candidate_of(
+    view: NoticeFields, loss_date: date | None, derivation: ContinuousCoverageDerivation | None
+) -> Candidate:
+    """The merged view as a candidate, carrying the continuous-coverage date
+    the answer standing yielded where there is one. The parse cannot fail
+    here and there is no branch for it: every arrival in the sequence cleared
+    a schema boundary that answers an unparseable loss date 400, so the merged
+    view carries a date or states none (decision (e))."""
+    candidate = rules.build_candidate(view, loss_date)
+    return candidate if derivation is None else carry_onto_candidate(candidate, derivation)
+
+
 def _apply(resolution: Resolution, record: NoticeRecord, judged: Judgement) -> bool:
-    """The decision onto the notice row, then the attempt's own records; True
-    where the notice moved."""
+    """The decision onto the notice row, the verification row where a search
+    ran, then the attempt's own records; True where the notice moved."""
     decision = judged.decision
     applied = decision.state == "TRIAGED"
     resolution.store.write_notice_decision(
@@ -126,6 +172,11 @@ def _apply(resolution: Resolution, record: NoticeRecord, judged: Judgement) -> b
         future_dated_loss=decision.future_dated_loss,
         pended_at=None, resolved_at=resolution.resolved_at if applied else None,
     )
+    if judged.verification is not None:
+        coverage_verifications.append(
+            resolution.store, record.notice_id, judged.verification,
+            ruleset_version=RULESET_VERSION, evaluated_at=resolution.resolved_at,
+        )
     _record_attempt(resolution, record, judged, applied=applied)
     return applied
 
@@ -154,22 +205,3 @@ def _record_attempt(
             jurisdiction=judged.jurisdiction,
             evaluated_at=resolution.resolved_at,
         )
-
-
-def _candidate_of(view: NoticeFields, verification: CoverageVerification | None) -> Candidate:
-    """The merged view as a candidate, carrying the continuous-coverage date the
-    stored verification recorded where there is one. The parse cannot fail here
-    and there is no branch for it: every arrival in the sequence cleared a
-    schema boundary that answers an unparseable loss date 400, so the merged
-    view carries a date or states none (decision (e))."""
-    candidate = rules.build_candidate(view, rules.parse_loss_date(view.loss_date).loss_date)
-    if verification is None:
-        return candidate
-    return carry_onto_candidate(candidate, coverage_verifications.derivation_of(verification))
-
-
-def _match_of(verification: CoverageVerification | None) -> PolicyMatch | None:
-    """None for a notice no search has run over - one with nothing searchable
-    on it, or from before the search existed - which is not a match that found
-    nothing."""
-    return None if verification is None else coverage_verifications.match_of(verification)

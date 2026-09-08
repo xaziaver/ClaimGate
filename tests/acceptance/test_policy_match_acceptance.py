@@ -59,9 +59,34 @@ def set_only_term(context: dict[str, Any], effective: str, expiration: str) -> N
     )
 
 
+@given(parsers.parse('"{carrier}"\'s policy source searches by policy number only'))
+def search_by_number_only(context: dict[str, Any], carrier: str) -> None:
+    context["policy_sources"].search_by_number_only(carrier)
+
+
+@given(parsers.parse('"{carrier}"\'s policy source answers as before'))
+def source_answers_as_before(context: dict[str, Any], carrier: str) -> None:
+    """The row that leaves the source as the Background stood it up. Its
+    sibling row faults the source; this one says, in the spec's words, that
+    nothing changed between the intake search and the re-search."""
+
+
 @then(parsers.re(r"^the notice's policy match is (?P<value>.*)$"))
 def check_policy_match(context: dict[str, Any], value: str) -> None:
-    assert _verification(context).policy_match == value
+    # none is a notice nothing searched - no verification at all, a different
+    # fact from NOT_MATCHED (item 7g) - read the way the matched-policy step
+    # reads the same word.
+    if value == "none":
+        assert _shown_verification(context) is None
+    else:
+        assert _verification(context).policy_match == value
+
+
+@then(parsers.re(r"^the policy was identified on (?P<value>.*)$"))
+def check_identified_on(context: dict[str, Any], value: str) -> None:
+    # The two arm names policy_identification.feature spells, or none where
+    # nothing matched; compared exactly, as every code in these files is.
+    assert _verification(context).identified_on == (None if value == "none" else value)
 
 
 @then(parsers.re(r"^the matched policy is (?P<value>.*)$"))
@@ -120,7 +145,12 @@ def check_continuous_coverage_reason(context: dict[str, Any], value: str) -> Non
 
 
 def _verification(context: dict[str, Any]) -> CoverageVerificationView:
+    verification = _shown_verification(context)
+    assert verification is not None
+    return verification
+
+
+def _shown_verification(context: dict[str, Any]) -> CoverageVerificationView | None:
     view = get_notice(context["store"], context["notice_id"])
     assert view is not None
-    assert view.coverage_verification is not None
     return view.coverage_verification

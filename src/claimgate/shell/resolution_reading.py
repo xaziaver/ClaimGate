@@ -3,8 +3,8 @@ resolution_evaluation.py in item 7g, which adds the re-search to the judgement
 and left that module no room; the read moved whole, the judgement stayed).
 
 **The read transaction takes the notice as it stands, every record in its
-arrival sequence and its latest coverage verification, under one lock and with
-no I/O**, so the view, the verification and the state the judgement assumes are
+arrival sequence and its verification trail, under one lock and with no I/O**,
+so the view, the last answer standing and the state the judgement assumes are
 one consistent picture of the notice. It answers the two refusals that need
 only the notice: an id nobody has is 404, refused before any state is examined
 (decision (d)), and a notice that exists and is not pended is the 409, which
@@ -22,12 +22,19 @@ release was refused, not the data (decision 3), and "422 with the current
 blockers" only means something if the current view includes what was just
 supplied. merged_view is the same overlay over the stored sequence alone: what
 the notice says now, for the test API that reads it back.
+
+**The last answer standing** is the newest verification row whose search
+answered - matched, not matched or ambiguous - rather than the newest row: a
+row that could not answer left the previous answer's blocker in place
+(ASSUMPTIONS.md, 7g decision 6), and the judgement needs that answer where its
+own re-search cannot answer either. None where nothing has ever answered.
 """
 
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from claimgate.domain.policy_match import NOT_EVALUATED
 from claimgate.shell import coverage_verifications
 from claimgate.shell.coverage_verifications import CoverageVerification
 from claimgate.shell.messages import NoticeFields, Resolution, ResolutionResponse
@@ -38,11 +45,11 @@ from claimgate.shell.store import NoticeStore
 @dataclass(frozen=True)
 class Reading:
     """What the read transaction found - the notice as it stood, its view with
-    this resolution's fields overlaid, its latest verification - so the judgement reads nothing."""
+    this resolution's fields overlaid, the last answer standing - so the judgement reads nothing."""
 
     record: NoticeRecord
     view: NoticeFields
-    verification: CoverageVerification | None
+    answered: CoverageVerification | None
 
 
 def read(resolution: Resolution) -> Reading | ResolutionResponse:
@@ -55,8 +62,8 @@ def read(resolution: Resolution) -> Reading | ResolutionResponse:
         if record.state != "PENDED":
             return conflict(record)
         view = _overlaid(notice_records(store, record.notice_id), resolution.supplied)
-        verification = coverage_verifications.latest(store, record.notice_id)
-    return Reading(record, view, verification)
+        answered = _last_answered(coverage_verifications.for_notice(store, record.notice_id))
+    return Reading(record, view, answered)
 
 
 def conflict(record: NoticeRecord) -> ResolutionResponse:
@@ -88,6 +95,10 @@ def _overlaid(records: tuple[PayloadRecord, ...], supplied: Mapping[str, Any]) -
         fields.update(record.content)
     fields.update(supplied)
     return NoticeFields(**fields)
+
+
+def _last_answered(trail: tuple[CoverageVerification, ...]) -> CoverageVerification | None:
+    return next((row for row in reversed(trail) if row.policy_match != NOT_EVALUATED), None)
 
 
 def notice_records(store: NoticeStore, notice_id: str) -> tuple[PayloadRecord, ...]:

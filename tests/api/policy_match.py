@@ -95,6 +95,11 @@ class PolicySources:
         self._held[(carrier, reference)]["terms"] = [term(effective, expiration)]
         self._rehold(carrier, reference)
 
+    def search_by_number_only(self, carrier: str) -> None:
+        """A source with no insured-name search: the port answers a
+        name-and-postal-code notice IDENTIFIERS_INSUFFICIENT (item 7g)."""
+        self.system(carrier).without_name_search()
+
     def fault(self, carrier: str, phrase: str) -> None:
         if phrase not in FAULTS:
             raise ValueError(f"unrecognized policy source fault: {phrase!r}")

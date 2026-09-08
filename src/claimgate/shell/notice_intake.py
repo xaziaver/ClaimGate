@@ -30,7 +30,9 @@ replay each stay one transaction.
 resolved with the rest of the configuration before the receipt, is asked for the
 policy and then its term history, holding no lock, and the domain reads the
 answers - the continuous-coverage date onto the candidate, the match beside
-validation's blockers. A source fault is a value and not an exception (ports.py),
+validation's blockers. A notice with too little to search on is not searched
+and carries the identification's blocker instead, since item 7g retired the
+policy number from validation. A source fault is a value and not an exception (ports.py),
 so it never leaves a notice at RECEIVED; the decision transaction then writes the
 decision, the verification row and the SIU events together, so a notice never
 rests TRIAGED with half its attributes.
@@ -68,7 +70,7 @@ from claimgate.shell.messages import (
     Submission,
     SubmitNoticeResponse,
 )
-from claimgate.shell.policy_match import verify_policy
+from claimgate.shell.policy_match import check_policy
 from claimgate.shell.receipt import receive_or_replay
 from claimgate.shell.rules import apply_domain_rules
 from claimgate.shell.store import NoticeStore
@@ -107,15 +109,13 @@ def _decide(submission: Submission, accepted: AcceptedNotice) -> SubmitNoticeRes
     rests at RECEIVED with its receipt, its one audit entry and its key - so the
     client's retry replays that notice rather than creating a duplicate of it.
     The search cannot raise: a fault is a value on the verification."""
-    verification = verify_policy(
-        accepted.policy_port, submission.fields, accepted.candidate.loss_date
-    )
-    candidate, match = _verified(accepted.candidate, verification)
+    check = check_policy(accepted.policy_port, submission.fields, accepted.candidate.loss_date)
+    candidate, match = _verified(accepted.candidate, check.verification)
     decision = apply_domain_rules(
-        candidate, accepted.jurisdiction, accepted.today, accepted.rules, match
+        candidate, accepted.jurisdiction, accepted.today, accepted.rules, match, check.blockers
     )
     with submission.store.submission():
-        _record(submission, accepted, decision, verification, candidate)
+        _record(submission, accepted, decision, check.verification, candidate)
     return SubmitNoticeResponse(
         status=201, notice_id=accepted.notice_id, state=decision.state,
         blockers=decision.blockers, severity=decision.severity, queue=decision.queue,

@@ -90,9 +90,11 @@ def resolve(store: NoticeStore) -> Resolver:
         resolved_at: datetime = DEFAULT_RESOLVED_AT,
         jurisdiction_reference: Mapping[str, Mapping[str, str]] = JURISDICTIONS,
         carrier_rules_source: dict[str, object] | None = None,
+        policy_sources: PolicySources | None = None,
         supplied: dict[str, Any] | None = None,
     ) -> ResolutionResponse:
         source = carrier_rules_source if carrier_rules_source is not None else {"AAAA": VALID_RULES}
+        sources = policy_sources if policy_sources is not None else unavailable_sources()
         return resolve_notice(
             store,
             notice_id,
@@ -100,6 +102,8 @@ def resolve(store: NoticeStore) -> Resolver:
             resolved_at=resolved_at,
             jurisdiction_reference=jurisdiction_reference,
             carrier_rules_source=source,
+            bindings_source=sources.bindings_source(),
+            implementation_registry=sources.registry(),
             supplied=supplied if supplied is not None else {},
         )
 

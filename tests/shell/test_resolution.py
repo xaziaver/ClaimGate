@@ -23,12 +23,17 @@ from datetime import UTC, datetime
 import pytest
 
 from claimgate.shell import resolution_evaluation
-from claimgate.shell.faults import CARRIER_RULES_UNRESOLVABLE, JURISDICTION_MAP_UNUSABLE
+from claimgate.shell.faults import (
+    CARRIER_RULES_UNRESOLVABLE,
+    JURISDICTION_MAP_UNUSABLE,
+    PORT_BINDING_UNRESOLVABLE,
+)
 from claimgate.shell.messages import Judgement, Resolution
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.resolution import resolve_notice
 from claimgate.shell.resolution_reading import Reading
 from claimgate.shell.store import NoticeStore
+from tests.api.policy_match import bound_sources
 from tests.shell.support import (
     DEFAULT_RESOLVED_AT,
     DEFAULT_REVIEWER,
@@ -39,6 +44,7 @@ from tests.shell.support import (
     AuditWriteError,
     Resolver,
     Submitter,
+    unavailable_sources,
 )
 
 _CLEARS_THE_PEND = {"policy_number": "HO-7654321"}
@@ -79,7 +85,7 @@ def test_a_refusal_that_cannot_write_its_entry_writes_nothing_at_all(
     assert len(store.get_audit_trail(notice_id)) == 2
     stored = _stored(store, notice_id)
     assert stored.state == "PENDED"
-    assert [b.field for b in stored.blockers] == ["policy_number"]
+    assert [b.field for b in stored.blockers] == ["policy_number,insured_name,risk_postal_code"]
 
 
 def test_a_resolution_against_a_notice_that_is_not_pended_persists_nothing(
@@ -206,6 +212,7 @@ def test_a_resolution_naming_a_notice_this_deployment_does_not_have_writes_nothi
     # asserts the answer; what only this can assert is that the store is
     # untouched even of a payload record, since there is no notice to hang one
     # on and the endpoint never got past the lookup.
+    sources = unavailable_sources()
     response = resolve_notice(
         store,
         "no-such-notice",
@@ -213,6 +220,8 @@ def test_a_resolution_naming_a_notice_this_deployment_does_not_have_writes_nothi
         resolved_at=DEFAULT_RESOLVED_AT,
         jurisdiction_reference=JURISDICTIONS,
         carrier_rules_source={"AAAA": VALID_RULES},
+        bindings_source=sources.bindings_source(),
+        implementation_registry=sources.registry(),
         supplied={},
     )
 
@@ -244,6 +253,7 @@ def test_a_resolution_carrying_a_loss_date_that_is_not_a_date_persists_nothing(
         ({"carrier_rules_source": {}}, CARRIER_RULES_UNRESOLVABLE),
         ({"jurisdiction_reference": {"FL": {}}}, JURISDICTION_MAP_UNUSABLE),
         ({"jurisdiction_reference": {"FL": {"timezone": "Not/AZone"}}}, JURISDICTION_MAP_UNUSABLE),
+        ({"policy_sources": bound_sources([])}, PORT_BINDING_UNRESOLVABLE),
     ],
 )
 def test_a_deployment_fault_rolls_back_the_whole_attempt(
@@ -255,9 +265,11 @@ def test_a_deployment_fault_rolls_back_the_whole_attempt(
     what is not visible from the response and is asserted here is that the
     read wrote nothing and the write was never opened: an implementation that
     appended the reviewer's record in the read would leave it behind, and the
-    next resolution would be judged over data no rule ever ran on. Three
+    next resolution would be judged over data no rule ever ran on. Four
     faults, one answer: the third reaches resolve_today rather than the
-    selection and no scenario row can carry it."""
+    selection and no scenario row can carry it, and the fourth is item 7g's -
+    the re-search resolves the carrier's policy binding, and an unbound
+    carrier is the same deployment fault intake answers."""
     notice_id = _pend(submit)
 
     response = resolve(notice_id, supplied=_CLEARS_THE_PEND, **fault)

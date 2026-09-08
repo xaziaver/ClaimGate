@@ -89,7 +89,8 @@ recreates the database.
 `siu_indicator_events`' pattern: `(notice_id, ordinal)`, `ruleset_version`,
 `evaluated_at`, the same `BEFORE UPDATE` / `BEFORE DELETE` refusal. It holds
 what the policy search and the two coverage rules concluded - the identification
-and its reason, the matched reference, the term-in-force value and reason with
+and its reason, the matched reference and the identifiers that found it (item
+7g), the term-in-force value and reason with
 the deciding term's dates and the cancellation that decided it, the
 continuous-coverage value, date and reason, the port's `as_of` and the binding
 that answered - and never the history the port returned, which is another
@@ -179,6 +180,7 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
         policy_match TEXT NOT NULL,
         policy_match_reason TEXT,
         policy_reference TEXT,
+        identified_on TEXT,
         term_in_force TEXT NOT NULL,
         term_reason TEXT,
         term_effective TEXT,

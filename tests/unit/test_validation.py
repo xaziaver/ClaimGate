@@ -120,17 +120,11 @@ def test_no_jurisdiction_date_leaves_the_determination_unevaluated_and_raises_no
     )
 
 
-@pytest.mark.parametrize(
-    ("policy_number", "expected_blockers"),
-    [
-        ("HO-1234567", ()),
-        ("", (ValidationBlocker(MISSING_REQUIRED_FIELD, "policy_number"),)),
-        ("   ", (ValidationBlocker(MISSING_REQUIRED_FIELD, "policy_number"),)),
-    ],
-)
-def test_policy_number_presence(
-    policy_number: str, expected_blockers: tuple[ValidationBlocker, ...]
-) -> None:
+@pytest.mark.parametrize("policy_number", ["HO-1234567", "", "   "])
+def test_the_policy_number_is_not_validations_question(policy_number: str) -> None:
+    # Item 7g retired presence (features/validation.feature): whether the
+    # identifiers on the notice suffice is policy_identification's rule, and
+    # validation says nothing about the number, absent or not.
     candidate = dataclasses.replace(BASE_CANDIDATE, policy_number=policy_number)
 
     result = validate(
@@ -140,7 +134,7 @@ def test_policy_number_presence(
         claimant_contact_required=True,
     )
 
-    assert result.blockers == expected_blockers
+    assert result.blockers == ()
 
 
 def test_absent_loss_type_is_a_missing_field() -> None:

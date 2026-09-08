@@ -19,6 +19,7 @@ from claimgate.domain.models import (
     ValidationBlocker,
     ValidationResult,
 )
+from claimgate.domain.policy_identification import POLICY_IDENTIFIERS_INSUFFICIENT
 from claimgate.domain.policy_match import POLICY_AMBIGUOUS, POLICY_NOT_MATCHED
 
 RECOGNIZED_NOTICE_TYPES = frozenset({"INITIAL", "REOPENED", "SUPPLEMENTAL", "LOSS_ASSESSMENT"})
@@ -77,11 +78,17 @@ _CANONICAL_CODE_ORDER = (
     LOSS_TYPE_UNRECOGNIZED,
     LOSS_DATE_IN_FUTURE,
     MISSING_REQUIRED_FIELD,
+    # Item 7g: the identification's blocker (domain/policy_identification.py)
+    # is about what arrived, so it sorts with the arrival blockers, after them,
+    # and before the search's own, which it never co-occurs with - an
+    # unsearchable notice is not searched (ASSUMPTIONS.md, 7g decision 2).
+    POLICY_IDENTIFIERS_INSUFFICIENT,
     # Item 7f: the policy search's two blockers (domain/policy_match.py) sort
     # after every blocker about what arrived. The search runs over what arrived,
     # and a reviewer reads the fields to correct before the match they are meant
-    # to change. No locked scenario carries both kinds on one row; the order is
-    # asserted by tests/unit/test_policy_match.py and by nothing else.
+    # to change. No locked scenario carries a search blocker beside another
+    # kind on one row; tests/unit/test_policy_match.py asserts the order across
+    # all three families and nothing else does.
     POLICY_NOT_MATCHED,
     POLICY_AMBIGUOUS,
 )
@@ -105,16 +112,18 @@ def validate(
         )
         + _check_notice_type(candidate)
         + _check_loss_type(candidate)
-        + _check_policy_number(candidate)
     )
     return ValidationResult(blockers=canonical_order(blockers), future_dated_loss=future_dated_loss)
 
 
 def canonical_order(blockers: Sequence[ValidationBlocker]) -> tuple[ValidationBlocker, ...]:
     """Every blocker a notice carries, whichever rule raised it, in the
-    declared order. Public since item 7f: shell/rules.py joins the policy
-    search's blockers to validate()'s through this one function, so the
-    notice's list has one order on both endpoint paths."""
+    declared order. Public since item 7f: shell/rules.py joins the
+    identification's and the policy search's blockers to validate()'s through
+    this one function, so the notice's list has one order on both endpoint
+    paths. Validation itself says nothing about the policy number since item
+    7g (features/validation.feature): whether the identifiers on the notice
+    suffice is policy_identification.py's rule."""
     return tuple(sorted(blockers, key=lambda b: (_CANONICAL_CODE_ORDER.index(b.code), b.field)))
 
 
@@ -161,17 +170,6 @@ def _check_loss_date_present(candidate: Candidate) -> list[ValidationBlocker]:
     absent loss date is a domain blocker, not a schema refusal")."""
     if candidate.loss_date is None:
         return [ValidationBlocker(MISSING_REQUIRED_FIELD, "loss_date")]
-    return []
-
-
-def _check_policy_number(candidate: Candidate) -> list[ValidationBlocker]:
-    """Presence only. Item 7d retired the prefix check and the
-    two-letters-hyphen-seven-digits shape check (PHASE3_DESIGN.md,
-    "Identifiers"): a policy number is accepted as given, and whether it finds
-    a policy is the policy search's answer, not a validation blocker. Item 7g
-    retires the presence requirement too, with the identification blocker."""
-    if not candidate.policy_number.strip():
-        return [ValidationBlocker(MISSING_REQUIRED_FIELD, "policy_number")]
     return []
 
 

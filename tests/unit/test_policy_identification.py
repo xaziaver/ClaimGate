@@ -10,6 +10,7 @@ absent fields.
 
 import pytest
 
+from claimgate.domain.models import ValidationBlocker
 from claimgate.domain.policy_identification import (
     INSURED_NAME_AND_POSTAL_CODE,
     POLICY_IDENTIFIERS_INSUFFICIENT,
@@ -18,6 +19,7 @@ from claimgate.domain.policy_identification import (
     IdentifierSufficiency,
     SearchIdentifiers,
     evaluate_identifier_sufficiency,
+    identification_blockers,
 )
 
 
@@ -128,3 +130,27 @@ def test_the_vocabulary_is_the_specification_s() -> None:
     assert POLICY_NUMBER == "POLICY_NUMBER"
     assert INSURED_NAME_AND_POSTAL_CODE == "INSURED_NAME_AND_POSTAL_CODE"
     assert POLICY_IDENTIFIERS_INSUFFICIENT == "POLICY_IDENTIFIERS_INSUFFICIENT"
+
+
+@pytest.mark.parametrize(
+    ("insured_name", "risk_postal_code", "field"),
+    [
+        ("", "", "policy_number,insured_name,risk_postal_code"),
+        ("Marisol Quintero", "", "policy_number,risk_postal_code"),
+        ("", "34287", "policy_number,insured_name"),
+    ],
+)
+def test_an_insufficient_set_is_one_blocker_naming_the_absent_fields_comma_joined_in_order(
+    insured_name: str, risk_postal_code: str, field: str
+) -> None:
+    # 7g decision 1: one code, one field, the absent identifiers in the rule's
+    # order joined by commas - `;` stays the separator between blockers.
+    sufficiency = evaluate_identifier_sufficiency("", insured_name, risk_postal_code)
+
+    assert identification_blockers(sufficiency) == (
+        ValidationBlocker("POLICY_IDENTIFIERS_INSUFFICIENT", field),
+    )
+
+
+def test_a_searchable_notice_contributes_no_blocker() -> None:
+    assert identification_blockers(evaluate_identifier_sufficiency("HO-4471209", "", "")) == ()

@@ -21,14 +21,14 @@ _RECEIVED_AT = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
 _AS_OF = datetime(2026, 6, 1, 11, 58, tzinfo=UTC)
 _TERM = PolicyTerm(effective=date(2026, 1, 15), expiration=date(2027, 1, 15))
 _MATCHED_IN_FORCE = Verification(
-    match=PolicyMatch("MATCHED", policy_reference="POL-88213"),
+    match=PolicyMatch("MATCHED", policy_reference="POL-88213", identified_on="POLICY_NUMBER"),
     term=TermInForceDetermination("IN_FORCE", term=_TERM),
     coverage=ContinuousCoverageDerivation("DERIVED", continuous_since=date(2024, 1, 15)),
     as_of=_AS_OF,
     binding="AAAA/policy:live-query",
 )
 _CANCELLED = Verification(
-    match=PolicyMatch("MATCHED", policy_reference="POL-88213"),
+    match=PolicyMatch("MATCHED", policy_reference="POL-88213", identified_on="POLICY_NUMBER"),
     term=TermInForceDetermination(
         "NOT_IN_FORCE", term=_TERM, cancellation_effective=date(2026, 3, 1)
     ),
@@ -82,6 +82,7 @@ def test_every_column_reads_back_as_it_was_written(store: NoticeStore) -> None:
     assert (row.policy_match, row.policy_reference, row.policy_match_reason) == (
         "MATCHED", "POL-88213", None,
     )
+    assert row.identified_on == "POLICY_NUMBER"
     assert (row.term_in_force, row.term_effective, row.term_expiration) == (
         "NOT_IN_FORCE", date(2026, 1, 15), date(2027, 1, 15),
     )

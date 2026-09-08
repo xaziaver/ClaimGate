@@ -23,8 +23,9 @@ release and nothing for the content to be the answer to - and a notice that
 exists and is not pended is the 409, which decision 3 says persists nothing.
 Item 5i's 500 is raised by the judgement, between the transactions, so it
 refuses nothing the reviewer sent and writes nothing: this deployment could
-not read its own configuration, and the notice keeps the records and the
-trail it had (ruling 1). Last, in the write transaction, a notice that was
+not read its own configuration - the carrier's rules, the jurisdiction map,
+or, since item 7g's re-search, the carrier's policy binding - and the notice
+keeps the records and the trail it had (ruling 1). Last, in the write transaction, a notice that was
 pended when it was read and has moved since is the same 409 - a second
 reviewer's resolution committed first, and this one's decision was made about
 a notice that no longer exists in that state. Nothing asserts the order
@@ -50,6 +51,7 @@ from datetime import datetime
 from typing import Any
 
 from claimgate.shell import rules
+from claimgate.shell.bindings import BindingsSource, ImplementationRegistry
 from claimgate.shell.faults import DeploymentFaultError
 from claimgate.shell.messages import Resolution, ResolutionResponse
 from claimgate.shell.resolution_evaluation import evaluate
@@ -64,6 +66,8 @@ def resolve_notice(
     resolved_at: datetime,
     jurisdiction_reference: Mapping[str, Mapping[str, str]],
     carrier_rules_source: Mapping[str, Mapping[str, Any]],
+    bindings_source: BindingsSource,
+    implementation_registry: ImplementationRegistry,
     supplied: Mapping[str, Any],
     note: str | None = None,
 ) -> ResolutionResponse:
@@ -73,8 +77,16 @@ def resolve_notice(
     resolution = Resolution(
         store=store, notice_id=notice_id, actor_id=reviewer, resolved_at=resolved_at,
         jurisdiction_reference=jurisdiction_reference, carrier_rules_source=carrier_rules_source,
-        supplied=supplied, note=note,
+        supplied=supplied, bindings_source=bindings_source,
+        implementation_registry=implementation_registry, note=note,
     )
+    return _answer(resolution)
+
+
+def _answer(resolution: Resolution) -> ResolutionResponse:
+    """Item 5i's 500, caught here and answered with the fault's code: the
+    judgement raised it between the two transactions, so nothing was written
+    and nothing the reviewer sent was refused (module docstring)."""
     try:
         return evaluate(resolution)
     except DeploymentFaultError as fault:

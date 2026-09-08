@@ -7,7 +7,8 @@ siu_indicator_events' pattern - keyed (notice_id, ordinal), stamped with the
 ruleset_version and the evaluated_at instant of the transaction that wrote it,
 BEFORE UPDATE / BEFORE DELETE triggers in schema.py - holding what the outcome
 needs and never the history the port returned. That is the identification's
-value and reason and the matched policy's reference; the term-in-force value
+value and reason, the matched policy's reference and the identifiers it was
+found on (item 7g); the term-in-force value
 and reason, the deciding term's effective and expiration dates and the
 cancellation that produced the value where one did; the continuous-coverage
 value, date and reason; the port's as_of and the binding that answered. Each
@@ -72,6 +73,7 @@ class CoverageVerification:
     policy_match: str
     policy_match_reason: str | None
     policy_reference: str | None
+    identified_on: str | None
     term_in_force: str
     term_reason: str | None
     term_effective: date | None
@@ -95,6 +97,7 @@ class CoverageVerificationView:
 
     policy_match: str
     matched_policy: str | None
+    identified_on: str | None
     reason: str | None
     term_in_force: str
     deciding_term_effective: date | None
@@ -113,6 +116,7 @@ def view_of(record: CoverageVerification | None) -> CoverageVerificationView | N
     return CoverageVerificationView(
         policy_match=record.policy_match,
         matched_policy=record.policy_reference,
+        identified_on=record.identified_on,
         reason=record.policy_match_reason,
         term_in_force=record.term_in_force,
         deciding_term_effective=record.term_effective,
@@ -129,6 +133,7 @@ def match_of(record: CoverageVerification) -> PolicyMatch:
     return PolicyMatch(
         cast(PolicyMatchValue, record.policy_match),
         policy_reference=record.policy_reference,
+        identified_on=record.identified_on,
         reason=record.policy_match_reason,
     )
 
@@ -154,10 +159,10 @@ def append(
     connection.execute(
         "INSERT INTO coverage_verifications"
         " (notice_id, ordinal, policy_match, policy_match_reason, policy_reference,"
-        " term_in_force, term_reason, term_effective, term_expiration, cancellation_effective,"
-        " continuous_coverage, continuous_coverage_reason, continuous_coverage_date,"
-        " as_of, binding, ruleset_version, evaluated_at)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " identified_on, term_in_force, term_reason, term_effective, term_expiration,"
+        " cancellation_effective, continuous_coverage, continuous_coverage_reason,"
+        " continuous_coverage_date, as_of, binding, ruleset_version, evaluated_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (notice_id, _next_ordinal(connection, notice_id), *_columns(verification),
          verification.as_of.isoformat(), verification.binding, ruleset_version,
          evaluated_at.isoformat()),
@@ -185,7 +190,7 @@ def _columns(verification: Verification) -> tuple[str | None, ...]:
     match, term, coverage = verification.match, verification.term, verification.coverage
     deciding = term.term
     return (
-        match.value, match.reason, match.policy_reference,
+        match.value, match.reason, match.policy_reference, match.identified_on,
         term.value, term.reason,
         None if deciding is None else deciding.effective.isoformat(),
         None if deciding is None else deciding.expiration.isoformat(),
@@ -208,6 +213,7 @@ def _from_row(row: sqlite3.Row) -> CoverageVerification:
         policy_match=row["policy_match"],
         policy_match_reason=row["policy_match_reason"],
         policy_reference=row["policy_reference"],
+        identified_on=row["identified_on"],
         term_in_force=row["term_in_force"],
         term_reason=row["term_reason"],
         term_effective=_day(row["term_effective"]),

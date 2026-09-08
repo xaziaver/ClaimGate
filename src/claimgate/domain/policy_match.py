@@ -46,26 +46,45 @@ _BLOCKER_CODES: Final[Mapping[str, str]] = {
 
 
 @dataclass(frozen=True)
+class FoundPolicy:
+    """One policy the search found: the source's own reference, and which of
+    the notice's identifiers found it - policy_identification.py's two arm
+    names, POLICY_NUMBER or INSURED_NAME_AND_POSTAL_CODE, as the port reports
+    the basis of each candidate."""
+
+    reference: str
+    identified_on: str
+
+
+@dataclass(frozen=True)
 class PolicyMatch:
-    # Same convention as the other domain results: policy_reference is set only
-    # for MATCHED, reason only for NOT_EVALUATED - and it is the source's reason.
+    # Same convention as the other domain results: policy_reference and
+    # identified_on are set only for MATCHED, reason only for NOT_EVALUATED -
+    # and it is the source's reason. identified_on is item 7g's (ASSUMPTIONS.md,
+    # 7g decision 5): a mistyped number beside a correct insured name and
+    # postal code is the case the search exists for, and the reviewer should
+    # see that the number did not match.
     value: PolicyMatchValue
     policy_reference: str | None = None
+    identified_on: str | None = None
     reason: str | None = None
 
 
-def match_policy(references: tuple[str, ...], reason: str | None) -> PolicyMatch:
-    """`references` are the policies the search found, by the source's own
-    identifier; `reason` is set where the search was not evaluated. A search
-    that was not evaluated found nothing, so both at once is a caller contract
-    violation rather than a case to choose between."""
+def match_policy(found: tuple[FoundPolicy, ...], reason: str | None) -> PolicyMatch:
+    """`found` are the policies the search found, by the source's own
+    identifier and the basis each was matched on; `reason` is set where the
+    search was not evaluated. A search that was not evaluated found nothing, so
+    both at once is a caller contract violation rather than a case to choose
+    between."""
     if reason is not None:
-        if references:
+        if found:
             raise ValueError("a search that was not evaluated cannot have found a policy")
         return PolicyMatch(NOT_EVALUATED, reason=reason)
-    if len(references) == 1:
-        return PolicyMatch(MATCHED, policy_reference=references[0])
-    if not references:
+    if len(found) == 1:
+        return PolicyMatch(
+            MATCHED, policy_reference=found[0].reference, identified_on=found[0].identified_on
+        )
+    if not found:
         return PolicyMatch(NOT_MATCHED)
     return PolicyMatch(AMBIGUOUS)
 

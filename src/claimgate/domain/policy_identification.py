@@ -12,16 +12,19 @@ field it checks. Nothing is checked for shape: a mistyped number beside a
 correct name and postal code is a search, not a pend, and whether a number
 finds a policy is the search's answer (items 7d and 7f).
 
-Called from the intake path since item 7f, where it decides whether the policy
-search runs at all (shell/policy_match.py). The blocker is not raised there
-until item 7g, which retires policy_number as a required field: until then a
-notice with no number pends on validation's own MISSING_REQUIRED_FIELD before
-this rule's answer could matter, and the second arm cannot be reached at intake
-(PHASE3_DESIGN.md's 2026-09-05 annotation).
+Called from both endpoint paths since item 7g (shell/policy_match.py), where
+it decides whether the policy search runs at all and, where it does not, what
+the notice pends on: validation no longer requires a policy number
+(features/validation.feature), so this rule's blocker is the one a notice with
+too little to search on carries. How it serializes is identification_blockers,
+below - one blocker, the absent fields comma-joined (ASSUMPTIONS.md, 7g
+decision 1).
 """
 
 from dataclasses import dataclass
 from typing import Final, Literal
+
+from claimgate.domain.models import ValidationBlocker
 
 # The two ways a notice can be searchable, in the order a result reports them
 # when both hold. The list is every satisfied arm, not a preference: the search
@@ -108,3 +111,14 @@ def _present(value: str | None) -> str | None:
     """Whitespace is absence, and a present value is carried trimmed."""
     stripped = (value or "").strip()
     return stripped or None
+
+
+def identification_blockers(sufficiency: IdentifierSufficiency) -> tuple[ValidationBlocker, ...]:
+    """How the blocker joins the notice's list (ASSUMPTIONS.md, 7g decision 1):
+    one blocker whose field is every absent identifier field in this rule's
+    order, comma-joined - `policy_number,insured_name,risk_postal_code` - so
+    the reviewer reads every route still open. `;` stays the separator between
+    blockers on a notice. Nothing for a notice that can be searched."""
+    if sufficiency.blocker is None:
+        return ()
+    return (ValidationBlocker(sufficiency.blocker.code, ",".join(sufficiency.blocker.fields)),)
