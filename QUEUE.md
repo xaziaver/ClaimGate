@@ -738,8 +738,8 @@ Ordered by domain severity, not by effort. One line each on why that position.
 7g. **Resolution path restructured (shell).**
     *(Closed 2026-09-08 — structural `ce62f3d`, spec `acb06eb`, approval `1a24146`, split
     `17de43c`, implementation `828ded3`; green run `20260908T124244-462219`, 858 tests, 757
-    killed, 73 reviewed-equivalent; the merge to `main` is the human's after the advisor verifies
-    the run. Five debts carried, listed in the closing status paragraph.)*
+    killed, 73 reviewed-equivalent; merged to `main` at `7f5f786`, 2026-09-08. Five debts
+    carried, listed in the closing status paragraph.)*
     Evaluation moves outside the write transaction: read
     the merged view, evaluate (ports included), write in a second transaction that re-checks
     `PENDED` and answers `409` if the notice moved. `resolution.feature`'s surface is unchanged — a
@@ -4216,4 +4216,28 @@ coverage date. The debts:
 The margin in the fourth debt is the verified run's; the stop-check since measured it at 451 s.
 `ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today" carry
 dated 7g close notes; `CLAUDE.md`'s start-up step 3 carries the new pair. Nothing is in flight in
-code; the branch is a superset of `main` and is not merged. 7h is next.
+code. Merged to `main` at `7f5f786`, 2026-09-08. 7h is next.
+
+**2026-09-09: item 7h is open on `phase3/7h-duplicates-wired` from `main` at `86cd32f`; this
+session is housekeeping and read-only measurement, nothing drafted, no code.** Item 7g merged to
+`main` at `7f5f786` on 2026-09-08. Two housekeeping merges followed it on `main`, neither an
+item: `b0e18f1` put the Stop hook behind `.claude/hooks/stop-check.sh`, which skips the
+stop-check when the gated tree is byte-identical to the last green run's and records a tree only
+from a wholly green run; `86cd32f` recorded the protected-path rule — no full run while a lock is
+pending, the cheap gates under `--fail-fast` instead, and the one permitted interrupt with its
+recovery — after the lock at `856ea31`. The last green is the wrapper's seeding run, which the
+timing places on the stop-check for `e2a8933`, and its events line reads:
+
+```
+{"actual": "15 spec(s), 73 reviewed-equivalent", "at": "2026-09-09T01:14:59+00:00", "diagnostics": 0, "duration": 2673.194, "error": null, "gate": "acceptance", "kind": "gate.finished", "passed": true, "run": "20260909T003016-338541", "v": 1}
+```
+
+The pair this paragraph records: acceptance 2673.194 s against the 3600 s Stop hook budget, on
+858 tests, 757 killed, 73 reviewed-equivalent, 0 diagnostics, 1211 mutants across fifteen specs;
+`.gauntlet/last-green-tree` names that run. A documents-only turn now ends in a skip, one printed
+line — `gauntlet stop-check skipped: gated tree unchanged since green run
+20260909T003016-338541, 2026-09-09T01:14:59+00:00` — so the hook budget bounds only turns that
+touch a gated path, and the pair moves only on those. That run's `.gauntlet/mutation-backup/` is
+on disk with all fifteen files byte-identical to the working tree: the engine's residue from a
+completed run, not a strand. Nothing is in flight in code; the branch is a superset of `main` and
+is not merged.
