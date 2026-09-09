@@ -85,5 +85,17 @@ check("no skills path is protected or verified by default",
 check("boundary gate walks only the steps dir",
       "steps_dir.rglob" in inspect.getsource(boundary))
 
+# cli.py imports typer, which the project venv does not carry; read it as text.
+import re
+from gauntlet import runner
+cli_src = (pathlib.Path(gauntlet.__file__).parent / "cli.py").read_text()
+stop_check_src = re.search(r"def stop_check\(.*?\) -> None:", cli_src, re.S)
+check("stop-check defaults to --fail-fast",
+      stop_check_src is not None
+      and 'True, "--fail-fast/--no-fail-fast"' in stop_check_src.group(0))
+
+check("run_full_gauntlet accepts fail_fast",
+      "fail_fast" in inspect.signature(runner.run_full_gauntlet).parameters)
+
 sys.exit(1 if fails else 0)
 PY

@@ -6,6 +6,13 @@ the human's.
 
 - Run `gauntlet check` yourself before you say you are done. Do not wait for the
   Stop hook to tell you.
+- **When a protected path has changed and the human has not yet run `gauntlet lock`, do
+  not run `gauntlet check` and do not wait for a stop-check to run.** The protected paths
+  are `.claude/settings.json`, `gauntlet.toml`, and `pyproject.toml`; the protect gate
+  is red until the lock, so nothing the full run measures can pass. Instead run
+  `gauntlet check --gates protect` to confirm the one red is the protected path, then
+  `gauntlet check --gates static,size,complexity,boundary,tests,coverage,crap,duplication,mutation --fail-fast`
+  for the cheap evidence, report both, and hand the lock to the human.
 - Gate failures come back as JSON with a file, a symbol, a line, and a remedy.
   Act on the remedy rather than guessing.
 - Never edit `gauntlet.toml`, `gauntlet.lock.json`, `.claude/settings.json`, or
@@ -227,6 +234,14 @@ Before any work, orient and verify. Report before acting.
   tail's status. Read the printed verdict, never `$?`.
 - A concurrent `gauntlet check` exits 0 having executed zero gates. Never relaunch
   one while another may still be alive.
+- Never interrupt a run, with one exception: interrupting is acceptable only when the run
+  is known to end red on a protected-path change awaiting the human's lock, because its
+  acceptance stage would spend the whole window on a verdict already red. The recovery
+  after that interrupt: `git checkout -- features/` restores every spec to its locked
+  text; `sha256sum` the file the run had open against `gauntlet.lock.json`;
+  `rm -rf .gauntlet/mutation-backup`; `.gauntlet/run.lock` is an OS flock released when
+  the process died and needs nothing. The interrupted run's partial `gate.finished` lines
+  stay in the events log and are not a green.
 - The acceptance mutation engine is importable and pure-stdlib
   (`gauntlet.acceptance.gherkin`, `gauntlet.acceptance.mutation`). Measure mutant
   counts and ledger impact directly instead of predicting them, and compare

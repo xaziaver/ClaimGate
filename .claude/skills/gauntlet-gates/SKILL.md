@@ -53,6 +53,38 @@ after a stop-check that exited 0 whose run has no failed `gate.finished` line,
 finished as many distinct gates as the previous green run (eleven at first),
 and is newer than the recorded run.
 
+## A protected path changed and the lock has not been run
+
+The protect gate verifies the content of `.claude/settings.json`, `gauntlet.toml`,
+and `pyproject.toml` against `gauntlet.lock.json` (`N/3 paths unchanged`). When
+one of them has changed and the human has not yet run `gauntlet lock`, that gate
+is red on every run until the lock, so nothing a full run measures can pass. Do
+not run `gauntlet check` and do not wait for a stop-check. Instead:
+
+    gauntlet check --gates protect
+    gauntlet check --gates static,size,complexity,boundary,tests,coverage,crap,duplication,mutation --fail-fast
+
+The first confirms the one red is the protected path. The second is the cheap
+evidence — every gate but acceptance, about ten seconds, stopping at the first
+red. Report both and hand the lock to the human; it is theirs.
+
+**Interrupting a run is acceptable only in this case** — a run known to end red
+on a protected-path change awaiting the lock, whose acceptance stage would spend
+the whole window on a verdict already red. Recovery after the interrupt:
+`git checkout -- features/` restores every spec to its locked text; `sha256sum`
+the file the run had open against `gauntlet.lock.json`; `rm -rf
+.gauntlet/mutation-backup`; `.gauntlet/run.lock` is an OS flock released when
+the process died and needs nothing. The interrupted run's partial
+`gate.finished` lines stay in the events log and are not a green.
+
+**`gauntlet stop-check` now stops at the first failing gate.** From the Gauntlet
+version installed on 2026-09-08 (`agent-gauntlet` `4fc5c34`), `stop-check`
+defaults to `--fail-fast`, so a cheap red ends in seconds and acceptance runs
+only when everything before it is green — a protected-path red ends the
+stop-check at protect. `gauntlet check` does not default to it; pass
+`--fail-fast` by hand. The instance behind both rules is the interrupted
+stop-check of 2026-09-08 in `docs/harness-findings.md`.
+
 ## Why the acceptance gate is red
 
 It runs three stages in order and returns on the first failure:
