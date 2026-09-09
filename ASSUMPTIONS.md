@@ -1038,6 +1038,27 @@ or data. Nothing below was confirmed against a live book.
   no pair is now insufficient rather than missing. (9) Where a re-search cannot answer, the last
   computed continuous-coverage date stands beside the carried blocker, so a release's SIU
   evaluation reads a date that was computed. Agent judgment 11, human-ratified 2026-09-08.
+- **Item 7h spec decisions — advisor-recommended, human-ratified 2026-09-09.** (1) The intake
+  surface of duplicate detection is a new spec, `duplicate_evaluation.feature`;
+  `duplicates.feature` is neither edited nor rebound through the product. Its surviving-mutant
+  picture is therefore identical before and after, because it binds to the domain and never
+  submits a notice; rebinding it is a separate decision, not a side effect of this item. (2) The
+  evaluation runs on every transition into TRIAGED, on either path, and only there; a PENDED
+  notice carries no evaluation and is compared when it is triaged, on what it carries then. (3)
+  The rule's own reasons, `FOLLOW_ON_NOTICE_TYPE` and `NO_EXISTING_CLAIM_NOTICE_TYPE`, come from
+  the domain. Where the shell never asks the rule — no policy was found, or a source could not
+  answer — the row carries the reason the coverage verification carries for the same failure, or
+  the claims port's; nothing is added to the enumeration `duplicates.feature` calls complete. (4)
+  The comparison is against the policy the search found: the shell places the found policy's
+  number on the candidate before `find_duplicates`, because the claims port scopes by reference
+  while the rule compares numbers; without it a notice matched on the pair would read clean. (5)
+  The claims port binds to the same core-system stand-in as the policy port, through the existing
+  "policy source" steps, and is resolved at receipt beside it, so no locked Background moves and
+  an unresolvable binding is the same 500; a claims-only fault is a fixture mode. (6) The
+  evaluation is one structure on the notice — status, candidates, reason — as its own field, never
+  in reason codes (2026-08-22). (7) `duplicate_evaluations` lives in its own shell module on the
+  coverage-verification pattern; `messages.py` and `schema.py` are split first, structurally.
+
 
 ## Undocumented phase-1 thresholds
 

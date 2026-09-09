@@ -722,8 +722,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
 7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).**
     *(Closed 2026-09-07 — spec `a20e06e`, amendment `2ad4055`, approvals `6cc3e56` and `eb794e4`,
     implementation `69a5f45`, bindings `1e2bfc0`; green run `20260907T214626-43332`, 832 tests, 756
-    killed, 73 reviewed-equivalent; the merge to `main` is the human's after the advisor verifies
-    the run.)*
+    killed, 73 reviewed-equivalent; merged to `main` at `850fe04`, 2026-09-08.)*
     New spec
     `features/policy_match.feature`, beside 7c's locked rule: the outcome table in `PHASE3_DESIGN.md` —
     matched proceeds; zero candidates pends `POLICY_NOT_MATCHED`; several pend `POLICY_AMBIGUOUS`;
@@ -3932,8 +3931,7 @@ implementation paragraph above; decisions 10 and 11 are in `ASSUMPTIONS.md`'s 7f
 the debt that a notice with no loss date, or nothing searchable, receives its verification at the
 re-search on resolution, and the insured-name search; 7h the claims port and `find_duplicates`'
 caller. `ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today"
-carry dated 7f notes. Nothing is in flight in code; the branch is a superset of `main` and is not
-merged.
+carry dated 7f notes. Nothing is in flight in code. Merged to `main` at `850fe04`, 2026-09-08.
 
 **2026-09-08: item 7g is open on `phase3/7g-resolution-research` from `main` at `850fe04`; the
 structural commit is done and green at `ce62f3d`, no spec touched, nothing drafted.**
@@ -4241,3 +4239,56 @@ touch a gated path, and the pair moves only on those. That run's `.gauntlet/muta
 on disk with all fifteen files byte-identical to the working tree: the engine's residue from a
 completed run, not a strand. Nothing is in flight in code; the branch is a superset of `main` and
 is not merged.
+
+**2026-09-09: 7h structural commit `9d41011` green cold; spec `features/duplicate_evaluation.feature`
+committed on `phase3/7h-duplicates-wired`, awaiting the human's approval; no bindings, no code.**
+The split, first. `messages.py` (248) keeps the boundary shapes serialization.py projects —
+`NoticeFields`, the two responses, `NoticeView` — and `shell/bundles.py` takes what the
+orchestration passes to itself: `Submission`, `Resolution`, `Decision`, `Judgement`,
+`AcceptedNotice`, each class AST-identical to the one it was (`ast.dump` compared per class
+against the file at `6a0d219`). `schema.py` (239) keeps the notice record and its arrival
+sequence — four tables, four triggers — and `shell/trails.py` takes `siu_indicator_events` and
+`coverage_verifications` with their four triggers; `SCHEMA_STATEMENTS` is recomposed in its
+original order and is value-identical, fourteen statements. Seven import blocks moved to the
+new module and were re-sorted; nothing else changed. Sizes after: `messages.py` 136,
+`bundles.py` 133, `schema.py` 156, `trails.py` 114; `store.py` 248 is the largest module now.
+Cold gate at `9d41011`, `mutants/` cleared, predicted then measured, line by line: protect 3/3
+= 3/3; static 0 = 0; size worst function 25, no module at 250 = 25; complexity 6 = 6; boundary
+17 step files, 0 direct imports = 17/0; tests 858 = 858/858; coverage 100/100 = 100/100; CRAP
+6 = 6.0; duplication 0 = 0; code mutation 757 killed = `score 100.0%, 757 killed`; acceptance
+15 specs, 73 reviewed-equivalent, digests unchanged, 2630–2950 s = `15 spec(s), 73
+reviewed-equivalent`, 0 diagnostics, every spec still approved, and the events line:
+
+```
+{"actual": "15 spec(s), 73 reviewed-equivalent", "at": "2026-09-09T10:28:39+00:00", "diagnostics": 0, "duration": 2670.57, "error": null, "gate": "acceptance", "kind": "gate.finished", "passed": true, "run": "20260909T094346-499212", "v": 1}
+```
+
+The pair this paragraph records: 2670.57 s against the 3600 s Stop hook budget, on 1211 mutants.
+**The spec.** 147 lines, transcribed from the human's text; sha256 `58a5370b5194531d`, which is
+not the `42b23f5dcf881df3` the human expected — no variant tried (trailing newline dropped or
+doubled, CRLF, trailing whitespace stripped) matches, the file holds no tab or non-ASCII byte,
+and the engine counts 46 mutants on it as expected, so the difference is bytes the transcription
+cannot see rather than words; the human diffs their copy against the committed file before
+approving. Radius from `radius.py` at the spec commit: 46 mutants, 34 locators, 26 literal,
+against the same three expected. Per scenario: 4, 4, 6, 9, 6, 7 and 10 mutants in file order.
+Duration estimate for the run that approves it: 1257 mutants at 2.207 s a run (the seeding
+calibration) plus the new rows' testcase time, about 2,950 s; at the verified-run calibration of
+2.425 s, about 3,200 s. Either fits under 3600 s; 7i's three binding configurations will not, and
+that decision opens with 7i. **The measurement the spec was drafted on** (judgments 1–9 of this
+morning, ratified; decisions 1–7 in `ASSUMPTIONS.md`'s 7h entry): the fixture holds claims per
+policy reference, seeded empty by `hold_policy` and appended by `hold_claim`, and an unknown
+reference raises, which the port answers `SOURCE_UNAVAILABLE`; every source method calls
+`_misbehave` first, so the fixture's sleep, raise and malformed faults are shared across both
+ports of one carrier, and number-only mode is search-only; the test API binds only the policy
+half today, with `registry()` passing an empty claims map and nothing in `src/` calling
+`resolve_claims_port`; no scenario outside `policy_match.feature` reaches TRIAGED with a matched
+policy, because the other five submitting specs declare the source unavailable in their
+Backgrounds; and the twelve rows that will call an empty claims source once the port is wired are
+`policy_match.feature` lines 62, 97, 98, 108, 133, 134, 178, 204, 225 at intake and 268, 288,
+291 on resolution, with line 179 pended-but-matched and, under decision 2, not compared. The
+stop-check on this commit is expected red at the acceptance gate's approval stage on the
+unapproved spec — the separate-commits rule guarantees it, and it is not a failure to retry.
+Next: the human approves the spec; then the bindings for its steps — the claims-source holds
+and unavailable steps, the evaluation, candidates and reason steps, the no-evaluation step —
+and the implementation under decisions 2 to 7. The branch is a superset of `main` and is not
+merged.
