@@ -2075,3 +2075,48 @@ backup), fixed, amended before any push, and re-run cold. Technique: before writ
 walk `src/` with `ast` and print every function over the ceiling - twelve lines of Python, under a
 second - or run `gauntlet check --gates size` by hand; the hook's coverage is a property of which
 tool wrote the file, not of the file.
+
+### A stop-check on a protected-path change runs acceptance on a verdict already red, and the interrupt strands a spec (2026-09-08)
+
+Observed 2026-09-08 on the stop-check wrapper commits, from `.gauntlet/events.jsonl` (times UTC).
+The wrapper commit `0bad27d` (22:53:30Z) changed `.claude/settings.json`, a verified path, and
+the lock had not been run. Its stop-check, run `20260908T225412-163184`, began at 22:54:12Z with
+`protect` red (`2/3 paths unchanged`), then ran every other gate green and the acceptance gate
+for 2630.045 s to a green line at 23:38:12Z — a whole window spent on a verdict that was red at
+its first line. The correction commit `206911d` (23:45:08Z, still on an unlocked
+`.claude/settings.json`) drew a second stop-check, run `20260908T234524-309883`: `protect` red at
+23:45:24Z, `static` through `mutation` green by 23:45:33Z, acceptance running, then interrupted.
+`features/continuous_coverage.feature` was left mutated on disk and was restored from
+git; its digest `dc00a588…` matches `gauntlet.lock.json`. The lock followed at 23:52:40Z
+(`approval.granted`, subject `config`, count 3, commit `856ea31`), and `gauntlet check --gates
+protect` then read `3/3 paths unchanged`.
+
+The interrupted run left ten `gate.finished` lines (`protect` through `mutation`) and no
+`acceptance` line, and — being a stop-check — no `run.started` or `run.finished` either. Those
+partial lines stay in the log and are not a green; the wrapper records a tree only from the newest
+`acceptance` `gate.finished` line, so no record was written, and `.gauntlet/last-green-tree` was
+still absent at the next session's start. `.gauntlet/mutation-backup/` was absent by then too,
+and `.gauntlet/run.lock` — an OS flock, released when the process died — needed nothing.
+
+Two rules follow, recorded in `CLAUDE.md` and the `gauntlet-gates` skill. First: when a protected
+path — `.claude/settings.json`, `gauntlet.toml`, `pyproject.toml` — has changed and the human has
+not yet run `gauntlet lock`, the agent does not run `gauntlet check` and does not wait for a
+stop-check: nothing it measures can pass. It runs `gauntlet check --gates protect` to confirm the
+one red is the protected path, then `gauntlet check --gates
+static,size,complexity,boundary,tests,coverage,crap,duplication,mutation --fail-fast` for the
+cheap evidence (both confirmed to run with those gate names, in that order, 2026-09-08), reports
+both, and hands the lock to the human. Second, the exception to "never interrupt a run":
+interrupting is acceptable only when the run is known to end red on a protected-path change
+awaiting the human's lock. The recovery: `git checkout -- features/` restores every spec to its
+locked text; `sha256sum` the file the run had open against `gauntlet.lock.json`; `rm -rf
+.gauntlet/mutation-backup`; `.gauntlet/run.lock` is an OS flock released when the process died
+and needs nothing. `git checkout` and the `.gauntlet/mutation-backup/` copy agree here because
+every spec was committed at its locked text; the backup-first guidance above is for a tree that
+carries an uncommitted spec edit.
+
+The cause on the harness side is closed in the same day's Gauntlet commit: `agent-gauntlet`
+`4fc5c34` makes `gauntlet stop-check` default to `--fail-fast`, confirmed from `gauntlet
+stop-check --help` on the installed tool (an editable install of `~/Code/agent-gauntlet/src`) and
+asserted by the skill's `scripts/verify.sh`. A protected-path red now ends the stop-check at
+`protect` in under a second, and acceptance runs only when everything before it is green.
+`gauntlet check` keeps `--fail-fast` opt-in.
