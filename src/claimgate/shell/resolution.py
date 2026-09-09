@@ -52,8 +52,9 @@ from typing import Any
 
 from claimgate.shell import rules
 from claimgate.shell.bindings import BindingsSource, ImplementationRegistry
+from claimgate.shell.bundles import Resolution
 from claimgate.shell.faults import DeploymentFaultError
-from claimgate.shell.messages import Resolution, ResolutionResponse
+from claimgate.shell.messages import ResolutionResponse
 from claimgate.shell.resolution_evaluation import evaluate
 from claimgate.shell.store import NoticeStore
 

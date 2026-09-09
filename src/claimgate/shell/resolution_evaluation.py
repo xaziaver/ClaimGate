@@ -51,14 +51,9 @@ from claimgate.domain.policy_match import PolicyMatch
 from claimgate.domain.ruleset import RULESET_VERSION
 from claimgate.shell import coverage_verifications, rules, siu
 from claimgate.shell.bindings import resolve_policy_port
+from claimgate.shell.bundles import Decision, Judgement, Resolution
 from claimgate.shell.coverage_verifications import CoverageVerification, Verification
-from claimgate.shell.messages import (
-    Decision,
-    Judgement,
-    NoticeFields,
-    Resolution,
-    ResolutionResponse,
-)
+from claimgate.shell.messages import NoticeFields, ResolutionResponse
 from claimgate.shell.policy_match import answered, check_policy
 from claimgate.shell.ports import PolicyPort
 from claimgate.shell.records import NoticeRecord

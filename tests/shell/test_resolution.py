@@ -23,12 +23,12 @@ from datetime import UTC, datetime
 import pytest
 
 from claimgate.shell import resolution_evaluation
+from claimgate.shell.bundles import Judgement, Resolution
 from claimgate.shell.faults import (
     CARRIER_RULES_UNRESOLVABLE,
     JURISDICTION_MAP_UNUSABLE,
     PORT_BINDING_UNRESOLVABLE,
 )
-from claimgate.shell.messages import Judgement, Resolution
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.resolution import resolve_notice
 from claimgate.shell.resolution_reading import Reading

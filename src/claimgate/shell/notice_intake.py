@@ -61,15 +61,9 @@ from claimgate.domain.policy_match import PolicyMatch
 from claimgate.domain.ruleset import RULESET_VERSION
 from claimgate.shell import coverage_verifications, siu
 from claimgate.shell.bindings import BindingsSource, ImplementationRegistry
+from claimgate.shell.bundles import AcceptedNotice, Decision, Submission
 from claimgate.shell.coverage_verifications import Verification
-from claimgate.shell.messages import (
-    AcceptedNotice,
-    Decision,
-    NoticeFields,
-    NoticeView,
-    Submission,
-    SubmitNoticeResponse,
-)
+from claimgate.shell.messages import NoticeFields, NoticeView, SubmitNoticeResponse
 from claimgate.shell.policy_match import check_policy
 from claimgate.shell.receipt import receive_or_replay
 from claimgate.shell.rules import apply_domain_rules

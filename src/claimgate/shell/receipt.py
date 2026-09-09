@@ -32,6 +32,7 @@ from datetime import date
 from claimgate.domain.carrier_identity import resolve_carrier_identity
 from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction
 from claimgate.shell.bindings import resolve_policy_port
+from claimgate.shell.bundles import AcceptedNotice, Submission
 from claimgate.shell.faults import DeploymentFaultError
 from claimgate.shell.idempotency import (
     answer_repeated_key,
@@ -39,7 +40,7 @@ from claimgate.shell.idempotency import (
     is_within_key_lifetime,
     replay_after_losing_the_race,
 )
-from claimgate.shell.messages import AcceptedNotice, Submission, SubmitNoticeResponse
+from claimgate.shell.messages import SubmitNoticeResponse
 from claimgate.shell.ports import PolicyPort
 from claimgate.shell.rules import (
     build_candidate,

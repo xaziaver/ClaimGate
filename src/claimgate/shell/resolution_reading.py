@@ -36,8 +36,9 @@ from typing import Any
 
 from claimgate.domain.policy_match import NOT_EVALUATED
 from claimgate.shell import coverage_verifications
+from claimgate.shell.bundles import Resolution
 from claimgate.shell.coverage_verifications import CoverageVerification
-from claimgate.shell.messages import NoticeFields, Resolution, ResolutionResponse
+from claimgate.shell.messages import NoticeFields, ResolutionResponse
 from claimgate.shell.records import NoticeRecord, PayloadRecord
 from claimgate.shell.store import NoticeStore
 

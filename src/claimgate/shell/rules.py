@@ -51,12 +51,13 @@ from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction, Valid
 from claimgate.domain.policy_match import PolicyMatch, match_blockers
 from claimgate.domain.triage import triage_and_route
 from claimgate.domain.validation import canonical_order, validate
+from claimgate.shell.bundles import Decision
 from claimgate.shell.faults import (
     CARRIER_RULES_UNRESOLVABLE,
     JURISDICTION_MAP_UNUSABLE,
     DeploymentFaultError,
 )
-from claimgate.shell.messages import Decision, NoticeFields
+from claimgate.shell.messages import NoticeFields
 
 LossDateParseValue = Literal["PARSED", "ABSENT", "UNPARSEABLE"]
 
