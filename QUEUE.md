@@ -4348,3 +4348,86 @@ type-keyed table, so the candidates tuple renders as ids and the blockers as bef
 6; (17) `judge` gave its configuration lookups to `_configured` to stay under 25 lines, the fault
 order unchanged; (18) this paragraph is a documents commit after the implementation, as at 7g.
 Nothing is in flight in code; the branch is a superset of `main` and is not merged.
+
+**2026-09-10: 7i implemented at `576912e` on `phase3/7i-extract-shape`; green run
+`20260910T212538-1548345`, 963 tests, 757 killed, 73 reviewed-equivalent on 16 specs; the merge to
+`main` is the human's after the advisor verifies the run.** The pair this paragraph records:
+acceptance 3404.662 s against the 7200 s Stop hook budget, on 1263 mutants — inside the predicted
+3,200–3,600 s, 2.696 s a mutant; the margin under the hook is 3795 s. Decisions 1–5
+(`ASSUMPTIONS.md`, the 7i entry, ratified 2026-09-10) are built: 1, the outline at
+`policy_match.feature` lines 136–157, approved at `7b02204`, six mutants, all killed; 2, the
+mutation gate ran under live/live and the swap proof is the three plain runs below; 3, `PortHarness`
+carries the instant its answers reflect, the three `as_of` assertions compare against it, the
+extract harness generates at the clock minus one day, and the contract suite went from 51 to 102
+tests with five lines added and seven removed in the suite; 4, `tests/fixtures/core_system.py`
+holds a policy's bound day and the source's instant, the extract is generated into `tmp_path` at
+the source's instant or the call's when a binding resolves, and `CLAIMGATE_PORT_CONFIGURATION` in
+`tests/api/policy_match.py` selects the shape each entry names, live/live by default, read by no
+shell module; 5, `CLAUDE.md`'s two sites carry the 3169.29 s / 7200 s pair since `c123151`. The
+extract shape is `shell/extract_source.py` (211 lines) and `shell/extract_ports.py` (142 lines),
+beside the live-query pair; `bindings.py` is untouched, the bindings schema unchanged, and
+`RULESET_VERSION` stays at `2026-09-09` because nothing under `domain/` moved and no decision
+changed — only where an answer came from and as of when. Cold gate at `576912e`, `mutants/`
+cleared, predicted then measured, every line equal: protect 3/3; static 0; size worst function 25,
+no module at 250 (`store.py` 248 unchanged, the two new modules 211 and 142); complexity 6;
+boundary 18 step files, 0 direct imports; tests 963/963 — 884 plus 51 from the contract suite's
+second harness, 2 from the outline's rows and 26 in `tests/shell/test_extract_ports.py`; coverage
+100/100; CRAP 6; duplication 0; code mutation 757 killed, flat, so no shell logic reached `domain/`;
+acceptance 16 specs, 73 reviewed-equivalent, 0 diagnostics, every digest at its lock,
+`policy_match.feature` at `5f4eb8b7ea9495cc` with 112 mutants and 0 approved, so its 112 killed
+follows from the green verdict rather than from a separate count; and the events line:
+
+```
+{"actual": "16 spec(s), 73 reviewed-equivalent", "at": "2026-09-10T22:22:50+00:00", "diagnostics": 0, "duration": 3404.662, "error": null, "gate": "acceptance", "kind": "gate.finished", "passed": true, "run": "20260910T212538-1548345", "v": 1}
+```
+
+The swap proof, decision 2, three plain runs after the green gate, no shell module changed
+between them:
+
+```
+CLAIMGATE_PORT_CONFIGURATION=live/live       .venv/bin/python -m pytest tests/acceptance -q   -> 317 passed in 2.52s
+CLAIMGATE_PORT_CONFIGURATION=extract/extract .venv/bin/python -m pytest tests/acceptance -q   -> 317 passed in 2.79s
+CLAIMGATE_PORT_CONFIGURATION=live/extract    .venv/bin/python -m pytest tests/acceptance -q   -> 317 passed in 3.08s
+```
+
+The swappability of the new modules before the gate: an extract port stamping the call instant
+instead of the manifest's turned 14 contract tests red (the twelve `as_of` parametrizations over
+the extract harness and the two envelope-equality tests), 15 of the 26 extract-port tests (every
+one asserting the extract's instant), and both rows of the new outline under extract/extract —
+31 tests in all, restored to the same digest before the gate. Judgments beyond the ratified
+decisions, for ratification: (6) `live_query_ports.py`'s guard is public, `guarded`, and gains one
+mapping, `MalformedAnswerError` (declared in `live_query_source.py`) to `SOURCE_MALFORMED`, so the
+extract ports reuse the budget and the mappings instead of carrying a second wrapper; (7) every
+extract operation is two reads under one budget — the manifest first under the whole budget, then
+the data file under what remains — so a data file that is missing, slow or not its shape still
+answers with the extract's instant, while an extract that cannot be opened at all (no directory, no
+manifest, a manifest not its shape, a manifest read exhausting the budget) answers with the call
+instant, the only one there is; (8) the manifest's `history_from` is validated and read but the
+port stamps the binding's horizon as the protocol requires, and the two disagreeing is an open
+decision, not a rule — escalated, not defaulted; (9) the manifest declares `searchable_by`, and a
+name search over an extract of numbers only is `IDENTIFIERS_INSUFFICIENT`, never a silent
+`NOT_FOUND`; (10) a reference no file holds is `LookupError`, `SOURCE_UNAVAILABLE` as for a live
+source (7e decision 7); (11) the generator is `tests/fixtures/extract.py`, shared by the contract
+harness and the test API rather than placed in `tests/api/policy_match.py`, and the fixture's
+standing faults become the file set's shape — unavailable is a manifest with no data files behind
+it, malformed is data files that are not JSON, the claims side down is no claims file — while a
+source that does not answer within its budget is the reader's sleep, since no file is slow on its
+own; (12) the contract suite's timeout path over the extract is that same sleep, at the harness's
+reader on the next data read: the port's budget is enforced on real elapsed time, so the assertion
+tests the guard, and this is the class of the in-process system's own sleep, not decision 3's,
+where the assertion compared against a value the fixture chose; the reader parameter on
+`ExtractFileSet` exists so a test can do this; (13) `INSTANT` moved to `port_harness.py` so the
+harness can generate a day before the clock without importing the suite, and the suite's own
+definition and its unused `UTC` import went; (14) `bound_by` compares a bound day with the
+instant's UTC date, and with no source instant every held policy is present, the fixture holding no
+clock; (15) a live source that is behind stamps its instant through the test API's `_stamping`,
+which replaces the binding's clock, so the outline holds under live/live without a shell change;
+(16) an extract entry's `source` stays the carrier code in the test API and the factory maps it to
+a directory under the scenario's `tmp_path`, generated again on every binding resolution, at
+submission and at resolution; (17) a configuration value that is not `<policy>/<claims>` of
+`live` or `extract` raises at import; (18) an extract with nothing held is written at the
+harness's construction, so a search over nothing is `NOT_FOUND` as of the extract rather than no
+extract; (19) `tests/api/policy_match.py` is 302 lines and `tests/shell/test_extract_ports.py`
+283, outside the size gate, which measures `src/` only (`test_port_contracts.py` at 365 was
+already green); (20) this paragraph is a documents commit after the implementation, as at 7h.
+Nothing is in flight in code; the branch is a superset of `main` and is not merged.
