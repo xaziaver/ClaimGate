@@ -772,6 +772,10 @@ Ordered by domain severity, not by effort. One line each on why that position.
     green under live-query/live-query, extract/extract, and live-policy-beside-extract-claims
     bindings, with no shell change between runs. Any difficulty writing either implementation is
     reported as a finding, not smoothed over (`PHASE2_DESIGN.md`, "Swappability proofs").
+    *Amended 2026-09-10 (7i decision 3, `ASSUMPTIONS.md`): "passing 7e's contract suite unchanged"
+    does not hold — the suite's three `as_of` assertions compare against the injected clock while
+    `ports.py` promises an extract stamps its generation instant, so each harness carries the
+    instant its answers reflect and the assertions compare against that.*
 
 ## What to read
 

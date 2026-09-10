@@ -133,6 +133,28 @@ Feature: Policy match at intake - what the search finds, and what the notice car
         | 2026-05-20 | TRUE   |
         | 2026-01-15 | FALSE  |
 
+    # Item 7i. The instant on the verification is the source's, not the
+    # submission's. A source that answers as of an earlier instant does not
+    # hold a policy bound after that instant; the notice pends on the miss
+    # and the verification carries the earlier instant, so the reviewer can
+    # see the answer is older than the notice. The rows hold for a live
+    # source that is behind and for an extract generated at that instant;
+    # no binding shape is named here. The first row is the contrast that
+    # makes the bound date decisive: held before the instant, found as of it.
+    Scenario Outline: The verification carries the source's instant, and a policy bound after it is not found
+      Given "AAAA"'s policy source answers as of "2026-08-23T04:00Z"
+      And that policy was bound on "<bound_on>"
+      And the notice reports a policy number of "HO-4471209"
+      When the notice is submitted for intake
+      Then the notice's state is <state>
+      And the notice's policy match is <match>
+      And the coverage verification is as of "2026-08-23T04:00Z"
+
+      Examples:
+        | bound_on   | state   | match       |
+        | 2026-08-22 | TRIAGED | MATCHED     |
+        | 2026-08-24 | PENDED  | NOT_MATCHED |
+
   Rule: A source fault proceeds with the verification marked not evaluated, and its reason
 
     # Three faults, one outcome, distinct reasons: a substitution between
