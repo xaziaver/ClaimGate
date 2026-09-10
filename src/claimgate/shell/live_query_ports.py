@@ -16,8 +16,10 @@ of its own being the same fact seen from the other side. A source that raises
 anything else answers SOURCE_UNAVAILABLE; one that cannot search on the
 identifiers it was handed (UnsupportedSearchError) answers
 IDENTIFIERS_INSUFFICIENT; an answer that does not parse answers
-SOURCE_MALFORMED. One guard, `_guarded`, serves all three operations, so the
-four mappings are written once.
+SOURCE_MALFORMED - so does a source that says so itself
+(MalformedAnswerError, the extract shape's file that is not JSON). One guard,
+`guarded`, serves all three operations here and both extract ports (item 7i,
+extract_ports.py), so the mappings are written once.
 
 **The abandoned worker keeps running to completion.** The executor is released
 without waiting, so a source call that returns after the budget returns into
@@ -40,6 +42,7 @@ from claimgate.domain.policy_identification import SearchIdentifiers
 from claimgate.shell.bindings import ClaimsBinding, PolicyBinding
 from claimgate.shell.live_query_source import (
     ClaimsSource,
+    MalformedAnswerError,
     PolicySource,
     UnsupportedSearchError,
     parse_candidates,
@@ -66,31 +69,33 @@ LIVE_QUERY: Final = "live-query"
 
 
 @dataclass(frozen=True)
-class _Guarded[Parsed]:
+class Guarded[Parsed]:
     # value is set only when the source answered and the answer parsed; reason
     # is set otherwise, from this feature's closed enumeration (ports.py).
     value: Parsed | None = None
     reason: str | None = None
 
 
-def _guarded[Parsed](
+def guarded[Parsed](
     budget_seconds: float, call: Callable[[], object], parse: Callable[[object], Parsed]
-) -> _Guarded[Parsed]:
+) -> Guarded[Parsed]:
     executor = ThreadPoolExecutor(max_workers=1)
     try:
         raw = executor.submit(call).result(timeout=budget_seconds)
     except TimeoutError:
-        return _Guarded(reason=SOURCE_TIMEOUT)
+        return Guarded(reason=SOURCE_TIMEOUT)
     except UnsupportedSearchError:
-        return _Guarded(reason=IDENTIFIERS_INSUFFICIENT)
+        return Guarded(reason=IDENTIFIERS_INSUFFICIENT)
+    except MalformedAnswerError:
+        return Guarded(reason=SOURCE_MALFORMED)
     except Exception:
-        return _Guarded(reason=SOURCE_UNAVAILABLE)
+        return Guarded(reason=SOURCE_UNAVAILABLE)
     finally:
         executor.shutdown(wait=False)
     try:
-        return _Guarded(value=parse(raw))
+        return Guarded(value=parse(raw))
     except Exception:
-        return _Guarded(reason=SOURCE_MALFORMED)
+        return Guarded(reason=SOURCE_MALFORMED)
 
 
 class LiveQueryPolicyPort:
@@ -100,7 +105,7 @@ class LiveQueryPolicyPort:
 
     def search(self, identifiers: SearchIdentifiers) -> SearchAnswer:
         as_of = self._binding.clock()
-        found = _guarded(
+        found = guarded(
             self._binding.timeout_seconds,
             lambda: self._source.search(
                 identifiers.policy_number, identifiers.insured_name, identifiers.risk_postal_code
@@ -121,7 +126,7 @@ class LiveQueryPolicyPort:
     def term_history(self, policy_reference: str) -> TermHistoryAnswer:
         as_of = self._binding.clock()
         horizon = self._binding.history_horizon
-        obtained = _guarded(
+        obtained = guarded(
             self._binding.timeout_seconds,
             lambda: self._source.term_history(policy_reference),
             lambda raw: parse_term_history(raw, horizon),
@@ -139,7 +144,7 @@ class LiveQueryClaimsPort:
 
     def existing_claims(self, policy_reference: str) -> ExistingClaimsAnswer:
         as_of = self._binding.clock()
-        obtained = _guarded(
+        obtained = guarded(
             self._binding.timeout_seconds,
             lambda: self._source.existing_claims(policy_reference),
             parse_claims,

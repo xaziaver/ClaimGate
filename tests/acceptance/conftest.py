@@ -36,6 +36,7 @@ system and nothing about this deployment's configuration made it so.
 """
 
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -91,10 +92,12 @@ _SUPPLIED_FIELDS = {
 
 
 @pytest.fixture
-def context() -> dict[str, Any]:
+def context(tmp_path: Path) -> dict[str, Any]:
+    # The extract shape, when the directory runs under it, generates into the
+    # scenario's temporary directory (tests/api/policy_match.py, item 7i).
     return {
         "today": DEFAULT_TODAY, "fields": {}, "idempotency_key": None,
-        "policy_sources": PolicySources(),
+        "policy_sources": PolicySources(extract_root=tmp_path),
     }
 
 
@@ -348,6 +351,20 @@ def add_term(context: dict[str, Any], effective: str, expiration: str) -> None:
     context["policy_sources"].add_term(
         date.fromisoformat(effective), date.fromisoformat(expiration)
     )
+
+
+# Item 7i: the instant a source's answers reflect, and the day a policy was
+# bound. Anchored, as every regex step here is, so a longer phrase cannot bind.
+@given(
+    parsers.re(r'^"(?P<carrier>[^"]+)"\'s policy source answers as of "(?P<instant>[^"]+)"$')
+)
+def set_source_instant(context: dict[str, Any], carrier: str, instant: str) -> None:
+    context["policy_sources"].answer_as_of(carrier, parse_instant(instant))
+
+
+@given(parsers.re(r'^that policy was bound on "(?P<bound_on>[^"]+)"$'))
+def set_bound_on(context: dict[str, Any], bound_on: str) -> None:
+    context["policy_sources"].set_bound_on(date.fromisoformat(bound_on))
 
 
 @then(parsers.re(r"^the notice's policy match is (?P<value>.*)$"))

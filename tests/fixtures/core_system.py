@@ -13,6 +13,13 @@ up; and where the claims side alone is made to fail (item 7h). Lives
 under tests/ because no deployment ships it; item 7i's acceptance runs reach it
 from tests/api/ as `tests.fixtures.core_system`, the way the shell tests do.
 
+Item 7i: a policy may carry the day it was bound, and the source may answer as
+of an instant other than the call's - a live source that is behind. A policy
+bound after the source's instant is not in the source (`bound_by`), and the
+test API hands the instant to the binding's clock so the port stamps it. The
+same held state, written to files by tests/fixtures/extract.py, is what the
+extract shape reads, so the two shapes answer from one record set.
+
 Matching is deliberately plain: a policy number matches on equality, a name
 matches any named insured case-insensitively beside an equal postal code, and a
 policy matching on both reports the number. What a real system's matching rule
@@ -20,9 +27,9 @@ is belongs to that system.
 """
 
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 
 from claimgate.shell.live_query_source import UnsupportedSearchError
@@ -63,6 +70,16 @@ def claim(claim_id: str, policy_number: str, loss_date: date, loss_type: str) ->
     }
 
 
+def bound_by(policy: Mapping[str, Any], instant: datetime | None) -> bool:
+    """Whether a held policy is in the source as of an instant: bound on no
+    stated day, or on a day the instant's UTC date has reached. With no
+    instant the source answers as of the call, and the fixture holds no clock
+    to compare a bound day against, so every held policy is in it
+    (ASSUMPTIONS.md, 7i decision 4)."""
+    bound_on: date | None = policy["bound_on"]
+    return bound_on is None or instant is None or bound_on <= instant.astimezone(UTC).date()
+
+
 class InProcessCoreSystem:
     def __init__(self) -> None:
         self._policies: dict[str, dict[str, Any]] = {}
@@ -71,6 +88,7 @@ class InProcessCoreSystem:
         self._every_call: tuple[str, Any] | None = None
         self._claims_fault: Exception | None = None
         self._name_search = True
+        self._as_of: datetime | None = None
 
     # -- what a test puts in -------------------------------------------------
 
@@ -82,6 +100,7 @@ class InProcessCoreSystem:
         address: FixtureAddress,
         terms: Sequence[dict[str, Any]],
         prior_coverage: tuple[date, date] | None = None,
+        bound_on: date | None = None,
     ) -> None:
         prior = None
         if prior_coverage is not None:
@@ -92,6 +111,7 @@ class InProcessCoreSystem:
             "named_insureds": list(named_insureds),
             "address": address,
             "history": {"terms": list(terms), "prior_coverage": prior},
+            "bound_on": bound_on,
         }
         self._claims.setdefault(reference, [])
 
@@ -132,6 +152,35 @@ class InProcessCoreSystem:
         not otherwise show."""
         self._claims_fault = error if error is not None else RuntimeError("claims source failure")
 
+    # -- the instant it answers as of, and what the extract generator reads ------
+
+    def answer_as_of(self, instant: datetime) -> None:
+        """The source answers as of this instant rather than the call's (item
+        7i): a policy bound after it is not in the source."""
+        self._as_of = instant
+
+    @property
+    def as_of(self) -> datetime | None:
+        return self._as_of
+
+    def policies(self) -> Mapping[str, Mapping[str, Any]]:
+        return self._policies
+
+    def claims(self) -> Mapping[str, Sequence[Mapping[str, Any]]]:
+        return self._claims
+
+    @property
+    def searches_by_name(self) -> bool:
+        return self._name_search
+
+    @property
+    def standing_fault(self) -> tuple[str, Any] | None:
+        return self._every_call
+
+    @property
+    def claims_side_down(self) -> bool:
+        return self._claims_fault is not None
+
     # -- the source protocols ---------------------------------------------------
 
     def search(
@@ -144,6 +193,8 @@ class InProcessCoreSystem:
             raise UnsupportedSearchError("this source searches by policy number only")
         found = []
         for reference, policy in self._policies.items():
+            if not bound_by(policy, self._as_of):
+                continue
             basis = self._match(policy, policy_number, insured_name, risk_postal_code)
             if basis is not None:
                 found.append(self._candidate(reference, policy, basis))
@@ -153,7 +204,10 @@ class InProcessCoreSystem:
         misbehaviour = self._misbehave()
         if misbehaviour is not None:
             return misbehaviour
-        return self._policies[policy_reference]["history"]
+        policy = self._policies[policy_reference]
+        if not bound_by(policy, self._as_of):
+            raise KeyError(policy_reference)
+        return policy["history"]
 
     def existing_claims(self, policy_reference: str) -> object:
         misbehaviour = self._misbehave()

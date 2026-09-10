@@ -19,7 +19,7 @@ and the label is one no implementation would invent.
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 import pytest
 
@@ -56,10 +56,8 @@ from claimgate.shell.ports import (
     TermHistoryAnswer,
 )
 from tests.fixtures.core_system import FixtureAddress, claim, term
-from tests.shell.port_harness import HARNESSES, PortHarness, SourceControls
+from tests.shell.port_harness import HARNESSES, INSTANT, PortHarness, SourceControls
 
-# An instant in the past, so a stamp from any wall clock fails equality.
-INSTANT = datetime(2024, 2, 29, 23, 59, 59, tzinfo=UTC)
 POLICY_LABEL = "AAAA/policy:under-test"
 CLAIMS_LABEL = "AAAA/claims:under-test"
 REFERENCE = "src-ref-000001"
@@ -226,7 +224,7 @@ def test_as_of_is_the_injected_clocks_instant_on_every_answer(
     misbehaviour.arm(held.source)
     result = operation.call(build(held, budget=misbehaviour.budget))
     assert result.reason == misbehaviour.reason
-    assert result.as_of == INSTANT
+    assert result.as_of == held.instant
 
 
 @operation
@@ -265,7 +263,7 @@ def test_every_term_history_carries_the_configured_horizon(
 def test_zero_candidates_is_not_found_with_no_reason(harness: PortHarness) -> None:
     answer = build(harness).policy.search(BY_NUMBER)
     assert answer == SearchAnswer(
-        value=NOT_FOUND, candidates=(), reason=None, as_of=INSTANT, binding=POLICY_LABEL
+        value=NOT_FOUND, candidates=(), reason=None, as_of=harness.instant, binding=POLICY_LABEL
     )
 
 
@@ -350,7 +348,7 @@ def test_a_reference_the_source_does_not_know_is_the_sources_failure(held: PortH
 def test_no_claims_on_the_policy_is_obtained_with_none(held: PortHarness) -> None:
     answer = build(held).claims.existing_claims(REFERENCE)
     assert answer == ExistingClaimsAnswer(
-        value=OBTAINED, claims=(), reason=None, as_of=INSTANT, binding=CLAIMS_LABEL
+        value=OBTAINED, claims=(), reason=None, as_of=held.instant, binding=CLAIMS_LABEL
     )
 
 

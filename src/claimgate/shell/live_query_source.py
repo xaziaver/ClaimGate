@@ -57,6 +57,13 @@ class UnsupportedSearchError(Exception):
     """The source cannot search on the identifiers it was handed."""
 
 
+class MalformedAnswerError(Exception):
+    """The source can tell, before any parser sees it, that what it holds is
+    not its own shape - an extract file that is not JSON, a policies file that
+    is not a list (item 7i). The port answers SOURCE_MALFORMED for it, as it
+    does for a shape the parsers reject."""
+
+
 class PolicySource(Protocol):
     def search(
         self, policy_number: str | None, insured_name: str | None, risk_postal_code: str | None
