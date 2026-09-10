@@ -658,6 +658,24 @@ the first since the raise to reach `acceptance` and finish: eleven `gate.finishe
 nothing, so that line is the only evidence the turn end completed; `CLAUDE.md`'s start-up step 4
 now reads it before anything else.
 
+**Fourteenth event, 2026-09-10: no strand, and the budget raised to 7200 s on a variance
+measurement rather than a growth one.** The stop-check `20260910T122219-1111884`, fired on the
+7h merge `fc479e3` — a gated tree byte-identical to the one the verified run
+`20260910T112652-904083` measured at 3169.29 s — finished `acceptance` green in 3475.182 s,
+124.818 s under the 3600 s hook: the same 1257 mutants, the same 882 tests, no change to
+anything a gate measures, and 305.9 s (9.65 %) more wall time. The next such variance on a tree
+one spec larger strands the tree by the hook's own timeout, the eleventh and twelfth events'
+shape. `.claude/settings.json`'s stop-check timeout is therefore 7200 s from this commit, a
+protected-path change awaiting the human's `gauntlet lock`, and the stop-check on the commit
+stops at `protect` under `--fail-fast` — the `86cd32f` sequence, not a failure. The raise was
+deferred from 7i's opening on the human's decision of 2026-09-08 that Gauntlet is not modified
+until the end of the ClaimGate build (`agent-gauntlet/gauntlet-findings.md`, "The acceptance
+gate runs the entire steps directory once per mutant", status); that per-spec scoping change
+remains the real fix, and the raise only buys the room 7i's runs need under the model that
+entry prices. It strengthens "The acceptance gate's wall time is growing", fifth measurement:
+the variance band is to be budgeted against, not the last figure, and this pair puts the band
+at about ten per cent on an identical tree — larger than the 431 s margin 7h's close recorded.
+
 ### The acceptance gate's wall time is growing, not fixed at ~150s
 
 Across 162 acceptance-gate runs in the log, the maximum observed is 260.3s,
