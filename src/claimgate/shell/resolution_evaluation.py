@@ -38,6 +38,14 @@ continuous-coverage date both, so an outage cannot turn a correction into a
 triage and the date a release's SIU evaluation reads is one that was
 computed. Every search that ran is recorded, so the notice shows the newest
 row and says why it could not answer where it could not.
+
+**Duplicate detection follows the rules on this path too** (item 7h;
+shell/duplicate_evaluations.py): where the judgement is TRIAGED, the carrier's
+claims port is asked, outside the transactions, about the policy the fresh
+re-search found, and the evaluation follows that verification - where the
+re-search did not answer, the evaluation is NOT_EVALUATED with its reason
+(ASSUMPTIONS.md, 7h decision 9) - and its row is written beside the
+verification's in the write transaction.
 """
 
 from datetime import date
@@ -46,16 +54,15 @@ from claimgate.domain.continuous_coverage import (
     ContinuousCoverageDerivation,
     carry_onto_candidate,
 )
-from claimgate.domain.models import Candidate
+from claimgate.domain.models import Candidate, CarrierRules, Jurisdiction
 from claimgate.domain.policy_match import PolicyMatch
 from claimgate.domain.ruleset import RULESET_VERSION
-from claimgate.shell import coverage_verifications, rules, siu
-from claimgate.shell.bindings import resolve_policy_port
+from claimgate.shell import coverage_verifications, duplicate_evaluations, rules, siu
+from claimgate.shell.bindings import PortBindings, resolve_port_bindings
 from claimgate.shell.bundles import Decision, Judgement, Resolution
 from claimgate.shell.coverage_verifications import CoverageVerification, Verification
 from claimgate.shell.messages import NoticeFields, ResolutionResponse
 from claimgate.shell.policy_match import answered, check_policy
-from claimgate.shell.ports import PolicyPort
 from claimgate.shell.records import NoticeRecord
 from claimgate.shell.resolution_reading import Reading, conflict, read
 
@@ -81,18 +88,33 @@ def judge(resolution: Resolution, reading: Reading) -> Judgement:
     not a second reading of any of them."""
     view, record = reading.view, reading.record
     loss_date = rules.parse_loss_date(view.loss_date).loss_date
-    check = check_policy(_port_of(resolution, record), view, loss_date)
+    ports = _ports_of(resolution, record)
+    check = check_policy(ports.policy, view, loss_date)
     match, derivation = _answer_standing(check.verification, reading.answered)
     candidate = _candidate_of(view, loss_date, derivation)
+    carrier_rules, jurisdiction, today = _configured(resolution, record, view)
+    decision: Decision = rules.apply_domain_rules(
+        candidate, jurisdiction, today, carrier_rules, match, check.blockers
+    )
+    duplicates = duplicate_evaluations.evaluate_on_triage(
+        decision.state, ports.claims, check.verification, candidate, carrier_rules.window_days
+    )
+    return Judgement(
+        decision, candidate, carrier_rules, jurisdiction, check.verification, duplicates
+    )
+
+
+def _configured(
+    resolution: Resolution, record: NoticeRecord, view: NoticeFields
+) -> tuple[CarrierRules, Jurisdiction | None, date | None]:
+    """The carrier's rules, the jurisdiction the merged view selects and its
+    calendar date for this resolution's instant, resolved in that order so a
+    deployment fault in any of them is item 5i's 500 with nothing written."""
     carrier_rules = rules.resolve_rules(record.carrier_code, resolution.carrier_rules_source)
     jurisdiction = rules.resolve_jurisdiction(
         view.property_state, resolution.jurisdiction_reference
     )
-    decision: Decision = rules.apply_domain_rules(
-        candidate, jurisdiction, rules.resolve_today(resolution.resolved_at, jurisdiction),
-        carrier_rules, match, check.blockers,
-    )
-    return Judgement(decision, candidate, carrier_rules, jurisdiction, check.verification)
+    return carrier_rules, jurisdiction, rules.resolve_today(resolution.resolved_at, jurisdiction)
 
 
 def write(resolution: Resolution, reading: Reading, judged: Judgement) -> ResolutionResponse:
@@ -118,13 +140,13 @@ def write(resolution: Resolution, reading: Reading, judged: Judgement) -> Resolu
     )
 
 
-def _port_of(resolution: Resolution, record: NoticeRecord) -> PolicyPort:
-    """The carrier's policy port, resolved for this call with the resolution's
-    own instant as its clock, so the verification's as_of is the instant the
+def _ports_of(resolution: Resolution, record: NoticeRecord) -> PortBindings:
+    """The carrier's two ports, resolved for this call with the resolution's
+    own instant as their clock, so the verification's as_of is the instant the
     reviewer's correction was searched on. An unbound carrier is item 5i's
     deployment fault, answered 500 with nothing written, as the rules and the
     jurisdiction map are."""
-    return resolve_policy_port(
+    return resolve_port_bindings(
         record.carrier_code, resolution.bindings_source, resolution.implementation_registry,
         lambda: resolution.resolved_at,
     )
@@ -157,7 +179,8 @@ def _candidate_of(
 
 def _apply(resolution: Resolution, record: NoticeRecord, judged: Judgement) -> bool:
     """The decision onto the notice row, the verification row where a search
-    ran, then the attempt's own records; True where the notice moved."""
+    ran, the duplicate evaluation's where the notice moved (item 7h), then the
+    attempt's own records; True where the notice moved."""
     decision = judged.decision
     applied = decision.state == "TRIAGED"
     resolution.store.write_notice_decision(
@@ -170,6 +193,11 @@ def _apply(resolution: Resolution, record: NoticeRecord, judged: Judgement) -> b
     if judged.verification is not None:
         coverage_verifications.append(
             resolution.store, record.notice_id, judged.verification,
+            ruleset_version=RULESET_VERSION, evaluated_at=resolution.resolved_at,
+        )
+    if judged.duplicates is not None:
+        duplicate_evaluations.append(
+            resolution.store, record.notice_id, judged.duplicates,
             ruleset_version=RULESET_VERSION, evaluated_at=resolution.resolved_at,
         )
     _record_attempt(resolution, record, judged, applied=applied)

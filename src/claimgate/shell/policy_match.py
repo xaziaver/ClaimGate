@@ -11,8 +11,9 @@ with references and the basis each was found on; a single reference is what
 the term history is asked for; and the two coverage rules (domain/coverage.py,
 domain/continuous_coverage.py) read that history against the loss date. The
 domain reads every answer as data. This module is the only place a port is
-called on either path, and the claims port is not called here at all: item 7h
-owns it, with its one consumer.
+called on either path except the claims port, which duplicate_evaluations.py
+calls with its one consumer (item 7h); the found policy's number rides on the
+verification for that call.
 
 **The search runs whenever the notice can be searched and states a loss
 date, whatever else blocks it** (ASSUMPTIONS.md, 7f decision 4). An injury
@@ -64,7 +65,7 @@ from claimgate.domain.policy_match import (
 )
 from claimgate.shell.coverage_verifications import Verification
 from claimgate.shell.messages import NoticeFields
-from claimgate.shell.ports import PolicyPort
+from claimgate.shell.ports import PolicyCandidate, PolicyPort
 
 
 @dataclass(frozen=True)
@@ -112,7 +113,18 @@ def _verify(port: PolicyPort, search: SearchIdentifiers, loss_date: date) -> Ver
         coverage=derive_continuous_coverage(history, loss_date),
         as_of=answer.as_of,
         binding=answer.binding,
+        policy_number=_found_number(answer.candidates, match),
     )
+
+
+def _found_number(candidates: tuple[PolicyCandidate, ...], match: PolicyMatch) -> str | None:
+    """The matched policy's own number, for duplicate detection to compare
+    against (item 7h, decisions 4 and 9). Only a MATCHED result names a
+    reference, so any other match finds nothing here and carries None."""
+    for candidate in candidates:
+        if candidate.policy_reference == match.policy_reference:
+            return candidate.policy_number
+    return None
 
 
 def _history_for(port: PolicyPort, match: PolicyMatch) -> TermHistory:

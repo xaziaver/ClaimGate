@@ -24,10 +24,10 @@ from claimgate.domain.models import (
     Jurisdiction,
     ValidationBlocker,
 )
-from claimgate.shell.bindings import BindingsSource, ImplementationRegistry
+from claimgate.shell.bindings import BindingsSource, ImplementationRegistry, PortBindings
 from claimgate.shell.coverage_verifications import Verification
+from claimgate.shell.duplicate_evaluations import DuplicateEvaluation
 from claimgate.shell.messages import NoticeFields
-from claimgate.shell.ports import PolicyPort
 from claimgate.shell.store import NoticeStore
 
 
@@ -112,6 +112,9 @@ class Judgement:
     jurisdiction: Jurisdiction | None
     # What the re-search verified, for the write to record; None where nothing was searched.
     verification: Verification | None
+    # What duplicate detection concluded, for the write to record beside the
+    # verification (item 7h); None where the decision was not TRIAGED.
+    duplicates: DuplicateEvaluation | None
 
 
 @dataclass(frozen=True)
@@ -128,6 +131,6 @@ class AcceptedNotice:
     jurisdiction: Jurisdiction | None
     today: date | None
     rules: CarrierRules
-    # The carrier's policy port, resolved with the other configuration before
-    # the receipt (item 7f) and called between the two transactions.
-    policy_port: PolicyPort
+    # The carrier's two ports, resolved with the other configuration before
+    # the receipt (items 7f and 7h) and called between the two transactions.
+    ports: PortBindings

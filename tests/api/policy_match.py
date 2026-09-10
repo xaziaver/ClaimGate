@@ -19,17 +19,31 @@ The bindings entry names its source through a parameter of its own, `source`,
 the way a real live-query binding names its endpoint: keys a binding does not
 recognise pass through to the implementation (bindings.py), and this registry's
 live-query factory reads that one to pick the carrier's system.
+
+Since item 7h every carrier stood up here is bound on both ports to its one
+system (ASSUMPTIONS.md, 7h decisions 5 and 11): the claims entry sits beside
+the policy entry under the same budget and the same source parameter, so the
+"policy source" steps a locked Background states govern the claims side too,
+and a carrier the deployment has not bound is unresolvable on both.
 """
 
 from collections.abc import Callable, Sequence
 from datetime import date
 from typing import Any
 
-from claimgate.shell.bindings import BindingsSource, ImplementationRegistry, PolicyBinding
+from claimgate.shell.bindings import (
+    BindingsSource,
+    ClaimsBinding,
+    ImplementationRegistry,
+    PolicyBinding,
+)
 from claimgate.shell.coverage_verifications import CoverageVerificationView
-from claimgate.shell.live_query_ports import LIVE_QUERY, LiveQueryPolicyPort
-from claimgate.shell.ports import PolicyPort
-from tests.fixtures.core_system import FixtureAddress, InProcessCoreSystem, term
+from claimgate.shell.duplicate_evaluations import DuplicateEvaluationView
+from claimgate.shell.live_query_ports import LIVE_QUERY, LiveQueryClaimsPort, LiveQueryPolicyPort
+from claimgate.shell.notice_intake import get_notice
+from claimgate.shell.ports import ClaimsPort, PolicyPort
+from claimgate.shell.store import NoticeStore
+from tests.fixtures.core_system import FixtureAddress, InProcessCoreSystem, claim, term
 
 TIMEOUT_SECONDS = 0.2
 UNANSWERED_FOR_SECONDS = 1.0
@@ -95,6 +109,23 @@ class PolicySources:
         self._held[(carrier, reference)]["terms"] = [term(effective, expiration)]
         self._rehold(carrier, reference)
 
+    def hold_claim(
+        self, carrier: str, reference: str, claim_id: str, loss_date: date, loss_type: str
+    ) -> None:
+        """A claim on a policy this API holds, carrying that policy's number -
+        the claims side keys by reference and the domain rule compares numbers
+        (7h decision 4). A reference nothing holds is the caller's error."""
+        held = self._held.get((carrier, reference))
+        if held is None:
+            raise ValueError(f"no policy {reference!r} is held for {carrier!r}")
+        self.system(carrier).hold_claim(
+            reference, claim(claim_id, held["number"], loss_date, loss_type)
+        )
+
+    def claims_unavailable(self, carrier: str) -> None:
+        """The claims side down, the policy side answering (7h decision 5)."""
+        self.system(carrier).raise_on_every_claims_call()
+
     def search_by_number_only(self, carrier: str) -> None:
         """A source with no insured-name search: the port answers a
         name-and-postal-code notice IDENTIFIERS_INSUFFICIENT (item 7g)."""
@@ -111,16 +142,22 @@ class PolicySources:
         no entry at all - a carrier this deployment administers but has not
         bound, which is the deployment fault and not a source fault."""
         return {
-            carrier: {"policy": policy_entry(carrier)}
+            carrier: {"policy": policy_entry(carrier), "claims": claims_entry(carrier)}
             for carrier in self._systems
             if carrier != unresolvable_for
         }
 
     def registry(self) -> ImplementationRegistry:
-        return ImplementationRegistry(policy={LIVE_QUERY: self._live_query_port}, claims={})
+        return ImplementationRegistry(
+            policy={LIVE_QUERY: self._live_query_port},
+            claims={LIVE_QUERY: self._live_query_claims_port},
+        )
 
     def _live_query_port(self, binding: PolicyBinding) -> PolicyPort:
         return LiveQueryPolicyPort(self.system(binding.parameters[_SOURCE]), binding)
+
+    def _live_query_claims_port(self, binding: ClaimsBinding) -> ClaimsPort:
+        return LiveQueryClaimsPort(self.system(binding.parameters[_SOURCE]), binding)
 
     def _that_policy(self) -> tuple[str, str]:
         if self._last is None:
@@ -145,6 +182,19 @@ def policy_entry(carrier: str, *, timeout_seconds: float = TIMEOUT_SECONDS) -> d
     }
 
 
+def claims_entry(carrier: str, *, timeout_seconds: float = TIMEOUT_SECONDS) -> dict[str, Any]:
+    return {"implementation": LIVE_QUERY, "timeout_seconds": timeout_seconds, _SOURCE: carrier}
+
+
+def duplicate_evaluation(store: NoticeStore, notice_id: str) -> DuplicateEvaluationView | None:
+    """What the notice shows about duplicate detection on GET /notices/{id}:
+    None where it has not been triaged, else the latest evaluation."""
+    view = get_notice(store, notice_id)
+    if view is None:
+        raise ValueError(f"no notice {notice_id!r}")
+    return view.duplicate_evaluation
+
+
 def bound_sources(carriers: Sequence[str]) -> PolicySources:
     """Sources for the named carriers, each stood up empty and available: what
     a test that wants a real search starts from."""
@@ -157,7 +207,10 @@ def bound_sources(carriers: Sequence[str]) -> PolicySources:
 __all__ = [
     "FAULTS",
     "CoverageVerificationView",
+    "DuplicateEvaluationView",
     "PolicySources",
     "bound_sources",
+    "claims_entry",
+    "duplicate_evaluation",
     "policy_entry",
 ]

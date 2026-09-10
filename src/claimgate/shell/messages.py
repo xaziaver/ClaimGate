@@ -14,6 +14,7 @@ from datetime import datetime
 
 from claimgate.domain.models import ValidationBlocker
 from claimgate.shell.coverage_verifications import CoverageVerificationView
+from claimgate.shell.duplicate_evaluations import DuplicateEvaluationView
 from claimgate.shell.records import NoticeRecord
 
 
@@ -97,10 +98,16 @@ class NoticeView:
     # nothing has been searched - a notice at RECEIVED, or one with nothing to
     # search on - which is not the same fact as a search that found nothing.
     coverage_verification: CoverageVerificationView | None
+    # Item 7h: what duplicate detection concluded on the notice's transition
+    # into TRIAGED, as the latest evaluation row says it
+    # (duplicate_evaluations.py). None where the notice has not been triaged,
+    # which is not the same fact as a comparison that found no candidate.
+    duplicate_evaluation: DuplicateEvaluationView | None
 
     @classmethod
     def of(
-        cls, record: NoticeRecord, verification: CoverageVerificationView | None
+        cls, record: NoticeRecord, verification: CoverageVerificationView | None,
+        duplicates: DuplicateEvaluationView | None,
     ) -> "NoticeView":
         """The stored notice as GET /notices/{id} shows it: everything the
         record carries except the receipt timestamp and the carrier, which are
@@ -109,7 +116,7 @@ class NoticeView:
         the notice rather than part of what this view shows."""
         return cls(
             record.notice_id, record.state, record.blockers, record.severity, record.queue,
-            record.jurisdiction_marking, verification,
+            record.jurisdiction_marking, verification, duplicates,
         )
 
 

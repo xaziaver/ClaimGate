@@ -32,6 +32,15 @@ Adding it does not upgrade an existing database, for the same reason
 older file as it found it, and item 5e decision (b) accepts that a schema change
 recreates the database.
 
+`duplicate_evaluations` is item 7h's, the third trail on the same pattern: what
+duplicate detection concluded about a notice on its transition into TRIAGED -
+the status (`OBTAINED` or `NOT_EVALUATED`, ASSUMPTIONS.md 7h decision 8), the
+candidate claim ids as a JSON list, the reason where nothing was compared, the
+claims answer's `as_of` and the binding that answered - one row per evaluation,
+never the claims the port returned. An ordinary attribute, shown on GET
+/notices/{id} through duplicate_evaluations.py's view; `reason` is null unless
+the status is `NOT_EVALUATED`, and `candidates` is the empty list there.
+
 `coverage_verifications` is item 7f's (PHASE3_DESIGN.md, "Persistence"), on
 `siu_indicator_events`' pattern: `(notice_id, ordinal)`, `ruleset_version`,
 `evaluated_at`, the same `BEFORE UPDATE` / `BEFORE DELETE` refusal. It holds
@@ -88,6 +97,21 @@ TRAIL_TABLES: tuple[str, ...] = (
         UNIQUE (notice_id, ordinal)
     ) STRICT
     """,
+    """
+    CREATE TABLE IF NOT EXISTS duplicate_evaluations (
+        evaluation_id INTEGER PRIMARY KEY,
+        notice_id TEXT NOT NULL REFERENCES notices (notice_id),
+        ordinal INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        candidates TEXT NOT NULL,
+        reason TEXT,
+        as_of TEXT NOT NULL,
+        binding TEXT NOT NULL,
+        ruleset_version TEXT NOT NULL,
+        evaluated_at TEXT NOT NULL,
+        UNIQUE (notice_id, ordinal)
+    ) STRICT
+    """,
 )
 
 TRAIL_TRIGGERS: tuple[str, ...] = (
@@ -110,5 +134,15 @@ TRAIL_TRIGGERS: tuple[str, ...] = (
     CREATE TRIGGER IF NOT EXISTS coverage_verifications_are_append_only_no_delete
     BEFORE DELETE ON coverage_verifications
     BEGIN SELECT RAISE(ABORT, 'coverage verifications are append-only'); END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS duplicate_evaluations_are_append_only_no_update
+    BEFORE UPDATE ON duplicate_evaluations
+    BEGIN SELECT RAISE(ABORT, 'duplicate evaluations are append-only'); END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS duplicate_evaluations_are_append_only_no_delete
+    BEFORE DELETE ON duplicate_evaluations
+    BEGIN SELECT RAISE(ABORT, 'duplicate evaluations are append-only'); END
     """,
 )

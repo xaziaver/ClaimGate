@@ -56,6 +56,12 @@ class Verification:
     coverage: ContinuousCoverageDerivation
     as_of: datetime
     binding: str
+    # The found policy's own number, from the search answer, None unless the
+    # match is MATCHED (ASSUMPTIONS.md, 7h decision 9). Carried so duplicate
+    # detection compares against the policy that was found rather than the
+    # number the reporter typed (decision 4); `append` below does not store it
+    # and `view_of` does not show it - the row keeps the reference only.
+    policy_number: str | None = None
 
 
 @dataclass(frozen=True)

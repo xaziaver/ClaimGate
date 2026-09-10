@@ -46,6 +46,8 @@ from tests.acceptance.support import (
     parse_compact_blockers,
     parse_instant,
     policy_terms,
+    shown_verification,
+    verification,
 )
 from tests.api.coverage import (
     cancelled,
@@ -322,6 +324,50 @@ def set_jurisdiction_map_fault(context: dict[str, Any]) -> None:
     context["deployment_fault"] = _JURISDICTION_MAP_FAULT
 
 
+# The policy a carrier's source holds and its term, and the two verification
+# attributes read back, stated in the same words by features/policy_match.feature
+# (item 7f) and features/duplicate_evaluation.feature (item 7h), so they moved
+# here from the former's module; the rest of the source's shapes and the
+# verification's other attributes stay there, as only that spec states them.
+@given(
+    parsers.re(
+        r'^"(?P<carrier>[^"]+)"\'s policy source (?:also )?holds policy "(?P<reference>[^"]+)"'
+        r' numbered "(?P<number>[^"]+)" for "(?P<insured>[^"]+)"'
+        r' at postal code "(?P<postal_code>[^"]+)"$'
+    )
+)
+def hold_policy(
+    context: dict[str, Any], carrier: str, reference: str, number: str, insured: str,
+    postal_code: str,
+) -> None:
+    context["policy_sources"].hold_policy(carrier, reference, number, insured, postal_code)
+
+
+@given(parsers.parse('that policy has a term effective "{effective}" and expiring "{expiration}"'))
+def add_term(context: dict[str, Any], effective: str, expiration: str) -> None:
+    context["policy_sources"].add_term(
+        date.fromisoformat(effective), date.fromisoformat(expiration)
+    )
+
+
+@then(parsers.re(r"^the notice's policy match is (?P<value>.*)$"))
+def check_policy_match(context: dict[str, Any], value: str) -> None:
+    # none is a notice nothing searched - no verification at all, a different
+    # fact from NOT_MATCHED (item 7g) - read the way the matched-policy step
+    # reads the same word.
+    if value == "none":
+        assert shown_verification(context) is None
+    else:
+        assert verification(context).policy_match == value
+
+
+@then(parsers.re(r"^the policy was identified on (?P<value>.*)$"))
+def check_identified_on(context: dict[str, Any], value: str) -> None:
+    # The two arm names policy_identification.feature spells, or none where
+    # nothing matched; compared exactly, as every code in these files is.
+    assert verification(context).identified_on == (None if value == "none" else value)
+
+
 @given("the carrier's policy source binding cannot be resolved")
 def set_policy_binding_fault(context: dict[str, Any]) -> None:
     context["deployment_fault"] = _POLICY_BINDING_FAULT
@@ -431,8 +477,12 @@ def check_notice_relation(context: dict[str, Any], phrase: str) -> None:
         raise ValueError(f"unrecognized notice relation: {phrase!r}")
 
 
+@given(parsers.re(r"^the notice's state is (?P<value>.*)$"))
 @then(parsers.re(r"^the notice's state is (?P<value>.*)$"))
 def check_state(context: dict[str, Any], value: str) -> None:
+    # A Given too since item 7h: duplicate_evaluation.feature states that a
+    # notice pends before its reviewer's correction triages it, the way
+    # check_blockers became a Given at 7g.
     assert context["response"].state == value
 
 

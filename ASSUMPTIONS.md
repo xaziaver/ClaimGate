@@ -1058,6 +1058,25 @@ or data. Nothing below was confirmed against a live book.
   evaluation is one structure on the notice — status, candidates, reason — as its own field, never
   in reason codes (2026-08-22). (7) `duplicate_evaluations` lives in its own shell module on the
   coverage-verification pattern; `messages.py` and `schema.py` are split first, structurally.
+- **Item 7h implementation decisions — advisor-recommended, human-ratified 2026-09-09.** (8) The
+  evaluation's status on the notice is the shell's two-valued vocabulary, `OBTAINED` and
+  `NOT_EVALUATED`, as the locked spec names it; the domain rule's `EVALUATED` is translated to
+  `OBTAINED` in one place in the shell and the domain word never reaches a row or a view.
+  `duplicates.feature` names only `NOT_EVALUATED`, so no locked spec is contradicted; the cost is
+  two words for one fact, recorded here rather than a reopening. (9) The found policy's number
+  that decision 4 places on the candidate is carried on the shell's `Verification` from the search
+  answer and is not stored: the row keeps the reference only ("Persistence"). Consequently the
+  evaluation on either path follows the verification written beside it in the same transaction,
+  never a stored match standing from an earlier row; on resolution, where the fresh re-search did
+  not answer, the evaluation is `NOT_EVALUATED` with that verification's reason (decision 3). (10)
+  `RULESET_VERSION` becomes `2026-09-09`, on item 7f's precedent that wiring a rule onto notices
+  for the first time is a ruleset change. (11) Resolving the claims port at receipt (decision 5)
+  makes a carrier with no claims entry the same deployment fault as one with no policy entry, on
+  every submission; the acceptance test API therefore binds a live-query claims entry beside every
+  policy entry it emits, and the five locked specs whose Backgrounds declare the source unavailable
+  now record `NOT_EVALUATED`/`SOURCE_UNAVAILABLE` on every notice they triage. That is the
+  designed outcome, not a regression, and no locked digest moves.
+
 
 
 ## Undocumented phase-1 thresholds
