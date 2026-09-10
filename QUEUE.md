@@ -753,12 +753,18 @@ Ordered by domain severity, not by effort. One line each on why that position.
     `POLICY_IDENTIFIERS_INSUFFICIENT` is one code with an ordered field tuple, a shape no existing
     serializer or `reason_codes` convention has (7c judgment 3, `ASSUMPTIONS.md` 2026-09-05).
 
-7h. **Duplicate detection wired (shell).** `existing_claims` feeds `find_duplicates` with the
+7h. **Duplicate detection wired (shell).**
+    *(Closed 2026-09-10 — housekeeping `6a0d219`, structural `9d41011`, spec `083362e`, approval
+    `bf7cbb4`, implementation `a1e3e28`, documents `81e9a68`; green run `20260910T112652-904083`
+    at 3169.29 s, 882 tests, 757 killed, 73 reviewed-equivalent, the new spec 46/46; merged to
+    `main` at `fc479e3`.)*
+    `existing_claims` feeds `find_duplicates` with the
     carrier's `window_days` on every transition into `TRIAGED`, both paths; results persist to
     `duplicate_evaluations` and surface as their own response field, not in `reason_codes`
     (2026-08-22). `duplicates.feature` is not edited. The first evidence the locked spec describes
     the product rather than the test API: say what the surviving-mutant picture looked like before
-    and after in the gate report.
+    and after in the gate report. `duplicates.feature`'s surviving-mutant picture is identical
+    before and after (decision 1: it binds to the domain and never submits a notice).
 
 7i. **Extract-shape implementations and the swappability proof.** The extract implementation of each
     port — a generated file set with an `as_of` instant; a policy bound after the extract is

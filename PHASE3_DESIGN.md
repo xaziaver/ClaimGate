@@ -37,6 +37,14 @@ Established from `src/claimgate/shell/` at `4a42d2f`, 2026-09-01. Treat as measu
 - **`find_duplicates` has no caller in the shell.** Its callers are `tests/api/duplicates.py` and
   `tests/unit/test_duplicates.py`. `window_days` is already carrier configuration
   (`carrier_configuration.py`) and is loaded on every call and used by nothing.
+  **Annotation 2026-09-10 (item 7h closed at merge `fc479e3`, implementation `a1e3e28`, green run
+  `20260910T112652-904083`): no longer true. `shell/duplicate_evaluations.py` calls
+  `find_duplicates` with the carrier's `window_days` on both transitions into `TRIAGED`, against
+  the claims port that `shell/bindings.py`'s `resolve_port_bindings` resolves at receipt and on
+  resolution, and the result persists to `duplicate_evaluations` and shows on the notice. The
+  claims-port half of the "still as measured" sentences in the 7f and 7g annotations below falls
+  with it. Checked against source at `fc479e3`, 2026-09-10, at item 7i's opening; the other
+  bullets stand as annotated.**
 - **Notice content** (`shell/messages.py`, `NoticeFields`): `policy_number`, `loss_date`,
   `loss_type`, `notice_type`, `property_state`, `claimant_name`, `claimant_contact`,
   `incident_description`. No insured name and no risk address beyond the state.
