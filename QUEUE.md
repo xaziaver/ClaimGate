@@ -4292,3 +4292,49 @@ Next: the human approves the spec; then the bindings for its steps — the claim
 and unavailable steps, the evaluation, candidates and reason steps, the no-evaluation step —
 and the implementation under decisions 2 to 7. The branch is a superset of `main` and is not
 merged.
+
+**2026-09-10: 7h implemented at `a1e3e28` on `phase3/7h-duplicates-wired`; green run
+`20260910T112652-904083`, 882 tests, 757 killed, 73 reviewed-equivalent on 16 specs; the merge to
+`main` is the human's after the advisor verifies the run.** The pair this paragraph records:
+acceptance 3169.29 s against the 3600 s Stop hook budget, on 1257 mutants — inside the predicted
+2,770–3,270 s and 101 s from its top; the margin under the hook is 431 s. Decisions 8–11
+(`ASSUMPTIONS.md`, the 7h implementation entry, ratified 2026-09-09) are built: 8, the domain's
+`EVALUATED` becomes `OBTAINED` in `duplicate_evaluations._evaluated` and nowhere else; 9,
+`Verification.policy_number` carries the found number from the search answer, unstored and
+unshown, and the evaluation follows the verification written beside it in the same transaction;
+10, `RULESET_VERSION` is `2026-09-09`; 11, `resolve_port_bindings` at receipt and on resolution,
+the test API's `claims_entry` beside every policy entry, and the five unavailable-source specs
+record `NOT_EVALUATED`/`SOURCE_UNAVAILABLE` on every notice they triage. Cold gate at `a1e3e28`,
+`mutants/` cleared, predicted then measured, every line equal: protect 3/3; static 0; size worst
+function 25, largest module `store.py` 248 (`coverage_verifications.py` 243, `records.py` 242,
+`duplicate_evaluations.py` 190); complexity 6; boundary 18 step files, 0 direct imports; tests
+882/882 — 858 plus the twelve rows of the new spec, ten shell tests and two serialization tests;
+coverage 100/100; CRAP 6; duplication 0; code mutation 757 killed, flat, so no shell logic reached
+`domain/`; acceptance 16 specs, 73 reviewed-equivalent, 0 diagnostics, every digest at its lock,
+`duplicate_evaluation.feature` 46 killed and 0 survivors, and the events line:
+
+```
+{"actual": "16 spec(s), 73 reviewed-equivalent", "at": "2026-09-10T12:20:05+00:00", "diagnostics": 0, "duration": 3169.29, "error": null, "gate": "acceptance", "kind": "gate.finished", "passed": true, "run": "20260910T112652-904083", "v": 1}
+```
+
+Measured out of band after the run, at the locked digest and restored to it:
+`duplicate_evaluation.feature` 46 applied, 46 killed, 0 survived, against the advisor's simulated
+46/46. The twelve `policy_match.feature` rows the 7h opening paragraph lists — lines 62, 97, 98,
+108, 133, 134, 178, 204, 225 at intake and 268, 288, 291 on resolution — now read an empty claims
+source and show `OBTAINED` with no candidates and no reason; line 179, pended but matched, shows
+none; the four `NOT_EVALUATED` rows show `NOT_EVALUATED` with the port's reason; no locked digest
+moved. The two deliberate breakages before the gate: a view served without the evaluation fails
+all twelve rows of the new spec and one shell test; an evaluation answering `OBTAINED` with no
+candidates on every notice fails nine rows — the three `none`/`OBTAINED` rows are satisfied by
+it — and two shell tests. Judgments beyond the ratified decisions, for ratification: (12)
+`AcceptedNotice` carries `PortBindings` as one field, `ports`; (13) where the search did not
+answer, the evaluation is stamped with the verification's `as_of` and binding, since the claims
+port was not asked; (14) `evaluate_on_triage` guards `verification is None` in the same condition
+as the state — a type guard, not a case, and the comment says why; (15) the four steps
+`policy_match.feature` and the new spec state in the same words — holds policy, has a term, policy
+match is, identified on — moved to `conftest.py` with their readers in `support.py`, per the
+two-locked-specs finding; (16) serialization's `_rendered` dispatches nested surfaces through a
+type-keyed table, so the candidates tuple renders as ids and the blockers as before, at complexity
+6; (17) `judge` gave its configuration lookups to `_configured` to stay under 25 lines, the fault
+order unchanged; (18) this paragraph is a documents commit after the implementation, as at 7g.
+Nothing is in flight in code; the branch is a superset of `main` and is not merged.
