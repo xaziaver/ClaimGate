@@ -12,6 +12,8 @@ from datetime import datetime
 from typing import Any
 
 from tests.api.coverage import PolicyTerm
+from tests.api.notice_intake import get_notice
+from tests.api.policy_match import CoverageVerificationView
 from tests.api.resolution import notice_record
 from tests.api.siu import (
     LATE_REPORTING_INDICATOR,
@@ -108,3 +110,20 @@ def policy_terms(context: dict[str, Any]) -> list[PolicyTerm]:
     steps, each in its own module."""
     terms: list[PolicyTerm] = context.setdefault("terms", [])
     return terms
+
+
+def shown_verification(context: dict[str, Any]) -> CoverageVerificationView | None:
+    """The verification GET /notices/{id} shows for the notice a scenario
+    addresses, or None where nothing was searched. Read from the notice and
+    never from a response: the search's answer is an attribute of the notice
+    for whoever opens it, which is policy_match.feature's own claim; shared
+    since item 7h, when duplicate_evaluation.feature began reading it too."""
+    view = get_notice(context["store"], context["notice_id"])
+    assert view is not None
+    return view.coverage_verification
+
+
+def verification(context: dict[str, Any]) -> CoverageVerificationView:
+    shown = shown_verification(context)
+    assert shown is not None
+    return shown

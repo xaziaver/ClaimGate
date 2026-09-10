@@ -8,8 +8,8 @@ also where a test makes the source misbehave - sleep for a while, raise, answer
 a shape that is not the wire shape - once, on the next call from either side,
 or on every call for as long as the source lives, which is what a scenario
 whose Background declares the source unavailable needs across several
-submissions (item 7f); and where a source with no insured-name search is stood
-up. Lives
+submissions (item 7f); where a source with no insured-name search is stood
+up; and where the claims side alone is made to fail (item 7h). Lives
 under tests/ because no deployment ships it; item 7i's acceptance runs reach it
 from tests/api/ as `tests.fixtures.core_system`, the way the shell tests do.
 
@@ -69,6 +69,7 @@ class InProcessCoreSystem:
         self._claims: dict[str, list[dict[str, Any]]] = {}
         self._next_call: tuple[str, Any] | None = None
         self._every_call: tuple[str, Any] | None = None
+        self._claims_fault: Exception | None = None
         self._name_search = True
 
     # -- what a test puts in -------------------------------------------------
@@ -122,6 +123,15 @@ class InProcessCoreSystem:
     def answer_malformed_on_every_call(self) -> None:
         self._every_call = ("malformed", None)
 
+    # -- and on the claims side only, for as long as it lives --------------------
+
+    def raise_on_every_claims_call(self, error: Exception | None = None) -> None:
+        """The claims side down while the policy side answers as before (item
+        7h, ASSUMPTIONS.md decision 5): a policy the search finds whose claims
+        cannot be read, which one fixture standing in for both sources could
+        not otherwise show."""
+        self._claims_fault = error if error is not None else RuntimeError("claims source failure")
+
     # -- the source protocols ---------------------------------------------------
 
     def search(
@@ -149,6 +159,8 @@ class InProcessCoreSystem:
         misbehaviour = self._misbehave()
         if misbehaviour is not None:
             return misbehaviour
+        if self._claims_fault is not None:
+            raise self._claims_fault
         return list(self._claims[policy_reference])
 
     # -- internals -------------------------------------------------------------

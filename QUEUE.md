@@ -722,8 +722,7 @@ Ordered by domain severity, not by effort. One line each on why that position.
 7f. **Intake wiring, persistence, and the identification outcomes (shell + spec).**
     *(Closed 2026-09-07 — spec `a20e06e`, amendment `2ad4055`, approvals `6cc3e56` and `eb794e4`,
     implementation `69a5f45`, bindings `1e2bfc0`; green run `20260907T214626-43332`, 832 tests, 756
-    killed, 73 reviewed-equivalent; the merge to `main` is the human's after the advisor verifies
-    the run.)*
+    killed, 73 reviewed-equivalent; merged to `main` at `850fe04`, 2026-09-08.)*
     New spec
     `features/policy_match.feature`, beside 7c's locked rule: the outcome table in `PHASE3_DESIGN.md` —
     matched proceeds; zero candidates pends `POLICY_NOT_MATCHED`; several pend `POLICY_AMBIGUOUS`;
@@ -738,8 +737,8 @@ Ordered by domain severity, not by effort. One line each on why that position.
 7g. **Resolution path restructured (shell).**
     *(Closed 2026-09-08 — structural `ce62f3d`, spec `acb06eb`, approval `1a24146`, split
     `17de43c`, implementation `828ded3`; green run `20260908T124244-462219`, 858 tests, 757
-    killed, 73 reviewed-equivalent; the merge to `main` is the human's after the advisor verifies
-    the run. Five debts carried, listed in the closing status paragraph.)*
+    killed, 73 reviewed-equivalent; merged to `main` at `7f5f786`, 2026-09-08. Five debts
+    carried, listed in the closing status paragraph.)*
     Evaluation moves outside the write transaction: read
     the merged view, evaluate (ports included), write in a second transaction that re-checks
     `PENDED` and answers `409` if the notice moved. `resolution.feature`'s surface is unchanged — a
@@ -3932,8 +3931,7 @@ implementation paragraph above; decisions 10 and 11 are in `ASSUMPTIONS.md`'s 7f
 the debt that a notice with no loss date, or nothing searchable, receives its verification at the
 re-search on resolution, and the insured-name search; 7h the claims port and `find_duplicates`'
 caller. `ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today"
-carry dated 7f notes. Nothing is in flight in code; the branch is a superset of `main` and is not
-merged.
+carry dated 7f notes. Nothing is in flight in code. Merged to `main` at `850fe04`, 2026-09-08.
 
 **2026-09-08: item 7g is open on `phase3/7g-resolution-research` from `main` at `850fe04`; the
 structural commit is done and green at `ce62f3d`, no spec touched, nothing drafted.**
@@ -4216,4 +4214,127 @@ coverage date. The debts:
 The margin in the fourth debt is the verified run's; the stop-check since measured it at 451 s.
 `ROADMAP.md`'s phase-3 section and `PHASE3_DESIGN.md`'s "what the code actually does today" carry
 dated 7g close notes; `CLAUDE.md`'s start-up step 3 carries the new pair. Nothing is in flight in
-code; the branch is a superset of `main` and is not merged. 7h is next.
+code. Merged to `main` at `7f5f786`, 2026-09-08. 7h is next.
+
+**2026-09-09: item 7h is open on `phase3/7h-duplicates-wired` from `main` at `86cd32f`; this
+session is housekeeping and read-only measurement, nothing drafted, no code.** Item 7g merged to
+`main` at `7f5f786` on 2026-09-08. Two housekeeping merges followed it on `main`, neither an
+item: `b0e18f1` put the Stop hook behind `.claude/hooks/stop-check.sh`, which skips the
+stop-check when the gated tree is byte-identical to the last green run's and records a tree only
+from a wholly green run; `86cd32f` recorded the protected-path rule — no full run while a lock is
+pending, the cheap gates under `--fail-fast` instead, and the one permitted interrupt with its
+recovery — after the lock at `856ea31`. The last green is the wrapper's seeding run, which the
+timing places on the stop-check for `e2a8933`, and its events line reads:
+
+```
+{"actual": "15 spec(s), 73 reviewed-equivalent", "at": "2026-09-09T01:14:59+00:00", "diagnostics": 0, "duration": 2673.194, "error": null, "gate": "acceptance", "kind": "gate.finished", "passed": true, "run": "20260909T003016-338541", "v": 1}
+```
+
+The pair this paragraph records: acceptance 2673.194 s against the 3600 s Stop hook budget, on
+858 tests, 757 killed, 73 reviewed-equivalent, 0 diagnostics, 1211 mutants across fifteen specs;
+`.gauntlet/last-green-tree` names that run. A documents-only turn now ends in a skip, one printed
+line — `gauntlet stop-check skipped: gated tree unchanged since green run
+20260909T003016-338541, 2026-09-09T01:14:59+00:00` — so the hook budget bounds only turns that
+touch a gated path, and the pair moves only on those. That run's `.gauntlet/mutation-backup/` is
+on disk with all fifteen files byte-identical to the working tree: the engine's residue from a
+completed run, not a strand. Nothing is in flight in code; the branch is a superset of `main` and
+is not merged.
+
+**2026-09-09: 7h structural commit `9d41011` green cold; spec `features/duplicate_evaluation.feature`
+committed on `phase3/7h-duplicates-wired`, awaiting the human's approval; no bindings, no code.**
+The split, first. `messages.py` (248) keeps the boundary shapes serialization.py projects —
+`NoticeFields`, the two responses, `NoticeView` — and `shell/bundles.py` takes what the
+orchestration passes to itself: `Submission`, `Resolution`, `Decision`, `Judgement`,
+`AcceptedNotice`, each class AST-identical to the one it was (`ast.dump` compared per class
+against the file at `6a0d219`). `schema.py` (239) keeps the notice record and its arrival
+sequence — four tables, four triggers — and `shell/trails.py` takes `siu_indicator_events` and
+`coverage_verifications` with their four triggers; `SCHEMA_STATEMENTS` is recomposed in its
+original order and is value-identical, fourteen statements. Seven import blocks moved to the
+new module and were re-sorted; nothing else changed. Sizes after: `messages.py` 136,
+`bundles.py` 133, `schema.py` 156, `trails.py` 114; `store.py` 248 is the largest module now.
+Cold gate at `9d41011`, `mutants/` cleared, predicted then measured, line by line: protect 3/3
+= 3/3; static 0 = 0; size worst function 25, no module at 250 = 25; complexity 6 = 6; boundary
+17 step files, 0 direct imports = 17/0; tests 858 = 858/858; coverage 100/100 = 100/100; CRAP
+6 = 6.0; duplication 0 = 0; code mutation 757 killed = `score 100.0%, 757 killed`; acceptance
+15 specs, 73 reviewed-equivalent, digests unchanged, 2630–2950 s = `15 spec(s), 73
+reviewed-equivalent`, 0 diagnostics, every spec still approved, and the events line:
+
+```
+{"actual": "15 spec(s), 73 reviewed-equivalent", "at": "2026-09-09T10:28:39+00:00", "diagnostics": 0, "duration": 2670.57, "error": null, "gate": "acceptance", "kind": "gate.finished", "passed": true, "run": "20260909T094346-499212", "v": 1}
+```
+
+The pair this paragraph records: 2670.57 s against the 3600 s Stop hook budget, on 1211 mutants.
+**The spec.** 147 lines, transcribed from the human's text; sha256 `58a5370b5194531d`, which is
+not the `42b23f5dcf881df3` the human expected — no variant tried (trailing newline dropped or
+doubled, CRLF, trailing whitespace stripped) matches, the file holds no tab or non-ASCII byte,
+and the engine counts 46 mutants on it as expected, so the difference is bytes the transcription
+cannot see rather than words; the human diffs their copy against the committed file before
+approving. Radius from `radius.py` at the spec commit: 46 mutants, 34 locators, 26 literal,
+against the same three expected. Per scenario: 4, 4, 6, 9, 6, 7 and 10 mutants in file order.
+Duration estimate for the run that approves it: 1257 mutants at 2.207 s a run (the seeding
+calibration) plus the new rows' testcase time, about 2,950 s; at the verified-run calibration of
+2.425 s, about 3,200 s. Either fits under 3600 s; 7i's three binding configurations will not, and
+that decision opens with 7i. **The measurement the spec was drafted on** (judgments 1–9 of this
+morning, ratified; decisions 1–7 in `ASSUMPTIONS.md`'s 7h entry): the fixture holds claims per
+policy reference, seeded empty by `hold_policy` and appended by `hold_claim`, and an unknown
+reference raises, which the port answers `SOURCE_UNAVAILABLE`; every source method calls
+`_misbehave` first, so the fixture's sleep, raise and malformed faults are shared across both
+ports of one carrier, and number-only mode is search-only; the test API binds only the policy
+half today, with `registry()` passing an empty claims map and nothing in `src/` calling
+`resolve_claims_port`; no scenario outside `policy_match.feature` reaches TRIAGED with a matched
+policy, because the other five submitting specs declare the source unavailable in their
+Backgrounds; and the twelve rows that will call an empty claims source once the port is wired are
+`policy_match.feature` lines 62, 97, 98, 108, 133, 134, 178, 204, 225 at intake and 268, 288,
+291 on resolution, with line 179 pended-but-matched and, under decision 2, not compared. The
+stop-check on this commit is expected red at the acceptance gate's approval stage on the
+unapproved spec — the separate-commits rule guarantees it, and it is not a failure to retry.
+Next: the human approves the spec; then the bindings for its steps — the claims-source holds
+and unavailable steps, the evaluation, candidates and reason steps, the no-evaluation step —
+and the implementation under decisions 2 to 7. The branch is a superset of `main` and is not
+merged.
+
+**2026-09-10: 7h implemented at `a1e3e28` on `phase3/7h-duplicates-wired`; green run
+`20260910T112652-904083`, 882 tests, 757 killed, 73 reviewed-equivalent on 16 specs; the merge to
+`main` is the human's after the advisor verifies the run.** The pair this paragraph records:
+acceptance 3169.29 s against the 3600 s Stop hook budget, on 1257 mutants — inside the predicted
+2,770–3,270 s and 101 s from its top; the margin under the hook is 431 s. Decisions 8–11
+(`ASSUMPTIONS.md`, the 7h implementation entry, ratified 2026-09-09) are built: 8, the domain's
+`EVALUATED` becomes `OBTAINED` in `duplicate_evaluations._evaluated` and nowhere else; 9,
+`Verification.policy_number` carries the found number from the search answer, unstored and
+unshown, and the evaluation follows the verification written beside it in the same transaction;
+10, `RULESET_VERSION` is `2026-09-09`; 11, `resolve_port_bindings` at receipt and on resolution,
+the test API's `claims_entry` beside every policy entry, and the five unavailable-source specs
+record `NOT_EVALUATED`/`SOURCE_UNAVAILABLE` on every notice they triage. Cold gate at `a1e3e28`,
+`mutants/` cleared, predicted then measured, every line equal: protect 3/3; static 0; size worst
+function 25, largest module `store.py` 248 (`coverage_verifications.py` 243, `records.py` 242,
+`duplicate_evaluations.py` 190); complexity 6; boundary 18 step files, 0 direct imports; tests
+882/882 — 858 plus the twelve rows of the new spec, ten shell tests and two serialization tests;
+coverage 100/100; CRAP 6; duplication 0; code mutation 757 killed, flat, so no shell logic reached
+`domain/`; acceptance 16 specs, 73 reviewed-equivalent, 0 diagnostics, every digest at its lock,
+`duplicate_evaluation.feature` 46 killed and 0 survivors, and the events line:
+
+```
+{"actual": "16 spec(s), 73 reviewed-equivalent", "at": "2026-09-10T12:20:05+00:00", "diagnostics": 0, "duration": 3169.29, "error": null, "gate": "acceptance", "kind": "gate.finished", "passed": true, "run": "20260910T112652-904083", "v": 1}
+```
+
+Measured out of band after the run, at the locked digest and restored to it:
+`duplicate_evaluation.feature` 46 applied, 46 killed, 0 survived, against the advisor's simulated
+46/46. The twelve `policy_match.feature` rows the 7h opening paragraph lists — lines 62, 97, 98,
+108, 133, 134, 178, 204, 225 at intake and 268, 288, 291 on resolution — now read an empty claims
+source and show `OBTAINED` with no candidates and no reason; line 179, pended but matched, shows
+none; the four `NOT_EVALUATED` rows show `NOT_EVALUATED` with the port's reason; no locked digest
+moved. The two deliberate breakages before the gate: a view served without the evaluation fails
+all twelve rows of the new spec and one shell test; an evaluation answering `OBTAINED` with no
+candidates on every notice fails nine rows — the three `none`/`OBTAINED` rows are satisfied by
+it — and two shell tests. Judgments beyond the ratified decisions, for ratification: (12)
+`AcceptedNotice` carries `PortBindings` as one field, `ports`; (13) where the search did not
+answer, the evaluation is stamped with the verification's `as_of` and binding, since the claims
+port was not asked; (14) `evaluate_on_triage` guards `verification is None` in the same condition
+as the state — a type guard, not a case, and the comment says why; (15) the four steps
+`policy_match.feature` and the new spec state in the same words — holds policy, has a term, policy
+match is, identified on — moved to `conftest.py` with their readers in `support.py`, per the
+two-locked-specs finding; (16) serialization's `_rendered` dispatches nested surfaces through a
+type-keyed table, so the candidates tuple renders as ids and the blockers as before, at complexity
+6; (17) `judge` gave its configuration lookups to `_configured` to stay under 25 lines, the fault
+order unchanged; (18) this paragraph is a documents commit after the implementation, as at 7g.
+Nothing is in flight in code; the branch is a superset of `main` and is not merged.

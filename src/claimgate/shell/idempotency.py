@@ -24,7 +24,8 @@ resolves - see replay_after_losing_the_race.
 
 from datetime import timedelta
 
-from claimgate.shell.messages import Submission, SubmitNoticeResponse
+from claimgate.shell.bundles import Submission
+from claimgate.shell.messages import SubmitNoticeResponse
 from claimgate.shell.records import NoticeRecord, payload_reference
 from claimgate.shell.store import IdempotencyKeyAlreadyRememberedError
 

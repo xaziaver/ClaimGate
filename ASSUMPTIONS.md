@@ -1038,6 +1038,46 @@ or data. Nothing below was confirmed against a live book.
   no pair is now insufficient rather than missing. (9) Where a re-search cannot answer, the last
   computed continuous-coverage date stands beside the carried blocker, so a release's SIU
   evaluation reads a date that was computed. Agent judgment 11, human-ratified 2026-09-08.
+- **Item 7h spec decisions — advisor-recommended, human-ratified 2026-09-09.** (1) The intake
+  surface of duplicate detection is a new spec, `duplicate_evaluation.feature`;
+  `duplicates.feature` is neither edited nor rebound through the product. Its surviving-mutant
+  picture is therefore identical before and after, because it binds to the domain and never
+  submits a notice; rebinding it is a separate decision, not a side effect of this item. (2) The
+  evaluation runs on every transition into TRIAGED, on either path, and only there; a PENDED
+  notice carries no evaluation and is compared when it is triaged, on what it carries then. (3)
+  The rule's own reasons, `FOLLOW_ON_NOTICE_TYPE` and `NO_EXISTING_CLAIM_NOTICE_TYPE`, come from
+  the domain. Where the shell never asks the rule — no policy was found, or a source could not
+  answer — the row carries the reason the coverage verification carries for the same failure, or
+  the claims port's; nothing is added to the enumeration `duplicates.feature` calls complete. (4)
+  The comparison is against the policy the search found: the shell places the found policy's
+  number on the candidate before `find_duplicates`, because the claims port scopes by reference
+  while the rule compares numbers; without it a notice matched on the pair would read clean. (5)
+  The claims port binds to the same core-system stand-in as the policy port, through the existing
+  "policy source" steps, and is resolved at receipt beside it, so no locked Background moves and
+  an unresolvable binding is the same 500; a claims-only fault is a fixture mode. (6) The
+  evaluation is one structure on the notice — status, candidates, reason — as its own field, never
+  in reason codes (2026-08-22). (7) `duplicate_evaluations` lives in its own shell module on the
+  coverage-verification pattern; `messages.py` and `schema.py` are split first, structurally.
+- **Item 7h implementation decisions — advisor-recommended, human-ratified 2026-09-09.** (8) The
+  evaluation's status on the notice is the shell's two-valued vocabulary, `OBTAINED` and
+  `NOT_EVALUATED`, as the locked spec names it; the domain rule's `EVALUATED` is translated to
+  `OBTAINED` in one place in the shell and the domain word never reaches a row or a view.
+  `duplicates.feature` names only `NOT_EVALUATED`, so no locked spec is contradicted; the cost is
+  two words for one fact, recorded here rather than a reopening. (9) The found policy's number
+  that decision 4 places on the candidate is carried on the shell's `Verification` from the search
+  answer and is not stored: the row keeps the reference only ("Persistence"). Consequently the
+  evaluation on either path follows the verification written beside it in the same transaction,
+  never a stored match standing from an earlier row; on resolution, where the fresh re-search did
+  not answer, the evaluation is `NOT_EVALUATED` with that verification's reason (decision 3). (10)
+  `RULESET_VERSION` becomes `2026-09-09`, on item 7f's precedent that wiring a rule onto notices
+  for the first time is a ruleset change. (11) Resolving the claims port at receipt (decision 5)
+  makes a carrier with no claims entry the same deployment fault as one with no policy entry, on
+  every submission; the acceptance test API therefore binds a live-query claims entry beside every
+  policy entry it emits, and the five locked specs whose Backgrounds declare the source unavailable
+  now record `NOT_EVALUATED`/`SOURCE_UNAVAILABLE` on every notice they triage. That is the
+  designed outcome, not a regression, and no locked digest moves.
+
+
 
 ## Undocumented phase-1 thresholds
 

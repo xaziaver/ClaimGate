@@ -33,22 +33,28 @@ answers - the continuous-coverage date onto the candidate, the match beside
 validation's blockers. A notice with too little to search on is not searched
 and carries the identification's blocker instead, since item 7g retired the
 policy number from validation. A source fault is a value and not an exception (ports.py),
-so it never leaves a notice at RECEIVED; the decision transaction then writes the
-decision, the verification row and the SIU events together, so a notice never
-rests TRIAGED with half its attributes.
+so it never leaves a notice at RECEIVED. **Duplicate detection follows the
+rules, since item 7h** (shell/duplicate_evaluations.py): where the decision is
+TRIAGED the carrier's claims port is asked for the claims on the policy the
+search found, still holding no lock, and the domain rule compares. The decision
+transaction then writes the decision, the verification row, the duplicate
+evaluation's row and the SIU events together, so a notice never rests TRIAGED
+with half its attributes.
 
 **Four configuration sources cross this boundary and none of them is a
 default** (item 5g; the fourth is item 7f's): the carrier identity reference,
 the jurisdiction map, the per-carrier rules source and the port bindings with
-the registry they select from, all named explicitly by production and tests
-alike. A shipped value read from the domain would make the swappability proofs
-a test of monkeypatching rather than of the seam.
+the registry they select from - both ports since item 7h, so a carrier with no
+claims entry is the same deployment fault as one with no policy entry - all
+named explicitly by production and tests alike. A shipped value read from the
+domain would make the swappability proofs a test of monkeypatching rather than
+of the seam.
 
 **The SIU evaluation item 5f owes a transition into TRIAGED runs inside the
 decision transaction**, from siu.py, which the resolution path calls too, and
 only where this submission's decision was TRIAGED: a pend is an incomplete
 intake record and evaluates nothing, and a replay or a refusal never reaches
-here. Duplicate-candidate detection stays out of scope, unsettled not assumed.
+here.
 """
 
 from collections.abc import Mapping
@@ -59,17 +65,12 @@ from claimgate.domain.continuous_coverage import carry_onto_candidate
 from claimgate.domain.models import Candidate, CarrierIdentity
 from claimgate.domain.policy_match import PolicyMatch
 from claimgate.domain.ruleset import RULESET_VERSION
-from claimgate.shell import coverage_verifications, siu
+from claimgate.shell import coverage_verifications, duplicate_evaluations, siu
 from claimgate.shell.bindings import BindingsSource, ImplementationRegistry
+from claimgate.shell.bundles import AcceptedNotice, Decision, Submission
 from claimgate.shell.coverage_verifications import Verification
-from claimgate.shell.messages import (
-    AcceptedNotice,
-    Decision,
-    NoticeFields,
-    NoticeView,
-    Submission,
-    SubmitNoticeResponse,
-)
+from claimgate.shell.duplicate_evaluations import DuplicateEvaluation
+from claimgate.shell.messages import NoticeFields, NoticeView, SubmitNoticeResponse
 from claimgate.shell.policy_match import check_policy
 from claimgate.shell.receipt import receive_or_replay
 from claimgate.shell.rules import apply_domain_rules
@@ -109,13 +110,18 @@ def _decide(submission: Submission, accepted: AcceptedNotice) -> SubmitNoticeRes
     rests at RECEIVED with its receipt, its one audit entry and its key - so the
     client's retry replays that notice rather than creating a duplicate of it.
     The search cannot raise: a fault is a value on the verification."""
-    check = check_policy(accepted.policy_port, submission.fields, accepted.candidate.loss_date)
+    check = check_policy(accepted.ports.policy, submission.fields, accepted.candidate.loss_date)
     candidate, match = _verified(accepted.candidate, check.verification)
     decision = apply_domain_rules(
         candidate, accepted.jurisdiction, accepted.today, accepted.rules, match, check.blockers
     )
+    duplicates = duplicate_evaluations.evaluate_on_triage(
+        decision.state, accepted.ports.claims, check.verification, candidate,
+        accepted.rules.window_days,
+    )
     with submission.store.submission():
         _record(submission, accepted, decision, check.verification, candidate)
+        _record_duplicates(submission, accepted, duplicates)
     return SubmitNoticeResponse(
         status=201, notice_id=accepted.notice_id, state=decision.state,
         blockers=decision.blockers, severity=decision.severity, queue=decision.queue,
@@ -129,7 +135,8 @@ def _record(
 ) -> None:
     """The decision transaction: the decision, the verification row and the
     SIU events together (PHASE3_DESIGN.md, "Where the calls sit"), so a notice
-    never rests TRIAGED with half its attributes."""
+    never rests TRIAGED with half its attributes; the duplicate evaluation's
+    row joins them from `_record_duplicates`."""
     submission.store.record_decision(
         accepted.notice_id, state=decision.state, blockers=decision.blockers,
         severity=decision.severity, queue=decision.queue,
@@ -144,6 +151,18 @@ def _record(
         )
     if decision.state == "TRIAGED":
         _record_indicators(submission, accepted, candidate)
+
+
+def _record_duplicates(
+    submission: Submission, accepted: AcceptedNotice, duplicates: DuplicateEvaluation | None
+) -> None:
+    """The evaluation's row, in the same decision transaction as the
+    verification and the SIU events (item 7h); a PENDED notice has none."""
+    if duplicates is not None:
+        duplicate_evaluations.append(
+            submission.store, accepted.notice_id, duplicates,
+            ruleset_version=RULESET_VERSION, evaluated_at=submission.submitted_at,
+        )
 
 
 def _verified(
@@ -184,4 +203,5 @@ def get_notice(store: NoticeStore, notice_id: str) -> NoticeView | None:
     if record is None:
         return None
     verification = coverage_verifications.view_of(coverage_verifications.latest(store, notice_id))
-    return NoticeView.of(record, verification)
+    duplicates = duplicate_evaluations.view_of(duplicate_evaluations.latest(store, notice_id))
+    return NoticeView.of(record, verification, duplicates)

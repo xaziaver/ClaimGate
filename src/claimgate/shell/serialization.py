@@ -57,13 +57,20 @@ mechanism above - a field added to the type fails until someone decides - holds
 for the verification's fields exactly as it does for the notice's. Nothing on
 it can name an SIU indicator: the SIU event that reads the date is its own
 table, and the verification records the date, never the indicator.
+
+**Item 7h put the duplicate evaluation beside it on the same terms**: its own
+nested list - status, candidates, reason - as features/duplicate_evaluation.feature
+reads it, an ordinary attribute (PHASE3_DESIGN.md, "Persistence"), and the
+candidates a list of claim ids the way the blockers are a list of their two names.
 """
 
 from collections.abc import Sequence
 from datetime import date
 from typing import Any
 
+from claimgate.domain.models import ValidationBlocker
 from claimgate.shell.coverage_verifications import CoverageVerificationView
+from claimgate.shell.duplicate_evaluations import DuplicateEvaluationView
 from claimgate.shell.messages import NoticeView, ResolutionResponse, SubmitNoticeResponse
 from claimgate.shell.records import AuditEntry
 
@@ -76,13 +83,14 @@ RESOLUTION_RESPONSE_FIELDS = (
 )
 NOTICE_VIEW_FIELDS = (
     "notice_id", "state", "blockers", "severity", "queue", "jurisdiction_marking",
-    "coverage_verification",
+    "coverage_verification", "duplicate_evaluation",
 )
 COVERAGE_VERIFICATION_FIELDS = (
     "policy_match", "matched_policy", "identified_on", "reason", "term_in_force",
     "deciding_term_effective", "deciding_term_expiration", "continuous_coverage_date",
     "continuous_coverage_reason", "as_of",
 )
+DUPLICATE_EVALUATION_FIELDS = ("status", "candidates", "reason")
 AUDIT_ENTRY_FIELDS = (
     "notice_id", "carrier_code", "from_state", "to_state", "actor_id", "actor_type",
     "occurred_at", "blockers", "outcome", "actor_authenticated", "note", "ruleset_version",
@@ -116,15 +124,24 @@ def _project(message: Any, allowed: Sequence[str]) -> dict[str, Any]:
     return {name: _rendered(getattr(message, name)) for name in allowed}
 
 
+# The nested surfaces, each through a list of its own: a blocker's two names,
+# the verification's fields, and the duplicate evaluation's (item 7h).
+_NESTED: dict[type, Sequence[str]] = {
+    ValidationBlocker: ("code", "field"),
+    CoverageVerificationView: COVERAGE_VERIFICATION_FIELDS,
+    DuplicateEvaluationView: DUPLICATE_EVALUATION_FIELDS,
+}
+
+
 def _rendered(value: Any) -> Any:
-    """Blockers, the nested verification, and dates and instants are the only
-    field types on these surfaces that are not already a string, a number, a
-    bool or None. A datetime is a date, so one test renders both."""
+    """Tuples - the blockers, and the evaluation's candidate ids - render as
+    lists of their rendered items; dates and instants as ISO text, a datetime
+    being a date so one test renders both; the nested surfaces through their
+    own lists; everything else is already a string, a number, a bool or None."""
     if isinstance(value, tuple):
-        return [{"code": blocker.code, "field": blocker.field} for blocker in value]
-    if isinstance(value, CoverageVerificationView):
-        return _project(value, COVERAGE_VERIFICATION_FIELDS)
+        return [_rendered(item) for item in value]
     if isinstance(value, date):
         return value.isoformat()
-    return value
+    nested = _NESTED.get(type(value))
+    return value if nested is None else _project(value, nested)
 

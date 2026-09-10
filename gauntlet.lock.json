@@ -462,6 +462,10 @@
       "approved_at": "2026-09-07T21:10:08+00:00",
       "digest": "sha256:4ce741d06d7f53f7df2910fe355a2ba33643a1ce887864fa8c147aad292109f0"
     },
+    "spec:features/duplicate_evaluation.feature": {
+      "approved_at": "2026-09-09T10:40:22+00:00",
+      "digest": "sha256:58a5370b5194531df917ef1866510b8a97f64cfaea7b427ee02820a75bed91f1"
+    },
     "spec:features/duplicates.feature": {
       "approved_at": "2026-08-17T13:09:14+00:00",
       "digest": "sha256:29adb2bebdd52819d37979feff2755d3b0ad5d6441d4cc1166ae66e0e690d434"
