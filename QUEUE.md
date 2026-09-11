@@ -37,7 +37,8 @@ C2b. *(Moved 2026-09-11 on `cleanup/documents`; the status section says where it
     classification as a read-only report, the advisor rules on it, and only then does anything move.
     Its largest section, "Carried requirements — decided, not yet built", is now mostly built.
 
-C2c. `docs/harness-findings.md` keeps "How the harness behaves" as the live document and moves
+C2c. *(Open 2026-09-11 on `cleanup/documents`.)* `docs/harness-findings.md` keeps "How the
+    harness behaves" as the live document and moves
     the chronology to an appendix. The file is topical, not chronological: the chronology is the
     dated evidence inside entries, so the advisor states the rule per entry before anything moves.
 
@@ -74,12 +75,16 @@ C4. **Phase 4 opens on the new harness**, with a fresh "How the harness behaves"
 
 ## Status as of this handoff
 
-**2026-09-11: C2a is merged to `main` at `370a042`. C2b's move is committed on `cleanup/documents`
-and awaits the advisor's check against `origin` and the human's merge. `ASSUMPTIONS.md` is now the
-index of its 105 entries by status at `prototype-1`; the whole former file is
+**2026-09-11: C2a and C2b are merged to `main`, at `370a042` and `b24dd48`. `ASSUMPTIONS.md` is
+now the index of its 105 entries by status at `prototype-1`; the whole former file is
 `docs/queue-history/assumptions.md`, byte for byte; the classification behind every status,
-drafted by the agent and ruled on by the advisor, is `docs/queue-history/assumptions-classification.md`.
-Next: C2c, in a fresh session.** No spec, approval, test,
+drafted by the agent and ruled on by the advisor, is
+`docs/queue-history/assumptions-classification.md`. C2c is open on `cleanup/documents`. It runs
+in two sessions, as C2b did: the first produces a read-only report on `docs/harness-findings.md`
+— for each entry under "How the harness behaves", whether its opening statement is still true at
+`prototype-1`, and which of its paragraphs are chronology rather than behaviour — and the advisor
+rules on it before anything moves. "Process and technique" is not restructured; it stays live and
+is where a session's process lessons go.** No spec, approval, test,
 source or configuration file has changed since `prototype-1`. No gate failure is expected. Every C2
 turn touches documents only, so the Stop hook wrapper skips and prints a line naming run
 `20260911T110451-2238600`, and that line is the turn's outcome. Do not run `gauntlet check` during
