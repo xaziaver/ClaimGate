@@ -766,7 +766,13 @@ Ordered by domain severity, not by effort. One line each on why that position.
     and after in the gate report. `duplicates.feature`'s surviving-mutant picture is identical
     before and after (decision 1: it binds to the domain and never submits a notice).
 
-7i. **Extract-shape implementations and the swappability proof.** The extract implementation of each
+7i. **Extract-shape implementations and the swappability proof.**
+    *(Closed 2026-09-10 — spec `c123151`, approval `7b02204`, implementation `576912e`, documents
+    `3e2610c`; green run `20260910T212538-1548345` at 3404.662 s, 963 tests, 757 killed, 73
+    reviewed-equivalent, the reopened spec 112/112; merged to `main` at `24dd112`. Judgment 8 is
+    decided by decision (6) in `ASSUMPTIONS.md`, its implementation the next item's opening
+    housekeeping.)*
+    The extract implementation of each
     port — a generated file set with an `as_of` instant; a policy bound after the extract is
     `NOT_FOUND` as of that instant — passing 7e's contract suite unchanged; the acceptance suite
     green under live-query/live-query, extract/extract, and live-policy-beside-extract-claims
@@ -4404,7 +4410,9 @@ answers with the extract's instant, while an extract that cannot be opened at al
 manifest, a manifest not its shape, a manifest read exhausting the budget) answers with the call
 instant, the only one there is; (8) the manifest's `history_from` is validated and read but the
 port stamps the binding's horizon as the protocol requires, and the two disagreeing is an open
-decision, not a rule — escalated, not defaulted; (9) the manifest declares `searchable_by`, and a
+decision, not a rule — escalated, not defaulted — decided 2026-09-10 by decision (6) in
+`ASSUMPTIONS.md`, a later manifest horizon answering `SOURCE_MALFORMED` on the term history, its
+implementation queued as the next item's opening housekeeping; (9) the manifest declares `searchable_by`, and a
 name search over an extract of numbers only is `IDENTIFIERS_INSUFFICIENT`, never a silent
 `NOT_FOUND`; (10) a reference no file holds is `LookupError`, `SOURCE_UNAVAILABLE` as for a live
 source (7e decision 7); (11) the generator is `tests/fixtures/extract.py`, shared by the contract

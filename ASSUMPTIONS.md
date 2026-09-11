@@ -1094,7 +1094,11 @@ or data. Nothing below was confirmed against a live book.
   state at submission; the generation instant is the submission instant unless "answers as of"
   sets it; a held policy's bound date is before any instant unless "was bound on" sets it. (5)
   `CLAUDE.md`'s two stale duration sites take the replacement text from the 7i read-only report,
-  item 7.
+  item 7. (6) Human-ratified 2026-09-10, after the implementation, deciding judgment 8 of the 7i
+  status paragraph: a manifest whose `history_from` is later than the binding's history horizon
+  answers `SOURCE_MALFORMED` on the term history, the search unaffected, because the file set holds
+  less than the binding promises; a manifest whose horizon is earlier, or complete, stamps the
+  binding's, as now. Its implementation is queued as the next item's opening housekeeping.
 
 
 
