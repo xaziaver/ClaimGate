@@ -491,8 +491,8 @@
       "digest": "sha256:a504421e2c3ef5ed98074fe9e1a87d6e075b1ee1bbeec06eea6942d1f969782a"
     },
     "spec:features/policy_match.feature": {
-      "approved_at": "2026-09-08T11:52:30+00:00",
-      "digest": "sha256:f7f118b9f5d7c7be45f03ca28e2321a2fc1171f6f4e8b3c1b08483076a4d63d2"
+      "approved_at": "2026-09-10T21:08:52+00:00",
+      "digest": "sha256:5f4eb8b7ea9495cc3ddd63f5ce50d12837be658f192d6de51c7d86765b5c8b75"
     },
     "spec:features/resolution.feature": {
       "approved_at": "2026-09-08T11:52:30+00:00",

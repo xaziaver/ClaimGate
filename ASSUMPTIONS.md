@@ -1077,6 +1077,25 @@ or data. Nothing below was confirmed against a live book.
   now record `NOT_EVALUATED`/`SOURCE_UNAVAILABLE` on every notice they triage. That is the
   designed outcome, not a regression, and no locked digest moves.
 
+- **Item 7i decisions — advisor-recommended, human-ratified 2026-09-10.** (1) The extract shape's
+  one user-visible behaviour is stated as one outline under `policy_match.feature`'s "instant the
+  answer reflects" rule, a reopening of a file with no approved mutants; the rows name no binding
+  shape and hold for a live source that is behind exactly as for an extract. (2) The acceptance
+  mutation gate runs under the live/live binding only; the swappability proof is three plain runs
+  of `tests/acceptance`, one per configuration — live/live, extract/extract, live policy beside
+  extract claims — each named in the gate report with the command that ran it. Mutating under
+  three bindings would prove nothing about the seam that one run does not, and would cost an
+  estimated 2.5x per mutant. (3) 7e's contract suite cannot pass an extract unchanged: its three
+  `as_of` assertions compare against the injected clock, while `ports.py` promises an extract
+  stamps its generation instant. Each harness therefore carries the instant its answers reflect
+  and the assertions compare against that; the extract harness generates at the clock minus one
+  day so the assertion tests the seam, not the fixture. The queue entry's "unchanged" is amended
+  with this date and reason. (4) Acceptance extracts are generated into `tmp_path` from the held
+  state at submission; the generation instant is the submission instant unless "answers as of"
+  sets it; a held policy's bound date is before any instant unless "was bound on" sets it. (5)
+  `CLAUDE.md`'s two stale duration sites take the replacement text from the 7i read-only report,
+  item 7.
+
 
 
 ## Undocumented phase-1 thresholds
