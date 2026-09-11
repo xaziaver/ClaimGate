@@ -82,11 +82,13 @@ def whole(directory: Path, manifest: dict[str, Any] = MANIFEST_DOCUMENT) -> Path
     return directory
 
 
-def policy_port(file_set: ExtractFileSet, *, budget: float = 1.0) -> ExtractPolicyPort:
+def policy_port(
+    file_set: ExtractFileSet, *, budget: float = 1.0, horizon: date | None = None
+) -> ExtractPolicyPort:
     binding = PolicyBinding(
         binding="AAAA/policy:extract",
         timeout_seconds=budget,
-        history_horizon=None,
+        history_horizon=horizon,
         clock=lambda: CLOCK,
         parameters={},
     )
@@ -270,14 +272,51 @@ def test_a_name_search_over_an_extract_of_numbers_only_is_identifiers_insufficie
     assert port.search(mistyped).value == NOT_FOUND
 
 
-def test_the_extracts_own_horizon_is_read_and_the_bindings_is_stamped(tmp_path: Path) -> None:
+# -- the extract's horizon against the binding's (7i decision 6) ----------------------
+
+
+def test_an_extract_starting_later_than_a_complete_promise_holds_less(tmp_path: Path) -> None:
     # The manifest states how far back the extract goes; the port stamps the
-    # binding's horizon, as the protocol requires (bindings.py). The two
-    # disagreeing is an open decision, not a rule here.
+    # binding's horizon, as the protocol requires (bindings.py), and an
+    # extract holding less than the binding promises is not its shape.
     whole(tmp_path, {**MANIFEST_DOCUMENT, "history_from": "2019-01-01"})
     file_set = ExtractFileSet(tmp_path)
     manifest = parse_manifest(file_set.manifest())
     answer = policy_port(file_set).term_history(REFERENCE)
     assert manifest.history_from == date(2019, 1, 1)
-    assert (answer.history.value, answer.history.history_from) == (OBTAINED, None)
+    assert (answer.history.value, answer.history.reason, answer.history.history_from) == (
+        NOT_OBTAINED, SOURCE_MALFORMED, None
+    )
     assert answer.as_of == GENERATED_AT
+
+
+def test_an_extract_starting_later_than_a_dated_promise_holds_less(tmp_path: Path) -> None:
+    whole(tmp_path, {**MANIFEST_DOCUMENT, "history_from": "2019-01-02"})
+    port = policy_port(ExtractFileSet(tmp_path), horizon=date(2019, 1, 1))
+    answer = port.term_history(REFERENCE)
+    assert (answer.history.value, answer.history.reason, answer.history.history_from) == (
+        NOT_OBTAINED, SOURCE_MALFORMED, date(2019, 1, 1)
+    )
+    assert answer.as_of == GENERATED_AT
+    # The search does not read the comparison.
+    assert port.search(BY_NUMBER).value == FOUND
+
+
+def test_an_extract_starting_earlier_than_the_promise_answers_with_the_bindings_horizon(
+    tmp_path: Path,
+) -> None:
+    whole(tmp_path, {**MANIFEST_DOCUMENT, "history_from": "2018-12-31"})
+    answer = policy_port(ExtractFileSet(tmp_path), horizon=date(2019, 1, 1)).term_history(
+        REFERENCE
+    )
+    assert (answer.history.value, answer.history.history_from) == (OBTAINED, date(2019, 1, 1))
+
+
+def test_an_extract_starting_on_the_promised_day_is_not_malformed(tmp_path: Path) -> None:
+    whole(tmp_path, {**MANIFEST_DOCUMENT, "history_from": "2019-01-01"})
+    answer = policy_port(ExtractFileSet(tmp_path), horizon=date(2019, 1, 1)).term_history(
+        REFERENCE
+    )
+    assert (answer.history.value, answer.history.reason, answer.history.history_from) == (
+        OBTAINED, None, date(2019, 1, 1)
+    )

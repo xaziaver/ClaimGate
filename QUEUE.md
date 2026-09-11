@@ -4412,7 +4412,10 @@ instant, the only one there is; (8) the manifest's `history_from` is validated a
 port stamps the binding's horizon as the protocol requires, and the two disagreeing is an open
 decision, not a rule — escalated, not defaulted — decided 2026-09-10 by decision (6) in
 `ASSUMPTIONS.md`, a later manifest horizon answering `SOURCE_MALFORMED` on the term history, its
-implementation queued as the next item's opening housekeeping; (9) the manifest declares `searchable_by`, and a
+implementation queued as the next item's opening housekeeping — implemented 2026-09-11 on `main` as the
+last build commit before the clean-up tag, `_holds_less` in `extract_ports.py` (171 lines) with
+four tests, the inverted comparison turning exactly the two dated-side tests red, cold run
+`20260911T100212-1991987` green at 3690.978 s on the same 1263 mutants, 966 tests; (9) the manifest declares `searchable_by`, and a
 name search over an extract of numbers only is `IDENTIFIERS_INSUFFICIENT`, never a silent
 `NOT_FOUND`; (10) a reference no file holds is `LookupError`, `SOURCE_UNAVAILABLE` as for a live
 source (7e decision 7); (11) the generator is `tests/fixtures/extract.py`, shared by the contract

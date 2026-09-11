@@ -20,6 +20,14 @@ a manifest read that exhausts the budget - has no instant to answer with,
 and that not-evaluated answer carries the call instant, the only one there
 is. That is a judgment (ASSUMPTIONS.md, 7i), recorded rather than assumed.
 
+**The extract's horizon against the binding's** (ASSUMPTIONS.md, 7i decision
+6). The manifest states where its history starts; the binding promises where
+history starts. An extract whose history starts later than the binding
+promises holds less than the binding says, and its term history answers
+NOT_OBTAINED with SOURCE_MALFORMED, stamped with the binding's horizon as
+every history is; an extract starting earlier, at the same day, or complete
+answers as before. The search does not read the comparison.
+
 The file set is a parameter of the constructor: the deployment's registry
 builds one from the binding's own parameters (an extract's directory), the
 way the live-query factory hands its port a source.
@@ -27,7 +35,7 @@ way the live-query factory hands its port a source.
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from time import perf_counter
 from typing import Final
 
@@ -36,7 +44,12 @@ from claimgate.domain.policy_identification import SearchIdentifiers
 from claimgate.shell.bindings import ClaimsBinding, PolicyBinding
 from claimgate.shell.extract_source import ExtractFileSet, ExtractManifest, parse_manifest
 from claimgate.shell.live_query_ports import guarded
-from claimgate.shell.live_query_source import parse_candidates, parse_claims, parse_term_history
+from claimgate.shell.live_query_source import (
+    MalformedAnswerError,
+    parse_candidates,
+    parse_claims,
+    parse_term_history,
+)
 from claimgate.shell.ports import (
     FOUND,
     NOT_EVALUATED,
@@ -79,6 +92,16 @@ def _read[Parsed](
     return _Read(as_of=manifest.generated_at, value=got.value, reason=got.reason)
 
 
+def _holds_less(extract_from: date | None, promised_from: date | None) -> bool:
+    """Whether an extract whose history starts at `extract_from` holds less
+    than a binding promising history from `promised_from`: a complete extract
+    never does; a dated one does against a complete promise, and otherwise
+    when it starts later."""
+    if extract_from is None:
+        return False
+    return promised_from is None or extract_from > promised_from
+
+
 class ExtractPolicyPort:
     def __init__(self, file_set: ExtractFileSet, binding: PolicyBinding) -> None:
         self._file_set = file_set
@@ -106,11 +129,17 @@ class ExtractPolicyPort:
 
     def term_history(self, policy_reference: str) -> TermHistoryAnswer:
         horizon = self._binding.history_horizon
+
+        def select_history(manifest: ExtractManifest) -> object:
+            if _holds_less(manifest.history_from, horizon):
+                raise MalformedAnswerError("the extract's history starts after the horizon")
+            return self._file_set.history(policy_reference)
+
         read = _read(
             self._file_set,
             self._binding.timeout_seconds,
             self._binding.clock,
-            lambda _: self._file_set.history(policy_reference),
+            select_history,
             lambda raw: parse_term_history(raw, horizon),
         )
         history = read.value
