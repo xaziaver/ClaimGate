@@ -186,8 +186,8 @@ Before any work, orient and verify. Report before acting.
    run was likely killed mid-flight — this is routine, not exceptional: a
    stop-check runs the full gauntlet after every turn, and any human reply inside
    its window kills it. The window is the acceptance gate's wall time, last measured at
-   3169.29 s on sixteen specs (run `20260910T112652-904083`, 2026-09-10, the verified run; the
-   stop-check `20260910T122219-1111884` on the same tree measured 3475.182 s), against a Stop hook
+   3690.978 s on sixteen specs (run `20260911T100212-1991987`, 2026-09-11, the verified run; the
+   turn-end stop-check `20260911T110451-2238600` measured 3736.757 s), against a Stop hook
    budget of 7200 s in `.claude/settings.json`. Both figures move — the duration is recorded in
    `QUEUE.md`'s status paragraph at each close — and when the run outgrows the budget the hook
    kills its own run at every turn end without any human reply (events eleven to thirteen in
@@ -224,9 +224,9 @@ Before any work, orient and verify. Report before acting.
 
 ### Environment notes
 
-- The acceptance gate's wall time is the Stop hook's window: 3169.29 s at the last verified
-  run (`20260910T112652-904083`, 2026-09-10) and 3475.182 s at the stop-check on the same tree,
-  growing, under a 7200 s hook budget. Run `gauntlet check`
+- The acceptance gate's wall time is the Stop hook's window: 3690.978 s at the last verified
+  run (`20260911T100212-1991987`, 2026-09-11) and 3736.757 s at the turn-end stop-check,
+  varying 2.52–2.96 s per mutant on near-identical trees, under a 7200 s hook budget. Run `gauntlet check`
   in the background, never under a foreground timeout; the current pair is in
   `QUEUE.md`'s status paragraph. (Corrected 2026-09-07 from "over 300s".)
   The hook runs `.claude/hooks/stop-check.sh`, which skips the stop-check when the
