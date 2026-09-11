@@ -1195,6 +1195,18 @@ file that will fail to resolve — and the engine is the radius for *approvals* 
 digest that will move. They answer different questions, and the words to grep are the spec's, not
 the code's.
 
+### A reopened spec reaches the tests gate before the approval stage (2026-09-10)
+
+A new spec file with no test module fails only at the acceptance gate's approval check, in
+milliseconds (7h, `083362e`, run `20260909T103034-647539`). A reopened spec that `scenarios()`
+already binds is collected on the next `tests` run, and its unbound rows fail that gate with
+`StepDefinitionNotFoundError` (7i, `c123151`: 882/884, 7.9 s). Under `--fail-fast` the approval
+stage is never reached. Both are the separate-commits guarantee working — the spec commit precedes
+the bindings by design — and neither is fixed by an agent; the human approves and the
+implementation commit binds. What changes is the diagnosis: on a reopening, expect `tests` red, not
+`acceptance` red, and do not read it as a broken build. Strengthens the approval-short-circuit entry
+in agent-gauntlet's findings, where the same qualification is recorded.
+
 ## Process and technique
 
 Lessons about working with the harness rather than about the harness itself.
