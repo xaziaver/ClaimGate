@@ -26,7 +26,8 @@ C2. **Document consolidation, with no spec or approval change and the gated tree
     throughout.** Five parts, in order, each its own commit or small series on `cleanup/documents`,
     each merged to `main` by the human after the advisor has checked it against `origin`.
 
-C2a. The events archive; this file cut to the live queue, its history moved verbatim;
+C2a. *(Closed 2026-09-11 — commits `de2c23a` and `d5f90e8`, merged to `main` at `370a042`.)* The
+    events archive; this file cut to the live queue, its history moved verbatim;
     `ROADMAP.md` step 1 annotated; `CLAUDE.md`'s duration figures brought to the last green pair.
 
 C2b. `ASSUMPTIONS.md` becomes an index of the decisions in force, retired ones dated, with its
@@ -72,8 +73,11 @@ C4. **Phase 4 opens on the new harness**, with a fresh "How the harness behaves"
 
 ## Status as of this handoff
 
-**2026-09-11: C1 is closed. C2a is committed on `cleanup/documents` and awaits the advisor's check
-against `origin` and the human's merge. Next: C2b, in a fresh session.** No spec, approval, test,
+**2026-09-11: C2a is merged to `main` at `370a042`, after the advisor checked `cleanup/documents`
+at `d5f90e8` against `origin`: every file at its pinned sha256, the old `QUEUE.md` rebuilt byte for
+byte from the two history files, the baseline below unchanged. C2b is open on `cleanup/documents`.
+Its first session produces the classification report and changes nothing in `ASSUMPTIONS.md`;
+nothing there moves until the advisor has ruled on the report.** No spec, approval, test,
 source or configuration file has changed since `prototype-1`. No gate failure is expected. Every C2
 turn touches documents only, so the Stop hook wrapper skips and prints a line naming run
 `20260911T110451-2238600`, and that line is the turn's outcome. Do not run `gauntlet check` during
@@ -128,8 +132,13 @@ close from 2.52–2.92 s to 2.52–2.96 s.
 
 **The events archive.** `docs/queue-history/events-prototype-1.jsonl` is the first 836,642 bytes of
 `.gauntlet/events.jsonl`, the file's size when the tag was made, sha256 `49395ea8c36d633f`, 3912
-lines, ending on the acceptance line above. It is the only record of every verdict the build produced, and C3 compares its
-regression runs against it.
+lines, ending on the acceptance line above. It holds every event from 2026-08-21T20:18:33Z to the
+tag, not the whole build: events from 2026-08-02 to 2026-08-04 survive as 554 lines at
+`8a83839^:.gauntlet/events.jsonl`, from the days the log was tracked, and events from 2026-08-04
+to 2026-08-21, spanning items 1 through 4j, are in neither place. No document records why.
+*(Corrected 2026-09-11; C2a's text called this archive the only record of every verdict the
+build produced.)* Both of the tag's final runs are in it, and C3 compares its regression runs
+against them.
 
 **What remains before C2 closes.** C2b to C2e, in order. C2 closes when all five are merged, the
 baseline above still holds on `main`, and this section says so. C3 then begins in agent-gauntlet,
