@@ -200,6 +200,11 @@ the work moves; in clean-up the work is frozen and the harness moves. Then, in o
 
 1. **Tag.** `main` is tagged `prototype-1`, with `gauntlet.lock.json` and `.gauntlet/events.jsonl`
    retained as they stand at the tag.
+   *Annotated 2026-09-11, C2a: done, `prototype-1` at `be87d38`. Git cannot retain
+   `.gauntlet/events.jsonl`: `.gauntlet/` is ignored and nothing under it is in the tag, so
+   "retained as they stand at the tag" held on one disk only. The log as it stood at the tag,
+   its first 836,642 bytes, is archived at `docs/queue-history/events-prototype-1.jsonl` (sha256
+   `49395ea8c36d633f`); the lock file is in the tag.*
 2. **Document consolidation**, with no spec or approval change and the gate green throughout.
    `QUEUE.md` becomes a short live queue plus `docs/queue-history/` per phase. `ASSUMPTIONS.md`
    becomes an index of the decisions in force, retired ones dated, with its history moved beside
