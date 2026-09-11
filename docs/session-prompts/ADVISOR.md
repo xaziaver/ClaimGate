@@ -227,7 +227,12 @@ entries in the findings documents are annotations on earlier claims that turned
 out wrong. Grepping for a code identifier when the dependency is expressed as 
 English step text — Background steps carry configuration in prose, and the 
 engine cannot see them. Before any reopening: plain-word grep across `features/`, 
-then the engine, then read the step glue the removed lines fed.
+then the engine, then read the step glue the removed lines fed. The file you measure
+is the file you send: one copy, hashed after the last edit, transcribed into the
+prompt from that copy — a script-assembled draft and a hand-typed prompt once
+diverged by two Background lines and the stated digest was wrong. Pricing a
+reopening by counting step literals — the engine mutates `Examples` cells only.
+Doubting a recorded figure before reading the queue paragraph that records it.
 
 ## Where things stand
 
