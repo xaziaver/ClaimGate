@@ -233,6 +233,19 @@ prompt from that copy — a script-assembled draft and a hand-typed prompt once
 diverged by two Background lines and the stated digest was wrong. Pricing a
 reopening by counting step literals — the engine mutates `Examples` cells only.
 Doubting a recorded figure before reading the queue paragraph that records it.
+Quoting a verification figure measured before your own last edit to the thing
+measured — an exact `git diff --numstat` given as a check was taken from a test
+run made two amendments earlier, and stopped a correct agent turn dead. Measure
+after the last edit, from the file you are actually sending, or do not state the
+figure. Pinning a rewritten file by `numstat` at all: insertions and deletions
+are a property of the diff algorithm's line matching, not of the file, and the
+same bytes gave 125/4433 under Myers and 113/4421 under histogram. Pin content by
+sha256; `numstat` is safe only for a purely additive edit, where the deletion
+count is zero under any algorithm. Naming a file in a prompt without saying what
+a missing one means — the agent stopped that step, correctly, and had nothing to
+tell it whether to wait or route around. Marking a negative grep "checked"
+without stating its case and pattern — "the string `toml` occurs nowhere under
+`src/`" was a case-sensitive search past a docstring naming TOML twice.
 
 ## Where things stand
 
@@ -374,7 +387,10 @@ do.
 
 Clone both repositories. Read, in this order: `QUEUE.md`'s status section from
 its last paragraph backwards until the item in flight is clear, then its reading
-table for that item; the phase design document in full; `harness-findings.md`
+table for that item; the phase design document in full, unless the live queue's
+reading table sends you elsewhere — after `prototype-1` the queue is the clean-up
+stage and the design documents are usually not what the open item needs;
+`harness-findings.md`
 "How the harness behaves"; `gauntlet-findings.md`'s heading map. Note the current
 Stop hook budget (`.claude/settings.json`) against the last recorded acceptance
 duration in the status section — when the run outgrows the budget, every turn end

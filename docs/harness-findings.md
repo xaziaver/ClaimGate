@@ -2150,3 +2150,45 @@ stop-check --help` on the installed tool (an editable install of `~/Code/agent-g
 asserted by the skill's `scripts/verify.sh`. A protected-path red now ends the stop-check at
 `protect` in under a second, and acceptance runs only when everything before it is green.
 `gauntlet check` keeps `--fail-fast` opt-in.
+
+### A `numstat` target is a property of the diff algorithm, not of the file
+
+A clean-up prompt gave `QUEUE.md 115 4423` as the exact `git diff --numstat` the agent should
+observe, and any difference as a stop. The agent observed `125 4433`, stopped, and reported. It was
+right to stop, and the target was wrong twice over. First, the advisor measured it before its own
+last two edits to the script that produced the file — including one that swapped the new file's
+backtick fences for tildes, which changed what git could match against the old file's ten
+backtick-fence lines. Second, and the general point: insertions and deletions are an output of the
+diff algorithm's line matching, not a property of the file. The same bytes gave `125 4433` under
+myers, minimal and patience and `113 4421` under histogram, on git 2.43 and on git 2.34 alike. The
+agent's own explanation — a git-version difference — was a reasonable guess and also wrong.
+
+Pin a rewritten file by sha256, which is a property of the file. `numstat` is a fair check only for
+a purely additive edit, where the deletion count is zero under any algorithm, and even there the
+insertion count is the weaker half of the pair. When a prompt states an expected figure, it should
+also say what the figure is a property of, so the agent can tell a real difference from an artifact.
+
+### A negative grep is only as good as its case and its pattern, and "checked" should not be claimed without both
+
+A classification report stated, marked checked, that "the string `toml` occurs nowhere under `src/`
+or `tests/`". The search was case-sensitive: `src/claimgate/domain/carrier_configuration.py` names
+TOML twice, in a docstring citing the very decision under review. The finding's substance survived —
+nothing reads a rules file of any format — but the evidence label did not, and a reader who trusted
+it would have concluded the decision had no trace in the tree at all.
+
+A negative result is a claim about a search, not about the tree. State the pattern and the flags with
+it (`grep -rn -i toml src tests`), or state the claim as what it is: this pattern, this case, these
+paths. The standing rule that "unverified" is an acceptable answer and a guess marked "checked" is
+not applies to negatives exactly as it does to positives.
+
+### A prompt that names a file must say what a missing one means
+
+A session prompt told the agent to run a script at a named path with a named digest. The script had
+never been saved there. The agent stopped that step, did the independent step that followed, and
+reported the gap precisely — the right call, and it cost only the one step. But nothing in the
+prompt told it which way to fail: wait, route around, write a substitute, or stop the session. It
+chose correctly by judgment, which is not something a prompt should be leaving to chance.
+
+Every prompt that names an input outside the repository should say what a missing or mismatched one
+means for the rest of the session. The same applies to a digest that does not match: that case is
+always a stop, and saying so costs one clause.
