@@ -30,7 +30,8 @@ C2a. *(Closed 2026-09-11 — commits `de2c23a` and `d5f90e8`, merged to `main` a
     events archive; this file cut to the live queue, its history moved verbatim;
     `ROADMAP.md` step 1 annotated; `CLAUDE.md`'s duration figures brought to the last green pair.
 
-C2b. `ASSUMPTIONS.md` becomes an index of the decisions in force, retired ones dated, with its
+C2b. *(Moved 2026-09-11 on `cleanup/documents`; the status section says where it stands.)*
+    `ASSUMPTIONS.md` becomes an index of the decisions in force, retired ones dated, with its
     history moved beside the queue history. The index turns on a status per decision (in force,
     retired, superseded), which is a judgment per entry: the first session produces the
     classification as a read-only report, the advisor rules on it, and only then does anything move.
@@ -73,11 +74,12 @@ C4. **Phase 4 opens on the new harness**, with a fresh "How the harness behaves"
 
 ## Status as of this handoff
 
-**2026-09-11: C2a is merged to `main` at `370a042`, after the advisor checked `cleanup/documents`
-at `d5f90e8` against `origin`: every file at its pinned sha256, the old `QUEUE.md` rebuilt byte for
-byte from the two history files, the baseline below unchanged. C2b is open on `cleanup/documents`.
-Its first session produces the classification report and changes nothing in `ASSUMPTIONS.md`;
-nothing there moves until the advisor has ruled on the report.** No spec, approval, test,
+**2026-09-11: C2a is merged to `main` at `370a042`. C2b's move is committed on `cleanup/documents`
+and awaits the advisor's check against `origin` and the human's merge. `ASSUMPTIONS.md` is now the
+index of its 105 entries by status at `prototype-1`; the whole former file is
+`docs/queue-history/assumptions.md`, byte for byte; the classification behind every status,
+drafted by the agent and ruled on by the advisor, is `docs/queue-history/assumptions-classification.md`.
+Next: C2c, in a fresh session.** No spec, approval, test,
 source or configuration file has changed since `prototype-1`. No gate failure is expected. Every C2
 turn touches documents only, so the Stop hook wrapper skips and prints a line naming run
 `20260911T110451-2238600`, and that line is the turn's outcome. Do not run `gauntlet check` during
