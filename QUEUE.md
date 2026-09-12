@@ -42,7 +42,8 @@ C2c. *(Open 2026-09-11 on `cleanup/documents`.)* `docs/harness-findings.md` keep
     the chronology to an appendix. The file is topical, not chronological: the chronology is the
     dated evidence inside entries, so the advisor states the rule per entry before anything moves.
 
-C2d. Both `PHASE*_DESIGN.md` files lose what describes code rather than decides design.
+C2d. *(Done 2026-09-11 on `cleanup/documents`.)* Both `PHASE*_DESIGN.md` files lose what
+    describes code rather than decides design.
     `PHASE3_DESIGN.md`'s is one section; `PHASE2_DESIGN.md`'s is inline passages, which the advisor
     names by anchor. `CLAUDE.md`'s start-up step 5, which reads that section, changes in the same
     commit.
@@ -79,12 +80,14 @@ C4. **Phase 4 opens on the new harness**, with a fresh "How the harness behaves"
 now the index of its 105 entries by status at `prototype-1`; the whole former file is
 `docs/queue-history/assumptions.md`, byte for byte; the classification behind every status,
 drafted by the agent and ruled on by the advisor, is
-`docs/queue-history/assumptions-classification.md`. C2c is open on `cleanup/documents`. It runs
-in two sessions, as C2b did: the first produces a read-only report on `docs/harness-findings.md`
-— for each entry under "How the harness behaves", whether its opening statement is still true at
-`prototype-1`, and which of its paragraphs are chronology rather than behaviour — and the advisor
-rules on it before anything moves. "Process and technique" is not restructured; it stays live and
-is where a session's process lessons go.** No spec, approval, test,
+`docs/queue-history/assumptions-classification.md`. C2c is merged at `a86c614`: six chronology
+entries — fourteen strand events, four hook budget raises and the whole measured wall-time series
+— are in `docs/queue-history/harness-findings.md`, and what was live in them was rewritten as
+behaviour, including the Stop hook wrapper's first entry of its own. "Process and technique" was
+not restructured; it stays live and is where a session's process lessons go. C2d is committed on
+`cleanup/documents` and awaits the advisor's check and the human's merge. Next: C2e, the
+`.gitignore` audit — last, alone in its commit, and the one C2 part that can move the gated-tree
+hash, so the hash is computed before and after it.** No spec, approval, test,
 source or configuration file has changed since `prototype-1`. No gate failure is expected. Every C2
 turn touches documents only, so the Stop hook wrapper skips and prints a line naming run
 `20260911T110451-2238600`, and that line is the turn's outcome. Do not run `gauntlet check` during

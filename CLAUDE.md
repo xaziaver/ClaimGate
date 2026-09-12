@@ -211,10 +211,14 @@ Before any work, orient and verify. Report before acting.
    The stop-check is skipped when the gated tree is byte-identical to the last
    green run's, and a skip prints a line naming that run; a documents-only turn
    therefore ends in seconds, and that line is then the turn's outcome.
-5. For any item inside a phase, check each claim in the phase design document's
-   "what the code actually does today" section against source before item work,
-   and annotate stale claims in place, dated, in the documentation commit that
-   opens the item. Two such claims have been found in `PHASE3_DESIGN.md` already.
+5. Treat a phase design document as a record of decisions and their reasons, not
+   as a description of the code. Where one states what the code does, check it
+   against source before relying on it, and annotate a stale claim in place,
+   dated, in the documentation commit that opens the item. `PHASE3_DESIGN.md`'s
+   section of measurements was overtaken in full and moved to
+   `docs/queue-history/phase-3-design-measurements.md` by clean-up C2d;
+   `PHASE2_DESIGN.md`'s code-describing clauses stay inline and are noted at its
+   head.
 6. If a spec is described as drafted-not-locked, confirm with `gauntlet spec list`
    whether it has since been approved. The lock is the human's action and may have
    happened after the handoff was written.
