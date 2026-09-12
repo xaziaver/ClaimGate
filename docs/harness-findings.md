@@ -144,7 +144,7 @@ clear: two (17:25:25, 17:28:32) against item 4c's post-implementation state —
 4d's freshly-drafted, unapproved `siu_indicators.feature`. The two stale/
 unreviewed runs cost 172.8s and 158.4s of `acceptance` gate time each, because
 that condition does not trip the gate's early-return path (see "A green gate
-sometimes means nothing was checked" above) — mutation still runs in full.
+sometimes means nothing was checked" below) — mutation still runs in full.
 The unapproved-spec run cost 0.001s, because that condition does. Total
 `acceptance` time across all three: 331.2s, not the roughly-twelve-minutes a
 flat "~4 minutes × 3 runs" estimate would suggest — the retry cost of this
@@ -206,6 +206,12 @@ outright: an agent can write it, and the gate then fails with `N-1/N paths uncha
 re-locks with `gauntlet lock`. Extending `[tool.mutmut] source_paths` to reach a module outside
 `src/claimgate/domain/` was therefore always available as a proposal routed through a human, not a
 blocked action. Verified by reading `src/gauntlet/config.py` directly, 2026-08-23.
+
+`CLAUDE.md`'s tool-managed block calls `pyproject.toml` protected, in the sentence naming the
+three paths that must not be edited before a lock. The operational consequence there is the same
+— do not run the gate until the human re-locks — so the instruction is sound and only the word is
+loose. That block is Gauntlet's and is overwritten on its schedule, so it is not ours to correct;
+read it as "verified or protected", and use this entry for the distinction.
 
 ### Acceptance mutation does not see everything
 
@@ -413,7 +419,9 @@ interrupted run is followed by a diff before anything else.
 
 Every line in `.gauntlet/events.jsonl` is stamped with a `run` id —
 `YYYYMMDDTHHMMSS-<pid>`, assigned once per process in `Log.__init__` and
-written by `build()` (`events.py:60-67`). Runs are separate OS processes and
+written by `build()` (`events.py`, `build` at 65 and `Log.__init__` at 79 as
+of agent-gauntlet `a0ef78d`; cited here as 60-67 until 2026-09-11). Runs are
+separate OS processes and
 never nest, so pairing `run.started` to `run.finished` by that id is exact —
 no FIFO- or depth-matching heuristic is needed, and none should be trusted
 over it. `events.read()` only parses `.gauntlet/events.jsonl` itself; the file
@@ -445,10 +453,13 @@ pipe trap below and the `--changed` scoping question further down.
 
 Verified against source, not inferred. `events.RUN_STARTED` is emitted in
 exactly one place in the whole package: inside `check` (`cli.py:151`), before
-`_locked_run`. `stop_check` (`cli.py:220` — the Stop hook's command;
-`.claude/settings.json` wires it to `gauntlet stop-check --max-attempts 1`)
-calls `_locked_run(root, lambda: runner.run_full_gauntlet(...))` at
-`cli.py:235`, under the same project lock `check` uses, but its body never
+`_locked_run`. `stop_check` (`cli.py:232`, cited here as 220 until 2026-09-11 — the
+Stop hook's command, reached since 2026-09-08 through
+`.claude/hooks/stop-check.sh`,
+which either skips on an unchanged gated tree or issues `gauntlet stop-check
+--max-attempts 1`) calls `_locked_run(root, lambda:
+runner.run_full_gauntlet(...))` at `cli.py:226`, under the same project lock
+`check` uses, but its body never
 calls `log.emit(events.RUN_STARTED, ...)`, and it never reaches `_finish`
 (`cli.py:74`, the only place `RUN_FINISHED` is emitted — that call is local
 to `check`, `cli.py:153`). `run_full_gauntlet` delegates to the same
@@ -496,6 +507,23 @@ more that are not — a stop-check run's completeness has to be checked
 against a `command=check` run.started/run.finished pair from the same era,
 not against today's gate list.
 
+### `stop-check` stops at the first failing gate, and `check` does not
+
+`gauntlet stop-check` takes `--fail-fast/--no-fail-fast` defaulting to **true**
+(`cli.py:236-238`, agent-gauntlet `4fc5c34`); `gauntlet check` keeps it opt-in.
+So the two commands produce different evidence from the same tree. A red gate
+early in the order — `protect` on an unlocked verified path, `static`, `tests` —
+ends a stop-check in under a second with no acceptance run and no mutation
+figures, while the same tree under `gauntlet check` runs every gate and costs a
+full acceptance pass. Neither is wrong; they answer different questions.
+
+Two consequences worth stating, because entries written before the default
+landed reason as though every gate always runs. A stop-check that reports one
+failure has not measured anything after it, so its silence about mutation or
+acceptance is not a pass. And the cost of a red turn depends on where the red
+is: early is cheap and late is the whole gate. When quoting a stop-check's
+result, say which gate it stopped at.
+
 ### Every killed run died inside the acceptance gate
 
 All five known killed runs in this project's history — the four found by
@@ -541,6 +569,23 @@ mutate to `.gauntlet/mutation-backup/<name>` before mutating it in place
 the intended recovery path for the corrupted-source finding above ("Check `git
 diff` after any interrupted mutation run") — restore from there, not `git`,
 once a run is confirmed interrupted.
+
+**Two restore sources, and when they agree.** This entry says restore from the
+backup; the diagnosis under "The Stop hook's timeout is now shorter than a green
+acceptance run", and `CLAUDE.md`'s start-up step, say `git checkout -- <spec>`.
+Both are right whenever every spec is committed at its locked text, which is the
+normal state: the backup and `HEAD` then hold the same bytes. They diverge only
+when a spec has uncommitted approved edits, and there the backup is the correct
+source and `git` would lose the edit. The test is the same either way: the
+restored file's sha256 must equal the entry in `gauntlet.lock.json`.
+
+**The backup directory is always there after a completed run.** `_backup` writes
+one copy per spec and nothing removes them, so `.gauntlet/mutation-backup/`
+holds a full set of files after any run that reached mutation, green or red —
+sixteen of them after the last green run at `prototype-1`. Its presence is
+therefore not a signal of anything. Only the comparison is: a file newer than
+the commit and differing from the working tree. A recovery step that deletes the
+directory deletes something the next run recreates.
 
 **Correction, 2026-08-14.** An earlier version of this entry cited a specific
 occurrence — a `features/validation.feature` corruption found and `git
@@ -693,12 +738,20 @@ in this project's history was an agent-issued `gauntlet check` through `bash`,
 cut off at whatever that tool call's own timeout happened to be — that is the
 timeout that needs raising, not the hooks'.
 
+**That last sentence is false and was already falsified inside this file.** Runs
+have since been killed by the Stop hook's own timeout, and by a human's reply
+landing inside the acceptance window: see the second correction under "The Stop
+hook's timeout is now shorter than a green acceptance run" and the strand events
+under "A corrupted spec from an interrupted mutation run has a recovery path
+already on disk". Every timeout that wraps the gate needs to clear a green run,
+not just the agent's `bash` one.
+
 **Correction, 2026-08-24: the maximum is no longer 260.3s.** A run against
 `features/notice_intake.feature` approved with no bound step definitions took
 423.622s — every one of its 24 mutants ran a full suite pass before scoring
 surviving, not a bigger suite taking proportionally longer. Read this new
 maximum as the cost of that specific defect (see "An approved spec that no
-test module binds reports every mutant as surviving," above), not as ordinary
+test module binds reports every mutant as surviving," below), not as ordinary
 growth continuing the trend the four runs above already showed. The 300s floor
 this entry recommends is now itself below the observed maximum; raise it, and
 keep rechecking the log rather than trusting either number as fixed.
@@ -753,7 +806,8 @@ quarter of the observed, because it prices a scoping the gate does not do. What 
 pricing a draft: every mutant costs a whole-directory run, and every scenario row costs its
 testcase time on every mutant's run — 7.3 ms a row for `resolution.feature`'s shape, 8.4 s a row
 at today's count — so the wall time is rows × mutants and grows with the square of the suite,
-which is why 8 % more mutants at 7f cost 44 % more time. `QUEUE.md`'s 7g status paragraph carries
+which is why 8 % more mutants at 7f cost 44 % more time. The 7g status paragraph — in `QUEUE.md`
+until C2a moved it to `docs/queue-history/phase-3.md` — carries
 the per-spec table.
 
 **Seventh entry, 2026-09-08: four documents-only stop-checks this phase, 42–53 minutes each, and
