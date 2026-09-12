@@ -48,7 +48,8 @@ C2d. *(Done 2026-09-11 on `cleanup/documents`.)* Both `PHASE*_DESIGN.md` files l
     names by anchor. `CLAUDE.md`'s start-up step 5, which reads that section, changes in the same
     commit.
 
-C2e. `.gitignore` audited for `mutants/`, `.gauntlet/` state and review exports: last, and alone
+C2e. *(Done 2026-09-11 on `cleanup/documents`.)* `.gitignore` audited for `mutants/`,
+    `.gauntlet/` state and review exports: last, and alone
     in its commit. The Stop hook wrapper hashes the gated paths through `git ls-files
     --exclude-standard`, so a `.gitignore` change is the one edit in C2 that can move the gated-tree
     hash without touching a gated file. The hash is computed before and after.
