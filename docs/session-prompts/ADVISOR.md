@@ -246,6 +246,10 @@ a missing one means — the agent stopped that step, correctly, and had nothing 
 tell it whether to wait or route around. Marking a negative grep "checked"
 without stating its case and pattern — "the string `toml` occurs nowhere under
 `src/`" was a case-sensitive search past a docstring naming TOML twice.
+Dating every edit with the day the session began. A session that runs past
+midnight puts yesterday's date into history headers, "Done" markers and audit
+lines, and the commits then disagree with the text they carry. Check the date
+each turn, or date by session and say so.
 
 ## Where things stand
 
