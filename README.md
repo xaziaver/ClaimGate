@@ -58,10 +58,21 @@ Eleven specifications under `features/`, all hash-locked; every gate green. What
 deliberately does not include — a server binding, authentication, a policy administration adapter
 — is stated there rather than discovered later.
 
-**Phase 3 is in planning.** [`ROADMAP.md`](ROADMAP.md) states what "done" means for the product,
-which phase carries each missing piece, and what is out of scope permanently; it is drafted and
-ratified 2026-09-01. [`QUEUE.md`](QUEUE.md) carries the full record of every item with the
-reasoning behind it.
+**Phase 3 — the policy administration adapter, read side — is complete and gated, merged
+2026-09-11.** Two ports behind one interface, two implementations of each (a live binding and a
+periodic extract), coverage verification as an intake outcome with as-of provenance, and duplicate
+detection wired to its caller, built against [`PHASE3_DESIGN.md`](PHASE3_DESIGN.md). Sixteen
+specifications under `features/`, all hash-locked; 966 tests; every gate green.
+
+**`main` is tagged `prototype-1` at `be87d38`, and the build is paused there.** The tag is the
+frozen subject for improving the test harness that gated it: every finding about that harness is
+in [`docs/harness-findings.md`](docs/harness-findings.md) and, for the tool's own repository, in
+agent-gauntlet's `gauntlet-findings.md`. The clean-up stage that followed the tag — the queue,
+assumptions and harness history moved to `docs/queue-history/`, the live documents reduced to what
+is in force — closed 2026-09-12 with no gated file changed. Phase 4 opens on the improved harness.
+[`ROADMAP.md`](ROADMAP.md) states what "pilotable" means, which phase carries each missing piece,
+and what is out of scope permanently; [`QUEUE.md`](QUEUE.md) is the live queue and says where
+things stand.
 
 ## Documents
 
@@ -69,9 +80,11 @@ reasoning behind it.
 |---|---|
 | [`ROADMAP.md`](ROADMAP.md) | What "done" means for ClaimGate as a product, which phase carries each missing piece, and what is permanently out of scope — with the reasoning, and with its ratification status stated in the file. |
 | [`PHASE2_DESIGN.md`](PHASE2_DESIGN.md) | Every phase-2 design decision — record states, audit log, HTTP surface, idempotency, jurisdiction handling, SIU handling — written as decisions with reasons, not a task list. |
-| [`ASSUMPTIONS.md`](ASSUMPTIONS.md) | Every unverified assumption this design rests on, every undocumented phase-1 threshold, and every domain defect found but not yet fixed, each with what was assumed and what would correct it. |
+| [`PHASE3_DESIGN.md`](PHASE3_DESIGN.md) | Every phase-3 design decision — the two ports, three-valued answers with as-of instants, coverage verification, identification by search, the swappability proof — ratified 2026-09-01. |
+| [`ASSUMPTIONS.md`](ASSUMPTIONS.md) | The index of every assumption and decision by status at `prototype-1` — in force, open, settled or record — with provenance and a pointer to its full text in the history. New decisions go at its end. |
 | [`STATUTORY_REGISTER.md`](STATUTORY_REGISTER.md) | Every regulatory value referenced by the design, with citation, verification date, and source — because Florida amends these statutes nearly every session. |
-| [`QUEUE.md`](QUEUE.md) | The ordered record of known domain defects and gaps, closed and open, in severity order, with one line of reasoning each for why it sits where it does. |
+| [`QUEUE.md`](QUEUE.md) | The live queue: the open items, a memoryless status section, the baseline every change is checked against, and a reading table per item. |
+| [`docs/queue-history/`](docs/queue-history/) | Everything the build produced, moved out of the live documents byte for byte: the phase-1–3 queue and its status log, the full assumptions text and its classification, the harness chronology, the phase-3 design measurements, and the events log as it stood at the tag. |
 | [`docs/decisions.md`](docs/decisions.md) | Phase-1 business rule decisions as originally recorded — see `ASSUMPTIONS.md`'s audit of this file for which entries are well-founded and which aren't. |
 | [`docs/harness-findings.md`](docs/harness-findings.md) | What using the Gauntlet gate with Claude Code harness surfaced; notes for agents working on this project |
 | [`CLAUDE.md`](CLAUDE.md) | The instructions and standing constraints governing how this project's implementation work is done — one of the more interesting artifacts here for anyone evaluating how the work was governed. |
