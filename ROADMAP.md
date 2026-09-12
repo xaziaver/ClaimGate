@@ -213,6 +213,14 @@ the work moves; in clean-up the work is frozen and the harness moves. Then, in o
    "what the code does today" sections outright, source being the record. `.gitignore` is audited
    for `mutants/`, `.gauntlet/` state and review exports. The gate proves nothing moved: the same
    spec digests, the same ledger entry count, the same killed count.
+   *Annotated 2026-09-12: done, in five merged parts C2a–C2e, recorded in `QUEUE.md`. Two
+   departures from the text above, both ruled by the advisor: `PHASE2_DESIGN.md` has no "what the
+   code does today" section to lose — its code-describing clauses sit inside decisions — so it
+   carries a note at its head instead; and the harness chronology went to `docs/queue-history/`
+   beside everything else moved, not to an appendix of the same file. The proof was the Stop hook
+   wrapper's gated-tree hash, unchanged at `e41d0a7c` over 128 files at every merge, which is
+   stronger than a re-run and costs seconds; a documents-only turn skips the gate, so no run
+   printed a killed count. `.gitignore` differs from the tag by annotation alone.*
 3. **The harness moves against the frozen tag**, sequenced in agent-gauntlet's
    `gauntlet-findings.md` under "Note for the v1 effort", which this repository does not read.
 4. **Phase 4 opens on the new harness**, with a fresh "How the harness behaves".
