@@ -85,11 +85,19 @@ drafted by the agent and ruled on by the advisor, is
 entries — fourteen strand events, four hook budget raises and the whole measured wall-time series
 — are in `docs/queue-history/harness-findings.md`, and what was live in them was rewritten as
 behaviour, including the Stop hook wrapper's first entry of its own. "Process and technique" was
-not restructured; it stays live and is where a session's process lessons go. C2d is committed on
-`cleanup/documents` and awaits the advisor's check and the human's merge. Next: C2e, the
-`.gitignore` audit — last, alone in its commit, and the one C2 part that can move the gated-tree
-hash, so the hash is computed before and after it.** No spec, approval, test,
-source or configuration file has changed since `prototype-1`. No gate failure is expected. Every C2
+not restructured; it stays live and is where a session's process lessons go. C2d and C2e are
+merged: `PHASE3_DESIGN.md`'s measured section is `docs/queue-history/phase-3-design-measurements.md`,
+`PHASE2_DESIGN.md` carries a note at its head instead of surgery, `CLAUDE.md`'s start-up step 5
+is rewritten, and every `.gitignore` rule says what it hides, with the finding that `mutants/` is
+both a gated path and an ignored one. **C2 is closed.** The baseline below held on `main` after
+every part; `.gitignore` is the one config path that differs from `prototype-1`, by annotation
+alone, and the gated-tree hash is unchanged. Next is C3, in agent-gauntlet, in the seven-item order
+under "Note for the v1 effort" in `gauntlet-findings.md`; nothing lands here until it has produced
+a harness to open phase 4 on. A date note: the C2c to C2e markers in this file, the history
+headers and the `.gitignore` audit line all say 2026-09-11, the day the advisor session that
+produced them began; the commits themselves are dated 2026-09-12. Read 2026-09-11 there as the
+session, not the calendar day.** No spec, approval, test,
+source or configuration file has changed since `prototype-1`, `.gitignore`'s annotation excepted. No gate failure is expected. Every C2
 turn touches documents only, so the Stop hook wrapper skips and prints a line naming run
 `20260911T110451-2238600`, and that line is the turn's outcome. Do not run `gauntlet check` during
 C2: on an unchanged gated tree it can only repeat the verdict below, at a cost of about an hour.
@@ -151,6 +159,5 @@ to 2026-08-21, spanning items 1 through 4j, are in neither place. No document re
 build produced.)* Both of the tag's final runs are in it, and C3 compares its regression runs
 against them.
 
-**What remains before C2 closes.** C2b to C2e, in order. C2 closes when all five are merged, the
-baseline above still holds on `main`, and this section says so. C3 then begins in agent-gauntlet,
-and nothing lands here until it has produced a harness to open phase 4 on.
+**What remains before C2 closes.** Nothing; closed 2026-09-12, all five parts merged and the
+baseline held. C3 is agent-gauntlet's; C4 opens phase 4 here on the harness C3 produces.
