@@ -1,11 +1,39 @@
+# Audited 2026-09-11, clean-up C2e. Every rule below is annotated with what it hides. Most match
+# nothing in a clean tree, which is the point; a rule that can never match is the defect to look
+# for. This file has been silently inert before: every line carried a trailing comma from the start
+# of the project, so no rule matched anything, and a duplicate mutants/ tree, coverage databases and
+# build artifacts were tracked for months. Do not add a rule here without saying what it hides.
+#
+# Comments must be on their own line. A `#` after a pattern is part of the pattern, not a comment,
+# which is how the last rule below is written on purpose.
+#
+# One rule interacts with the Stop hook. .claude/hooks/stop-check.sh hashes the gated tree with
+# `git ls-files -c -o --exclude-standard`, so anything ignored here is invisible to that hash even
+# when it sits inside a gated path. mutants/ is such a path: it is in GATED_PATHS and ignored, so it
+# contributes nothing to the hash and never will. That is right as things stand — the directory is
+# mutmut's scratch sandbox, generated per run and never committed — but the two lists disagree on
+# paper, and if mutants/ ever holds anything a gate reads, one of them has to change.
+
+# local virtualenv; the toolchain itself is declared in requirements-dev.txt
 .venv/
+# harness state: events.jsonl, last-green-tree, coverage.json, mutation-backup/. Not committed, so
+# a verdict survives only on disk; docs/queue-history/events-prototype-1.jsonl is the tag's copy.
 .gauntlet/
+# mutmut's scratch sandbox, regenerated per run; see the note above about the gated-tree hash
 mutants/
+# mutmut's warm cache; a stale one understates a score
 .mutmut-cache
+# bytecode
 __pycache__/
+# pytest state
 .pytest_cache/
+# coverage's own database; the coverage gate reads .gauntlet/coverage.json instead
 .coverage
+# SQLite files from a local run of the shell
 *.db
+# build metadata; the package is never installed here, conftest.py puts src/ on sys.path
 *.egg-info/
+# an editor's backup of the pinned toolchain
 requirements-dev.txt.bak
+# LibreOffice lock files, from opening an exported review sheet
 .~lock.*#

@@ -8,6 +8,16 @@ specifications under `features/` — validation, triage, SIU indicators, and dup
 hash-locked, implemented, and gated. Where a decision was never pinned down precisely enough to
 state with confidence, that's marked rather than guessed at.
 
+**Read as a decision record, not a description of the system (noted 2026-09-11, clean-up C2d).**
+Clean-up C2d removed `PHASE3_DESIGN.md`'s section of measurements, which had been overtaken
+wholesale. This file has no equivalent section: the sentences here that describe code are single
+clauses inside decisions, and the reasoning around them depends on the state they name, so they
+stay where they are and were checked rather than cut. Of the five that say "today", three still
+hold at `prototype-1`, one carries its own correction inline, and one — the absence of
+authentication — is a phase-5 dependency rather than a stale measurement. Treat any
+present-tense claim about code in this file as true of the day it was written; the code is the
+authority on the code.
+
 **This file predates phase 1's design-review corrections and was reviewed against them on
 2026-08-18.** Where a passage described phase-1 code, it now describes what is actually there.
 Where a passage's *reasoning* was affected, that is called out inline rather than silently
