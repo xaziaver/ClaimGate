@@ -190,8 +190,9 @@ Before any work, orient and verify. Report before acting.
    turn-end stop-check `20260911T110451-2238600` measured 3736.757 s), against a Stop hook
    budget of 7200 s in `.claude/settings.json`. Both figures move — the duration is recorded in
    `QUEUE.md`'s status paragraph at each close — and when the run outgrows the budget the hook
-   kills its own run at every turn end without any human reply (events eleven to thirteen in
-   `docs/harness-findings.md`). The strand takes one of the engine's substitution
+   kills its own run at every turn end without any human reply (events eleven to thirteen
+   under "A corrupted spec from an interrupted mutation run" in
+   `docs/queue-history/harness-findings.md`, moved there by clean-up C2c). The strand takes one of the engine's substitution
    shapes — a value swapped for a sibling cell's value (including an empty one), a number
    incremented at its own precision, a boolean flipped, or a string literal with `_gauntlet`
    appended — and only the last carries a marker, so never identify a strand by its text; the
